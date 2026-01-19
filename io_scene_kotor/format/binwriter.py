@@ -49,6 +49,10 @@ class BinaryWriter:
         self.file.write(val.to_bytes(4, byteorder=self.byteorder, signed=False))
 
     def write_float(self, val):
+        # Sanitize -0.0 to +0.0 to prevent Mesa/Zink GPU driver crashes
+        # IEEE 754 -0.0 (0x80000000) can cause SIGSEGV on some drivers
+        if val == 0.0:
+            val = 0.0  # Forces +0.0 even if input was -0.0
         bo_literal = ">" if self.byteorder == "big" else "<"
         self.file.write(struct.pack(bo_literal + "f", val))
 
