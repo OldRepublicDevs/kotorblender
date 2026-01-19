@@ -49,8 +49,16 @@ class BinaryWriter:
         self.file.write(val.to_bytes(4, byteorder=self.byteorder, signed=False))
 
     def write_float(self, val):
-        # Sanitize -0.0 to +0.0 to prevent Mesa/Zink GPU driver crashes
-        # IEEE 754 -0.0 (0x80000000) can cause SIGSEGV on some drivers
+        bo_literal = ">" if self.byteorder == "big" else "<"
+        self.file.write(struct.pack(bo_literal + "f", val))
+
+    def write_float_safe(self, val):
+        """Write float with -0.0 sanitization for geometry data.
+        
+        Use this for geometry floats (BBox, faces, colors) to prevent
+        Mesa/Zink GPU driver crashes from IEEE 754 -0.0 (0x80000000).
+        Do NOT use for animation/controller data as it may break animations.
+        """
         if val == 0.0:
             val = 0.0  # Forces +0.0 even if input was -0.0
         bo_literal = ">" if self.byteorder == "big" else "<"

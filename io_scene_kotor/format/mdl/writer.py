@@ -757,9 +757,9 @@ class MdlWriter:
         )  # animation offsets
         self.mdl.write_uint32(supermodel_ref)
         for val in bounding_box:
-            self.mdl.write_float(val)
-        self.mdl.write_float(radius)
-        self.mdl.write_float(scale)
+            self.mdl.write_float_safe(val)
+        self.mdl.write_float_safe(radius)
+        self.mdl.write_float_safe(scale)
         self.mdl.write_string(supermodel_name)
         self.mdl.write_uint32(off_anim_root)
         self.mdl.write_uint32(0)  # unknown
@@ -1169,14 +1169,14 @@ class MdlWriter:
                 self.mdl.write_uint32(fn_ptr2)
                 self.put_array_def(self.faces_offsets[node_idx], num_faces)  # faces
                 for val in bounding_box:
-                    self.mdl.write_float(val)
-                self.mdl.write_float(radius)
+                    self.mdl.write_float_safe(val)
+                self.mdl.write_float_safe(radius)
                 for val in average:
-                    self.mdl.write_float(val)
+                    self.mdl.write_float_safe(val)
                 for val in diffuse:
-                    self.mdl.write_float(val)
+                    self.mdl.write_float_safe(val)
                 for val in ambient:
-                    self.mdl.write_float(val)
+                    self.mdl.write_float_safe(val)
                 self.mdl.write_uint32(transparency_hint)
                 self.mdl.write_string(bitmap)
                 self.mdl.write_string(bitmap2)
@@ -1374,8 +1374,8 @@ class MdlWriter:
                     material_id = node.facelist.materials[face_idx]
 
                     for val in normal:
-                        self.mdl.write_float(val)
-                    self.mdl.write_float(distance)
+                        self.mdl.write_float_safe(val)
+                    self.mdl.write_float_safe(distance)
                     self.mdl.write_uint32(material_id)
                     for val in face_adjacencies[face_idx]:
                         self.mdl.write_int16(val)
@@ -1416,19 +1416,19 @@ class MdlWriter:
                 if not type_flags & NODE_SABER:
                     for vert_idx, vert in enumerate(node.verts):
                         for val in vert:
-                            self.mdx.write_float(val)
+                            self.mdx.write_float_safe(val)
                         if self.xbox:
                             comp = self.compress_vector_xbox(node.normals[vert_idx])
                             self.mdx.write_uint32(comp)
                         else:
                             for val in node.normals[vert_idx]:
-                                self.mdx.write_float(val)
+                                self.mdx.write_float_safe(val)
                         if node.uv1:
                             for val in node.uv1[vert_idx]:
-                                self.mdx.write_float(val)
+                                self.mdx.write_float_safe(val)
                         if node.uv2:
                             for val in node.uv2[vert_idx]:
-                                self.mdx.write_float(val)
+                                self.mdx.write_float_safe(val)
                         if node.tangentspace:
                             if self.xbox:
                                 comp = self.compress_vector_xbox(
@@ -1445,11 +1445,11 @@ class MdlWriter:
                                 self.mdx.write_uint32(comp)
                             else:
                                 for val in node.bitangents[vert_idx]:
-                                    self.mdx.write_float(val)
+                                    self.mdx.write_float_safe(val)
                                 for val in node.tangents[vert_idx]:
-                                    self.mdx.write_float(val)
+                                    self.mdx.write_float_safe(val)
                                 for val in node.tangentspacenormals[vert_idx]:
-                                    self.mdx.write_float(val)
+                                    self.mdx.write_float_safe(val)
                         if type_flags & NODE_SKIN:
                             vert_weights = node.weights[vert_idx]
                             bone_weights = []
@@ -1459,9 +1459,9 @@ class MdlWriter:
                                 bone_weights.append((bone_idx, weight))
                             for i in range(4):
                                 if i < len(bone_weights):
-                                    self.mdx.write_float(bone_weights[i][1])
+                                    self.mdx.write_float_safe(bone_weights[i][1])
                                 else:
-                                    self.mdx.write_float(0.0)
+                                    self.mdx.write_float_safe(0.0)
                             if self.xbox:
                                 for i in range(4):
                                     if i < len(bone_weights):
@@ -1471,40 +1471,40 @@ class MdlWriter:
                             else:
                                 for i in range(4):
                                     if i < len(bone_weights):
-                                        self.mdx.write_float(float(bone_weights[i][0]))
+                                        self.mdx.write_float_safe(float(bone_weights[i][0]))
                                     else:
-                                        self.mdx.write_float(-1.0)
+                                        self.mdx.write_float_safe(-1.0)
                     # Extra MDX data
                     for _ in range(3):
-                        self.mdx.write_float(1e7)
+                        self.mdx.write_float_safe(1e7)
                     if self.xbox:
                         self.mdx.write_uint32(0)
                     else:
                         for _ in range(3):
-                            self.mdx.write_float(0.0)
+                            self.mdx.write_float_safe(0.0)
                     if node.uv1:
                         for _ in range(2):
-                            self.mdx.write_float(0.0)
+                            self.mdx.write_float_safe(0.0)
                     if node.uv2:
                         for _ in range(2):
-                            self.mdx.write_float(0.0)
+                            self.mdx.write_float_safe(0.0)
                     if node.tangentspace:
                         if self.xbox:
                             for _ in range(3):
                                 self.mdx.write_uint32(0)
                         else:
                             for _ in range(9):
-                                self.mdx.write_float(0.0)
+                                self.mdx.write_float_safe(0.0)
                     if type_flags & NODE_SKIN:
                         weights = (1.0, 0.0, 0.0, 0.0)
                         for val in weights:
-                            self.mdx.write_float(val)
+                            self.mdx.write_float_safe(val)
                         if self.xbox:
                             for _ in range(4):
                                 self.mdx.write_uint16(0)
                         else:
                             for _ in range(4):
-                                self.mdx.write_float(0.0)
+                                self.mdx.write_float_safe(0.0)
 
             # Skin Data
 
