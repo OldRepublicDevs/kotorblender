@@ -916,9 +916,9 @@ class MdlWriter:
             self.mdl.write_uint32(off_root)
             self.mdl.write_uint32(off_parent)
             for val in position:
-                self.mdl.write_float(val)
+                self.mdl.write_float_safe(val)
             for val in orientation:
-                self.mdl.write_float(val)
+                self.mdl.write_float_safe(val)
             self.put_array_def(self.children_offsets[node_idx], len(child_indices))
             self.put_array_def(
                 self.controller_offsets[node_idx], self.controller_counts[node_idx]
@@ -940,7 +940,7 @@ class MdlWriter:
                 flare = 0  # always 0
                 flare_radius = node.flareradius
 
-                self.mdl.write_float(flare_radius)
+                self.mdl.write_float_safe(flare_radius)
                 self.put_array_def(0, 0)  # unknown
                 self.put_array_def(
                     self.flare_sizes_offsets[node_idx] if node.lensflares else 0,
@@ -973,12 +973,12 @@ class MdlWriter:
                 # Lens Flares
                 if node.lensflares:
                     for size in node.flare_list.sizes:
-                        self.mdl.write_float(size)
+                        self.mdl.write_float_safe(size)
                     for position in node.flare_list.positions:
-                        self.mdl.write_float(position)
+                        self.mdl.write_float_safe(position)
                     for colorshift in node.flare_list.colorshifts:
                         for val in colorshift:
-                            self.mdl.write_float(val)
+                            self.mdl.write_float_safe(val)
                     for i in range(len(node.flare_list.textures)):
                         off_tex = self.flare_textures_offsets[node_idx][i]
                         self.mdl.write_uint32(off_tex)
@@ -1024,11 +1024,11 @@ class MdlWriter:
                 if node.depth_texture:
                     flags |= EMITTER_FLAG_DEPTH_TEXTURE
 
-                self.mdl.write_float(node.deadspace)
-                self.mdl.write_float(node.blastradius)
-                self.mdl.write_float(node.blastlength)
+                self.mdl.write_float_safe(node.deadspace)
+                self.mdl.write_float_safe(node.blastradius)
+                self.mdl.write_float_safe(node.blastlength)
                 self.mdl.write_uint32(node.num_branches)
-                self.mdl.write_float(node.controlptsmoothing)
+                self.mdl.write_float_safe(node.controlptsmoothing)
                 self.mdl.write_uint32(node.xgrid)
                 self.mdl.write_uint32(node.ygrid)
                 self.mdl.write_uint32(node.spawntype)
@@ -1211,10 +1211,10 @@ class MdlWriter:
                 for _ in range(7):
                     self.mdl.write_uint8(0)  # saber unknown
                 self.mdl.write_uint32(animate_uv)
-                self.mdl.write_float(uv_dir_x)
-                self.mdl.write_float(uv_dir_y)
-                self.mdl.write_float(uv_jitter)
-                self.mdl.write_float(uv_jitter_speed)
+                self.mdl.write_float_safe(uv_dir_x)
+                self.mdl.write_float_safe(uv_dir_y)
+                self.mdl.write_float_safe(uv_jitter)
+                self.mdl.write_float_safe(uv_jitter_speed)
                 self.mdl.write_uint32(mdx_data_size)
                 self.mdl.write_uint32(mdx_data_bitmap)
                 self.mdl.write_uint32(off_mdx_verts)
@@ -1303,9 +1303,9 @@ class MdlWriter:
                 self.put_array_def(
                     self.constraints_offsets[node_idx], len(node.constraints)
                 )
-                self.mdl.write_float(displacement)
-                self.mdl.write_float(tightness)
-                self.mdl.write_float(period)
+                self.mdl.write_float_safe(displacement)
+                self.mdl.write_float_safe(tightness)
+                self.mdl.write_float_safe(period)
                 self.mdl.write_uint32(off_vert_data)
 
             # AABB Header
@@ -1514,7 +1514,7 @@ class MdlWriter:
                     if self.xbox:
                         self.mdl.write_uint16(bone_idx if bone_idx != -1 else 0xFFFF)
                     else:
-                        self.mdl.write_float(float(bone_idx))
+                        self.mdl.write_float_safe(float(bone_idx))
 
                 num_bones = len(bonemap)
 
@@ -1526,15 +1526,15 @@ class MdlWriter:
                     tbones[i], qbones[i], _ = bone_trans.decompose()
                 for i in range(num_bones):
                     qbone = qbones[i]
-                    self.mdl.write_float(qbone.w)
-                    self.mdl.write_float(qbone.x)
-                    self.mdl.write_float(qbone.y)
-                    self.mdl.write_float(qbone.z)
+                    self.mdl.write_float_safe(qbone.w)
+                    self.mdl.write_float_safe(qbone.x)
+                    self.mdl.write_float_safe(qbone.y)
+                    self.mdl.write_float_safe(qbone.z)
                 for i in range(num_bones):
                     tbone = tbones[i]
-                    self.mdl.write_float(tbone.x)
-                    self.mdl.write_float(tbone.y)
-                    self.mdl.write_float(tbone.z)
+                    self.mdl.write_float_safe(tbone.x)
+                    self.mdl.write_float_safe(tbone.y)
+                    self.mdl.write_float_safe(tbone.z)
 
                 # Garbage
                 for _ in range(num_bones):
@@ -1544,10 +1544,10 @@ class MdlWriter:
 
             if type_flags & NODE_DANGLY:
                 for val in node.constraints:
-                    self.mdl.write_float(val)
+                    self.mdl.write_float_safe(val)
                 for vert in node.verts:
                     for val in vert:
-                        self.mdl.write_float(val)
+                        self.mdl.write_float_safe(val)
 
             # AABB Data
 
@@ -1578,7 +1578,7 @@ class MdlWriter:
 
                     # Bounding Box
                     for val in aabb[:6]:
-                        self.mdl.write_float(val)
+                        self.mdl.write_float_safe(val)
 
                     self.mdl.write_uint32(off_child1)
                     self.mdl.write_uint32(off_child2)
@@ -1590,13 +1590,13 @@ class MdlWriter:
             if type_flags & NODE_SABER:
                 for vert_idx in saber_vert_indices:
                     for val in node.verts[vert_idx]:
-                        self.mdl.write_float(val)
+                        self.mdl.write_float_safe(val)
                 for vert_idx in saber_vert_indices:
                     for val in node.uv1[vert_idx]:
-                        self.mdl.write_float(val)
+                        self.mdl.write_float_safe(val)
                 for vert_idx in saber_vert_indices:
                     for val in node.normals[vert_idx]:
-                        self.mdl.write_float(val)
+                        self.mdl.write_float_safe(val)
 
             # Children
 
