@@ -57,6 +57,7 @@ class EmitterNode(BaseNode):
         "splat",
         "inherit_part",
         "depth_texture",
+        "random_order",
         "alphastart",
         "alphamid",
         "alphaend",
@@ -142,6 +143,7 @@ class EmitterNode(BaseNode):
         self.splat = False
         self.inherit_part = False
         self.depth_texture = False
+        self.random_order = False
         # controllers
         self.alphastart = 0.0
         self.alphamid = 0.0

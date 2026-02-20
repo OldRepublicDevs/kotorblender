@@ -446,6 +446,7 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     splat: bpy.props.BoolProperty(name="Splat")
     inherit_part: bpy.props.BoolProperty(name="Inherit Particle")
     depth_texture: bpy.props.BoolProperty(name="Depth Texture")
+    random_order: bpy.props.BoolProperty(name="Random Order")
 
     # Path Points
     path_connection_list: bpy.props.CollectionProperty(type=PathConnectionPropertyGroup)

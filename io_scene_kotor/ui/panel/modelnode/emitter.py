@@ -79,6 +79,7 @@ class KB_PT_emitter(bpy.types.Panel):
         col.prop(obj.kb, "twosidedtex")
         col.prop(obj.kb, "depth_texture")
         col.prop(obj.kb, "p2p")
+        col.prop(obj.kb, "random_order")
 
         row = layout.row()
         col = row.column(align=True, heading="Inheritance")

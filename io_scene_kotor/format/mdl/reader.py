@@ -307,6 +307,7 @@ class MdlReader:
             node.splat = flags & EMITTER_FLAG_SPLAT != 0
             node.inherit_part = flags & EMITTER_FLAG_INHERIT_PART != 0
             node.depth_texture = flags & EMITTER_FLAG_DEPTH_TEXTURE != 0
+            node.random_order = flags & EMITTER_FLAG_RANDOM_ORDER != 0
 
         if type_flags & NODE_REFERENCE:
             ref_model = self.mdl.read_c_string_up_to(32)

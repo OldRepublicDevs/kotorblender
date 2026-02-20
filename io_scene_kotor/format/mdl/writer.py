@@ -1023,6 +1023,8 @@ class MdlWriter:
                     flags |= EMITTER_FLAG_INHERIT_PART
                 if node.depth_texture:
                     flags |= EMITTER_FLAG_DEPTH_TEXTURE
+                if node.random_order:
+                    flags |= EMITTER_FLAG_RANDOM_ORDER
 
                 self.mdl.write_float(node.deadspace)
                 self.mdl.write_float(node.blastradius)
