@@ -192,6 +192,7 @@ class EmitterNode(BaseNode):
         self.colorstart = (1.0, 1.0, 1.0)
         self.colormid = (1.0, 1.0, 1.0)
         self.colorend = (1.0, 1.0, 1.0)
+        self.detonate = None  # only valid for Explosion emitters
 
     def add_to_collection(self, collection, options):
         mesh = self.create_mesh(self.name)
@@ -268,6 +269,8 @@ class EmitterNode(BaseNode):
                 continue
             setattr(obj.kb, attrname, value)
 
+        obj.kb.detonate = self.detonate if self.detonate is not None else 0.0
+
     def load_object_data(self, obj, eval_obj, options):
         BaseNode.load_object_data(self, obj, eval_obj, options)
 
@@ -305,3 +308,6 @@ class EmitterNode(BaseNode):
                 continue
 
             setattr(self, attrname, value)
+
+        if self.update == "Explosion":
+            self.detonate = getattr(obj.kb, "detonate", 0.0)

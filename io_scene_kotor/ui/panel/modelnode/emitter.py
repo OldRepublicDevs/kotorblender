@@ -217,6 +217,27 @@ class KB_PT_emitter_texture_anim(bpy.types.Panel):
         col.prop(obj.kb, "random")
 
 
+class KB_PT_emitter_explosion(bpy.types.Panel):
+    bl_label = "Explosion"
+    bl_parent_id = "KB_PT_emitter"
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_context = "object"
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        return is_mesh_type(obj, MeshType.EMITTER) and obj.kb.update == "Explosion"
+
+    def draw(self, context):
+        obj = context.object
+        layout = self.layout
+        layout.use_property_split = True
+
+        row = layout.row()
+        row.prop(obj.kb, "detonate")
+
+
 class KB_PT_emitter_lighting(bpy.types.Panel):
     bl_label = "Lighting"
     bl_parent_id = "KB_PT_emitter"

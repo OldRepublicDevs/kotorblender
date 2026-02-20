@@ -80,6 +80,7 @@ from .ui.panel.modelnode.emitter import (
     KB_PT_emitter,
     KB_PT_emitter_particles,
     KB_PT_emitter_texture_anim,
+    KB_PT_emitter_explosion,
     KB_PT_emitter_lighting,
     KB_PT_emitter_p2p,
     KB_PT_emitter_control_points,
@@ -213,6 +214,7 @@ classes = (
     KB_PT_emitter,  # child of KB_PT_modelnode
     KB_PT_emitter_particles,
     KB_PT_emitter_texture_anim,
+    KB_PT_emitter_explosion,
     KB_PT_emitter_lighting,
     KB_PT_emitter_p2p,
     KB_PT_emitter_control_points,
