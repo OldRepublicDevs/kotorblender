@@ -178,6 +178,12 @@ class MdlReader:
         self.mdl.skip(38)
         children_arr = self.get_array_def()
 
+        if name_index >= len(self.names):
+            raise RuntimeError(
+                "Node name index out of range: index={}, count={}".format(
+                    name_index, len(self.names)
+                )
+            )
         name = self.names[name_index]
         self.node_names.append(name)
 
@@ -201,6 +207,12 @@ class MdlReader:
         controller_arr = self.get_array_def()
         controller_data_arr = self.get_array_def()
 
+        if name_index >= len(self.names):
+            raise RuntimeError(
+                "Node name index out of range: index={}, count={}".format(
+                    name_index, len(self.names)
+                )
+            )
         name = self.names[name_index]
         node_type = self.get_node_type(type_flags)
         node = self.new_node(name, node_type)
@@ -704,6 +716,12 @@ class MdlReader:
         controller_arr = self.get_array_def()
         controller_data_arr = self.get_array_def()
 
+        if name_index >= len(self.names):
+            raise RuntimeError(
+                "Animation node name index out of range: index={}, count={}".format(
+                    name_index, len(self.names)
+                )
+            )
         name = self.names[name_index]
         node = AnimationNode(name)
         node.node_number = node_number
