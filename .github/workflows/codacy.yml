@@ -17,14 +17,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Runs Codacy's bundled static analysis tools (pylint, bandit, etc.)
+      # and prints findings to the workflow log.
+      #
+      # Results are NOT uploaded to Codacy's dashboard because
+      # CODACY_PROJECT_TOKEN is not configured in this repository.
+      # To enable dashboard upload and resolve the Codacy App's
+      # "action_required" PR check, add CODACY_PROJECT_TOKEN as a
+      # repository secret and uncomment the lines below:
+      #   project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+      #   upload: true
+      #
+      # max-allowed-issues is set to INT_MAX so this step never fails
+      # the workflow; quality gates are enforced by the Codacy App's
+      # own PR status check.
       - name: Run Codacy Analysis CLI
         uses: codacy/codacy-analysis-cli-action@v4
         with:
-          # Upload results to Codacy when CODACY_PROJECT_TOKEN is configured.
-          # This resolves the Codacy App "action_required" check on the PR.
-          # Without the token the analysis still runs and prints to the log.
-          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-          upload: true
-          # Never fail the workflow on issue count – quality gates are
-          # enforced by the Codacy App PR status check, not this step.
           max-allowed-issues: 2147483647
