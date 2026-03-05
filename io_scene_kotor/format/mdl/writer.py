@@ -372,20 +372,24 @@ class MdlWriter:
                             self.mdx_pos += 4 * 8 * (num_verts + 1)
 
                 # Bounding Box, Average, Total Area
-                bb_min = Vector()
-                bb_max = Vector()
+                bb_min = None
+                bb_max = None
                 average = Vector()
                 total_area = 0.0
                 if node.facelist.vertices:
                     for face in node.facelist.vertices:
                         verts = [Vector(node.verts[i]) for i in face]
                         for vert in verts:
-                            bb_min.x = min(bb_min.x, vert.x)
-                            bb_min.y = min(bb_min.y, vert.y)
-                            bb_min.z = min(bb_min.z, vert.z)
-                            bb_max.x = max(bb_max.x, vert.x)
-                            bb_max.y = max(bb_max.y, vert.y)
-                            bb_max.z = max(bb_max.z, vert.z)
+                            if bb_min is None:
+                                bb_min = vert.copy()
+                                bb_max = vert.copy()
+                            else:
+                                bb_min.x = min(bb_min.x, vert.x)
+                                bb_min.y = min(bb_min.y, vert.y)
+                                bb_min.z = min(bb_min.z, vert.z)
+                                bb_max.x = max(bb_max.x, vert.x)
+                                bb_max.y = max(bb_max.y, vert.y)
+                                bb_max.z = max(bb_max.z, vert.z)
                             average += vert
                         edge1 = verts[1] - verts[0]
                         edge2 = verts[2] - verts[0]
@@ -394,6 +398,9 @@ class MdlWriter:
                         if area != 1.0:
                             total_area += area
                     average /= 3 * len(node.facelist.vertices)
+                if bb_min is None:
+                    bb_min = Vector((0.0, 0.0, 0.0))
+                    bb_max = Vector((0.0, 0.0, 0.0))
                 self.mesh_bounding_boxes[node_idx] = [*bb_min, *bb_max]
                 self.mesh_averages[node_idx] = [*average]
                 self.mesh_total_areas[node_idx] = total_area
@@ -543,6 +550,28 @@ class MdlWriter:
             data_count += 2
 
             out_keys.append(
+                ControllerKey(
+                    CTRL_LIGHT_SHADOWRADIUS, 1, data_count, data_count + 1, 1
+                )
+            )
+            out_data.append(0.0)  # timekey
+            out_data.append(node.shadowradius)
+            data_count += 2
+
+            out_keys.append(
+                ControllerKey(
+                    CTRL_LIGHT_VERTICALDISPLACEMENT,
+                    1,
+                    data_count,
+                    data_count + 1,
+                    1,
+                )
+            )
+            out_data.append(0.0)  # timekey
+            out_data.append(node.verticaldisplacement)
+            data_count += 2
+
+            out_keys.append(
                 ControllerKey(CTRL_LIGHT_MULTIPLIER, 1, data_count, data_count + 1, 1)
             )
             out_data.append(0.0)  # timekey
@@ -561,6 +590,8 @@ class MdlWriter:
 
         if type_flags & NODE_EMITTER:
             for ctrl_val, key, dim in EMITTER_CONTROLLER_KEYS:
+                if key == "detonate" and node.update != "Explosion":
+                    continue
                 value = getattr(node, key, None)
                 if value is None:
                     continue
@@ -676,6 +707,15 @@ class MdlWriter:
         if type_flags & NODE_LIGHT:
             data_count = append_keyframes("radius", CTRL_LIGHT_RADIUS, 1, data_count)
             data_count = append_keyframes(
+                "shadowradius", CTRL_LIGHT_SHADOWRADIUS, 1, data_count
+            )
+            data_count = append_keyframes(
+                "verticaldisplacement",
+                CTRL_LIGHT_VERTICALDISPLACEMENT,
+                1,
+                data_count,
+            )
+            data_count = append_keyframes(
                 "multiplier", CTRL_LIGHT_MULTIPLIER, 1, data_count
             )
             data_count = append_keyframes("color", CTRL_LIGHT_COLOR, 3, data_count)
@@ -684,7 +724,50 @@ class MdlWriter:
 
         if type_flags & NODE_EMITTER:
             for ctrl_type, key, dim in EMITTER_CONTROLLER_KEYS:
+                if key == "detonate" and node.update != "Explosion":
+                    continue
                 data_count = append_keyframes(key, ctrl_type, dim, data_count)
+
+    def compute_model_bounding_box_and_radius(self):
+        bb_min = None
+        bb_max = None
+        transformed_verts = []
+
+        for node in self.nodes:
+            if not hasattr(node, "verts") or not node.verts:
+                continue
+            for vert in node.verts:
+                transformed = node.from_root @ Vector(vert)
+                transformed_verts.append(transformed)
+                if bb_min is None:
+                    bb_min = transformed.copy()
+                    bb_max = transformed.copy()
+                else:
+                    bb_min.x = min(bb_min.x, transformed.x)
+                    bb_min.y = min(bb_min.y, transformed.y)
+                    bb_min.z = min(bb_min.z, transformed.z)
+                    bb_max.x = max(bb_max.x, transformed.x)
+                    bb_max.y = max(bb_max.y, transformed.y)
+                    bb_max.z = max(bb_max.z, transformed.z)
+
+        if transformed_verts:
+            center = (bb_min + bb_max) / 2.0
+            radius = max((vert - center).length for vert in transformed_verts)
+            return [*bb_min, *bb_max], radius
+
+        preserved_box = [
+            *self.model.bounding_box_min,
+            *self.model.bounding_box_max,
+        ]
+        if any(abs(val) > 1e-6 for val in preserved_box) or self.model.model_radius > 0.0:
+            radius = self.model.model_radius
+            if radius <= 0.0:
+                preserved_min = Vector(self.model.bounding_box_min)
+                preserved_max = Vector(self.model.bounding_box_max)
+                radius = (preserved_max - ((preserved_min + preserved_max) / 2.0)).length
+            return preserved_box, radius
+
+        return [-5.0, -5.0, -1.0, 5.0, 5.0, 10.0], 7.0
 
     def save_file_header(self):
         self.mdl.write_uint32(0)  # pseudo signature
@@ -734,11 +817,11 @@ class MdlWriter:
             )
         )
         subclassification = self.model.subclassification
+        classification_unk1 = self.model.classification_unk1
         affected_by_fog = 1 if self.model.affected_by_fog else 0
         num_child_models = 0
         supermodel_ref = 0
-        bounding_box = [-5.0, -5.0, -1.0, 5.0, 5.0, 10.0]
-        radius = 7.0  # TODO
+        bounding_box, radius = self.compute_model_bounding_box_and_radius()
         scale = self.model.animscale
         supermodel_name = self.model.supermodel.ljust(32, "\0")
 
@@ -757,7 +840,7 @@ class MdlWriter:
 
         self.mdl.write_uint8(classification)
         self.mdl.write_uint8(subclassification)
-        self.mdl.write_uint8(0)  # unknown
+        self.mdl.write_uint8(classification_unk1)
         self.mdl.write_uint8(affected_by_fog)
         self.mdl.write_uint32(num_child_models)
         self.put_array_def(
@@ -945,7 +1028,7 @@ class MdlWriter:
                 dynamic_type = node.dynamictype
                 affect_dynamic = node.affectdynamic
                 fading_light = node.fadinglight
-                flare = 0  # always 0
+                flare = 1 if node.lensflares or node.flare_list.textures else 0
                 flare_radius = node.flareradius
 
                 self.mdl.write_float(flare_radius)
@@ -1006,7 +1089,7 @@ class MdlWriter:
                 frame_blending = 1 if node.frame_blending else 0
                 depth_texture_name = node.depth_texture_name.ljust(32, "\0")
 
-                flags = 0
+                flags = node.extra_flags
                 if node.p2p:
                     flags |= EMITTER_FLAG_P2P
                 if node.p2p_sel:
@@ -1031,6 +1114,8 @@ class MdlWriter:
                     flags |= EMITTER_FLAG_INHERIT_PART
                 if node.depth_texture:
                     flags |= EMITTER_FLAG_DEPTH_TEXTURE
+                if node.flag13:
+                    flags |= EMITTER_FLAG_13
 
                 self.mdl.write_float(node.deadspace)
                 self.mdl.write_float(node.blastradius)

@@ -131,7 +131,7 @@ class MdlReader:
     def load_model_header(self):
         classification = self.mdl.read_uint8()
         subclassification = self.mdl.read_uint8()
-        self.mdl.skip(1)  # unknown
+        smoothing = self.mdl.read_uint8()
         affected_by_fog = self.mdl.read_uint8()
         num_child_models = self.mdl.read_uint32()
         self.animation_arr = self.get_array_def()
@@ -162,6 +162,10 @@ class MdlReader:
         self.model.supermodel = supermodel_name
         self.model.animscale = scale
         self.model.affected_by_fog = affected_by_fog
+        self.model.classification_unk1 = smoothing
+        self.model.bounding_box_min = bounding_box[:3]
+        self.model.bounding_box_max = bounding_box[3:]
+        self.model.model_radius = radius
 
     def load_names(self):
         self.names = []
@@ -319,6 +323,8 @@ class MdlReader:
             node.splat = flags & EMITTER_FLAG_SPLAT != 0
             node.inherit_part = flags & EMITTER_FLAG_INHERIT_PART != 0
             node.depth_texture = flags & EMITTER_FLAG_DEPTH_TEXTURE != 0
+            node.flag13 = flags & EMITTER_FLAG_13 != 0
+            node.extra_flags = flags & ~EMITTER_FLAG_KNOWN_MASK
 
         if type_flags & NODE_REFERENCE:
             ref_model = self.mdl.read_c_string_up_to(32)
@@ -473,6 +479,16 @@ class MdlReader:
                     controllers[CTRL_LIGHT_RADIUS][0][1]
                     if CTRL_LIGHT_RADIUS in controllers
                     else 1.0
+                )
+                node.shadowradius = (
+                    controllers[CTRL_LIGHT_SHADOWRADIUS][0][1]
+                    if CTRL_LIGHT_SHADOWRADIUS in controllers
+                    else 0.0
+                )
+                node.verticaldisplacement = (
+                    controllers[CTRL_LIGHT_VERTICALDISPLACEMENT][0][1]
+                    if CTRL_LIGHT_VERTICALDISPLACEMENT in controllers
+                    else 0.0
                 )
                 node.multiplier = (
                     controllers[CTRL_LIGHT_MULTIPLIER][0][1]
@@ -762,6 +778,17 @@ class MdlReader:
                     if CTRL_LIGHT_RADIUS in controllers:
                         node.keyframes["radius"] = [
                             row for row in controllers[CTRL_LIGHT_RADIUS]
+                        ]
+                    if CTRL_LIGHT_SHADOWRADIUS in controllers:
+                        node.keyframes["shadowradius"] = [
+                            row for row in controllers[CTRL_LIGHT_SHADOWRADIUS]
+                        ]
+                    if CTRL_LIGHT_VERTICALDISPLACEMENT in controllers:
+                        node.keyframes["verticaldisplacement"] = [
+                            row
+                            for row in controllers[
+                                CTRL_LIGHT_VERTICALDISPLACEMENT
+                            ]
                         ]
                     if CTRL_LIGHT_MULTIPLIER in controllers:
                         node.keyframes["multiplier"] = [
