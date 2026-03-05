@@ -61,7 +61,7 @@ class DanglymeshNode(TrimeshNode):
 
     def unapply_vertex_constraints(self, obj, mesh):
         if CONSTRAINTS not in obj.vertex_groups:
-            mesh.constraints = [0] * range(len(mesh.verts))
+            mesh.constraints = [0] * len(mesh.verts)
             return
         group = obj.vertex_groups[CONSTRAINTS]
         mesh.constraints = [255.0 * group.weight(i) for i in range(len(mesh.verts))]

@@ -44,9 +44,13 @@ class Model:
         self.supermodel = NULL
         self.classification = Classification.OTHER
         self.subclassification = 0
+        self.classification_unk1 = 0
         self.affected_by_fog = True
         self.animroot = NULL
         self.animscale = 1.0
+        self.bounding_box_min = (0.0, 0.0, 0.0)
+        self.bounding_box_max = (0.0, 0.0, 0.0)
+        self.model_radius = 0.0
 
         self.root_node = None
         self.animations = []
@@ -64,9 +68,13 @@ class Model:
             root_obj.kb.supermodel = self.supermodel
             root_obj.kb.classification = self.classification
             root_obj.kb.subclassification = self.subclassification
+            root_obj.kb.classification_unk1 = self.classification_unk1
             root_obj.kb.affected_by_fog = self.affected_by_fog
             root_obj.kb.animroot = self.animroot
             root_obj.kb.animscale = self.animscale
+            root_obj.kb.bounding_box_min = self.bounding_box_min
+            root_obj.kb.bounding_box_max = self.bounding_box_max
+            root_obj.kb.model_radius = self.model_radius
 
             for child in self.root_node.children:
                 self.import_nodes_to_collection(child, root_obj, collection, options)
@@ -130,9 +138,13 @@ class Model:
         model.supermodel = root_obj.kb.supermodel
         model.classification = root_obj.kb.classification
         model.subclassification = root_obj.kb.subclassification
+        model.classification_unk1 = root_obj.kb.classification_unk1
         model.affected_by_fog = root_obj.kb.affected_by_fog
         model.animroot = root_obj.kb.animroot
         model.animscale = root_obj.kb.animscale
+        model.bounding_box_min = root_obj.kb.bounding_box_min
+        model.bounding_box_max = root_obj.kb.bounding_box_max
+        model.model_radius = root_obj.kb.model_radius
         model.root_node = cls.model_node_from_object(root_obj, options)
 
         if options.export_animations:

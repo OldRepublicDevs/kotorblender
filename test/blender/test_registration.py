@@ -198,6 +198,15 @@ def test_object_kb_property_defaults():
         _ = obj.kb.selfillumcolor
         _ = obj.kb.alpha
         _ = obj.kb.supermodel
+        _ = obj.kb.classification_unk1
+        _ = obj.kb.bounding_box_min
+        _ = obj.kb.bounding_box_max
+        _ = obj.kb.model_radius
+        _ = obj.kb.shadowradius
+        _ = obj.kb.verticaldisplacement
+        _ = obj.kb.flag13
+        _ = obj.kb.emitter_unknown_flags
+        _ = obj.kb.detonate
         _ = obj.kb.path_connection_list
         print("  PASS test_object_kb_property_defaults")
         return True

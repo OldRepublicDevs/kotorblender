@@ -85,6 +85,31 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
         default=1.0,
         min=0.0,
     )
+    classification_unk1: bpy.props.IntProperty(
+        name="Classification Unknown",
+        description="Preserved unknown model-header byte",
+        default=0,
+        min=0,
+        max=255,
+    )
+    bounding_box_min: bpy.props.FloatVectorProperty(
+        name="Bounding Box Min",
+        description="Preserved model-space minimum bounds",
+        subtype="XYZ",
+        default=(0.0, 0.0, 0.0),
+    )
+    bounding_box_max: bpy.props.FloatVectorProperty(
+        name="Bounding Box Max",
+        description="Preserved model-space maximum bounds",
+        subtype="XYZ",
+        default=(0.0, 0.0, 0.0),
+    )
+    model_radius: bpy.props.FloatProperty(
+        name="Model Radius",
+        description="Preserved model header radius",
+        default=0.0,
+        min=0.0,
+    )
 
     # Animations
     anim_list: bpy.props.CollectionProperty(type=AnimPropertyGroup)
@@ -232,6 +257,20 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     )
     negativelight: bpy.props.BoolProperty(
         name="Negative Light", update=on_update_light_power
+    )
+    shadowradius: bpy.props.FloatProperty(
+        name="Shadow Radius",
+        description="Animated light shadow radius",
+        default=0.0,
+        min=0.0,
+        max=1e6,
+    )
+    verticaldisplacement: bpy.props.FloatProperty(
+        name="Vertical Displacement",
+        description="Animated light vertical displacement",
+        default=0.0,
+        min=-1e6,
+        max=1e6,
     )
 
     # Emitter
@@ -440,12 +479,21 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     )
     bounce: bpy.props.BoolProperty(name="Bounce")
     random: bpy.props.BoolProperty(name="Random")
+    flag13: bpy.props.BoolProperty(name="Flag 13")
     inherit: bpy.props.BoolProperty(name="Inherit")
     inheritvel: bpy.props.BoolProperty(name="Inherit Velocity")
     inherit_local: bpy.props.BoolProperty(name="Inherit Local")
     splat: bpy.props.BoolProperty(name="Splat")
     inherit_part: bpy.props.BoolProperty(name="Inherit Particle")
     depth_texture: bpy.props.BoolProperty(name="Depth Texture")
+    emitter_unknown_flags: bpy.props.IntProperty(
+        name="Extra Flags",
+        description="Preserved emitter flag bits not otherwise exposed",
+        default=0,
+        min=0,
+        max=0xFFFF,
+    )
+    detonate: bpy.props.FloatProperty(name="Detonate", default=0.0)
 
     # Path Points
     path_connection_list: bpy.props.CollectionProperty(type=PathConnectionPropertyGroup)

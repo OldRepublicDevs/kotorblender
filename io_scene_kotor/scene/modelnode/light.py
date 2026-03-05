@@ -38,6 +38,8 @@ class LightNode(BaseNode):
 
         self.shadow = 1
         self.radius = 5.0
+        self.shadowradius = 0.0
+        self.verticaldisplacement = 0.0
         self.multiplier = 1
         self.lightpriority = 5
         self.color = (0.0, 0.0, 0.0)
@@ -72,6 +74,8 @@ class LightNode(BaseNode):
 
         obj.kb.multiplier = self.multiplier
         obj.kb.radius = self.radius
+        obj.kb.shadowradius = self.shadowradius
+        obj.kb.verticaldisplacement = self.verticaldisplacement
         obj.kb.ambientonly = self.ambientonly >= 1
         obj.kb.shadow = self.shadow >= 1
         obj.kb.lightpriority = self.lightpriority
@@ -99,6 +103,8 @@ class LightNode(BaseNode):
         self.color = [(-c if obj.kb.negativelight else c) for c in eval_obj.data.color]
         self.multiplier = obj.kb.multiplier
         self.radius = obj.kb.radius
+        self.shadowradius = obj.kb.shadowradius
+        self.verticaldisplacement = obj.kb.verticaldisplacement
         self.ambientonly = 1 if obj.kb.ambientonly else 0
         self.shadow = 1 if obj.kb.shadow else 0
         self.lightpriority = obj.kb.lightpriority

@@ -52,13 +52,13 @@ class SkinmeshNode(TrimeshNode):
             vert = obj.data.vertices[vert_idx]
             vert_weights = []
             for group_weight in vert.groups:
-                if group_weight == 0.0:
+                if group_weight.weight == 0.0:
                     continue
                 group = obj.vertex_groups[group_weight.group]
                 vert_weights.append((group.name, group_weight.weight))
             vert_weights.sort(key=lambda x: x[1], reverse=True)
             if len(vert_weights) > 4:
-                vert_weights = vert_weights[0:3]
+                vert_weights = vert_weights[0:4]
             total_weight = sum([v[1] for v in vert_weights])
             if total_weight != 0.0:
                 vert_weights = [(v[0], v[1] / total_weight) for v in vert_weights]

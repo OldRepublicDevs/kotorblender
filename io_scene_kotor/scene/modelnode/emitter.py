@@ -101,6 +101,7 @@ class EmitterNode(BaseNode):
         "controlptdelay",
         "tangentspread",
         "tangentlength",
+        "detonate",
         "colorstart",
         "colormid",
         "colorend",
@@ -142,6 +143,8 @@ class EmitterNode(BaseNode):
         self.splat = False
         self.inherit_part = False
         self.depth_texture = False
+        self.flag13 = False
+        self.extra_flags = 0
         # controllers
         self.alphastart = 0.0
         self.alphamid = 0.0
@@ -187,6 +190,7 @@ class EmitterNode(BaseNode):
         self.controlptdelay = 0.0
         self.tangentspread = 0.0
         self.tangentlength = 0.0
+        self.detonate = 0.0
         self.colorstart = (1.0, 1.0, 1.0)
         self.colormid = (1.0, 1.0, 1.0)
         self.colorend = (1.0, 1.0, 1.0)
@@ -265,6 +269,8 @@ class EmitterNode(BaseNode):
                     obj.kb.p2p_type = "Gravity"
                 continue
             setattr(obj.kb, attrname, value)
+        obj.kb.flag13 = self.flag13
+        obj.kb.emitter_unknown_flags = self.extra_flags
 
     def load_object_data(self, obj, eval_obj, options):
         BaseNode.load_object_data(self, obj, eval_obj, options)
@@ -303,3 +309,5 @@ class EmitterNode(BaseNode):
                 continue
 
             setattr(self, attrname, value)
+        self.flag13 = obj.kb.flag13
+        self.extra_flags = obj.kb.emitter_unknown_flags
