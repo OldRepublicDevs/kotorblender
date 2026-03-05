@@ -8,8 +8,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
-  actions: read
 
 jobs:
   codacy-analysis:
@@ -22,15 +20,11 @@ jobs:
       - name: Run Codacy Analysis CLI
         uses: codacy/codacy-analysis-cli-action@v4
         with:
-          output: results.sarif
-          format: sarif
-          # Compatibility flag: avoids SARIF fingerprint conflicts with CodeQL
-          gh-code-scanning-compat: true
-          # Never block the workflow; quality gates are enforced by Codacy's
-          # own PR status check, not by making this step exit non-zero.
+          # Upload results to Codacy when CODACY_PROJECT_TOKEN is configured.
+          # This resolves the Codacy App "action_required" check on the PR.
+          # Without the token the analysis still runs and prints to the log.
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          upload: true
+          # Never fail the workflow on issue count – quality gates are
+          # enforced by the Codacy App PR status check, not this step.
           max-allowed-issues: 2147483647
-
-      - name: Upload SARIF results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results.sarif
