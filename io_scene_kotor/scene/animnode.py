@@ -373,11 +373,12 @@ class AnimationNode:
             if not data_path in DATA_PATH_TO_PROPERTY:
                 continue
             prop = DATA_PATH_TO_PROPERTY[data_path]
-            assert (
-                array_index >= 0 and array_index < prop.bl_dim
-            ), "Array index must be between {} and {}, was {}".format(
-                0, prop.bl_dim, array_index
-            )
+            if not (0 <= array_index < prop.bl_dim):
+                raise ValueError(
+                    "Array index must be between 0 and {}, was {}".format(
+                        prop.bl_dim, array_index
+                    )
+                )
             for kp in fcurve.keyframe_points:
                 frame = round(kp.co[0])
                 if frame < frame_start or frame > frame_end:
@@ -395,11 +396,22 @@ class AnimationNode:
     def nest_keyframes(cls, keyframes):
         nested = dict()
         for data_path, dp_keyframes in keyframes.items():
-            assert data_path in DATA_PATH_TO_PROPERTY
+            if data_path not in DATA_PATH_TO_PROPERTY:
+                raise ValueError(
+                    "Unknown animation data path: '{}'".format(data_path)
+                )
             prop = DATA_PATH_TO_PROPERTY[data_path]
-            assert prop.bl_dim > 0 and len(dp_keyframes) == prop.bl_dim
+            if not (prop.bl_dim > 0 and len(dp_keyframes) == prop.bl_dim):
+                raise ValueError(
+                    "Keyframe channel count mismatch for '{}': expected {}, got {}".format(
+                        data_path, prop.bl_dim, len(dp_keyframes)
+                    )
+                )
             num_frames = len(dp_keyframes[0])
-            assert all(len(dpk) == num_frames for dpk in dp_keyframes[1:])
+            if not all(len(dpk) == num_frames for dpk in dp_keyframes[1:]):
+                raise ValueError(
+                    "Inconsistent frame counts across channels for '{}'".format(data_path)
+                )
             bezier = False
             for i in range(num_frames):
                 bezier = bezier or any(
@@ -411,7 +423,12 @@ class AnimationNode:
                 frame = dp_keyframes[0][i][0]
                 values = [0.0] * ((3 * prop.bl_dim) if bezier else prop.bl_dim)
                 for j in range(prop.bl_dim):
-                    assert dp_keyframes[j][i][0] == frame
+                    if dp_keyframes[j][i][0] != frame:
+                        raise ValueError(
+                            "Frame mismatch at index {} for '{}': channel 0 has frame {}, channel {} has frame {}".format(
+                                i, data_path, frame, j, dp_keyframes[j][i][0]
+                            )
+                        )
                     values[j] = dp_keyframes[j][i][1]
                     if bezier:
                         values[prop.bl_dim + j] = dp_keyframes[j][i][2]

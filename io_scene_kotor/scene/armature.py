@@ -136,7 +136,10 @@ def apply_object_keyframes_to_armature(
     ):
         action = obj.animation_data.action
 
-        assert bpy.context.scene.frame_current == 0
+        if bpy.context.scene.frame_current != 0:
+            raise RuntimeError(
+                "Armature keyframe application requires the scene to be at frame 0"
+            )
         rest_location = obj.location
         rest_rotation = obj.rotation_quaternion
 
@@ -244,7 +247,10 @@ def unapply_object_keyframes_from_armature(obj, root_name, armature):
         else:
             action.fcurves.clear()
 
-        assert bpy.context.scene.frame_current == 0
+        if bpy.context.scene.frame_current != 0:
+            raise RuntimeError(
+                "Armature keyframe unapplication requires the scene to be at frame 0"
+            )
         rest_location = obj.location.copy()
         rest_rotation = obj.rotation_quaternion.copy()
 
