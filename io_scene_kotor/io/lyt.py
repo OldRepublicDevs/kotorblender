@@ -28,18 +28,30 @@ from . import mdl
 def load_lyt(operator, filepath, options):
     operator.report({"INFO"}, "Loading area layout from '{}'".format(filepath))
 
+    MAX_ROOMS = 10000
+
     # Read lines
     fp = os.fsencode(filepath)
-    f = open(fp, "r")
-    lines = [line.strip() for line in f.read().splitlines()]
-    f.close()
+    with open(fp, "r") as f:
+        lines = [line.strip() for line in f.read().splitlines()]
 
     # Parse room models
     rooms = []
     rooms_to_read = 0
     for line in lines:
         tokens = line.split()
+        if not tokens:
+            continue
         if rooms_to_read > 0:
+            if len(tokens) < 4:
+                operator.report(
+                    {"WARNING"},
+                    "Skipping malformed room entry in LYT: '{}'".format(line),
+                )
+                rooms_to_read -= 1
+                if rooms_to_read == 0:
+                    break
+                continue
             room_name = tokens[0].lower()
             x = float(tokens[1])
             y = float(tokens[2])
@@ -49,7 +61,10 @@ def load_lyt(operator, filepath, options):
             if rooms_to_read == 0:
                 break
         elif tokens[0].startswith("roomcount"):
-            rooms_to_read = int(tokens[1])
+            if len(tokens) < 2:
+                operator.report({"WARNING"}, "Malformed roomcount line in LYT")
+                continue
+            rooms_to_read = min(int(tokens[1]), MAX_ROOMS)
 
     # Load room models
     path, _ = os.path.split(filepath)

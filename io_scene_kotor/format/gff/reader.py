@@ -136,9 +136,22 @@ class GffReader:
         elif field.type == FIELD_TYPE_STRUCT:
             data = self.new_tree_struct(field.data_or_data_offset)
         elif field.type == FIELD_TYPE_LIST:
-            size = self.list_indices[field.data_or_data_offset // 4]
-            start = field.data_or_data_offset // 4 + 1
+            list_idx = field.data_or_data_offset // 4
+            if list_idx >= len(self.list_indices):
+                raise RuntimeError(
+                    "GFF list index out of range: index={}, count={}".format(
+                        list_idx, len(self.list_indices)
+                    )
+                )
+            size = self.list_indices[list_idx]
+            start = list_idx + 1
             stop = start + size
+            if stop > len(self.list_indices):
+                raise RuntimeError(
+                    "GFF list entries out of range: start={}, stop={}, count={}".format(
+                        start, stop, len(self.list_indices)
+                    )
+                )
             indices = self.list_indices[start:stop]
             data = [self.new_tree_struct(idx) for idx in indices]
         else:

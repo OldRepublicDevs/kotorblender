@@ -584,12 +584,20 @@ class MdlWriter:
                 return data_count
             num_rows = len(keyframes)
             row_lengths = {len(row) for row in keyframes}
-            assert len(row_lengths) == 1, "All rows must have the same size"
+            if len(row_lengths) != 1:
+                raise ValueError(
+                    "Keyframe rows for '{}' have inconsistent sizes: {}".format(
+                        key, row_lengths
+                    )
+                )
             num_values = len(keyframes[0]) - 1
             bezier = num_values == 3 * dim
-            assert (
-                num_values == dim or bezier
-            ), "Expected {} or {} values, got {}".format(dim, 3 * dim, num_values)
+            if num_values != dim and not bezier:
+                raise ValueError(
+                    "Keyframe '{}': expected {} or {} values per row, got {}".format(
+                        key, dim, 3 * dim, num_values
+                    )
+                )
             out_keys.append(
                 ControllerKey(
                     ctrl_type,

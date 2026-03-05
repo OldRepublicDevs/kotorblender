@@ -28,7 +28,7 @@ class BinaryWriter:
         self.file.close()
 
     def tell(self):
-        return self.tell()
+        return self.file.tell()
 
     def write_int8(self, val):
         self.file.write(val.to_bytes(1, byteorder=self.byteorder, signed=True))
