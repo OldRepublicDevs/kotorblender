@@ -25,6 +25,7 @@ from ..format.bwm.reader import BwmReader
 from ..format.bwm.writer import BwmWriter
 from ..format.mdl.reader import MdlReader
 from ..format.mdl.writer import MdlWriter
+from .mdl_validate import validate_mdl_export
 from ..scene.modelnode.aabb import AabbNode
 from ..scene.model import Model
 from ..scene.walkmesh import Walkmesh
@@ -113,6 +114,8 @@ def save_mdl(operator, filepath, options):
     mdl_root.select_set(True)
     bpy.context.view_layer.objects.active = mdl_root
     bpy.ops.object.mode_set(mode="OBJECT")
+
+    validate_mdl_export(operator, mdl_root)
 
     # Export MDL
     model = Model.from_mdl_root(mdl_root, options)

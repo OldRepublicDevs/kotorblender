@@ -278,7 +278,7 @@ def test_emitter_roundtrip_preserves_flags_and_detonate():
 
 def test_non_explosion_emitter_omits_detonate_controller():
     _clear_scene()
-    root = _make_mdl_root("emitter_no_detonate")
+    root = _make_mdl_root("emit_no_det")
     emitter = _make_emitter("emit_02", root)
     emitter.kb.update = "Fountain"
     emitter.kb.detonate = 9.0
