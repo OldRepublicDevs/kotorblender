@@ -71,7 +71,10 @@ class BinaryReader:
     def read_c_string(self):
         str = ""
         while True:
-            ch = self.file.read(1).decode("utf-8")
+            raw = self.file.read(1)
+            if not raw:
+                break
+            ch = raw.decode("utf-8")
             if ch == "\0":
                 break
             str += ch
