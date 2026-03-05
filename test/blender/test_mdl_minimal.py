@@ -18,7 +18,6 @@ import sys
 import tempfile
 
 import bpy
-from mathutils import Vector
 
 # ---------------------------------------------------------------------------
 # Path setup
@@ -197,7 +196,7 @@ def test_export_then_reimport():
         if ok:
             print(f"  PASS test_export_then_reimport (found root: '{mdl_roots[0].name}')")
         else:
-            print(f"  FAIL test_export_then_reimport: no MDLROOT found after import")
+            print("  FAIL test_export_then_reimport: no MDLROOT found after import")
         return ok
     except Exception as e:
         print(f"  FAIL test_export_then_reimport: exception {e}")
@@ -228,7 +227,7 @@ def test_mdl_file_starts_with_signature():
         if ok:
             print(f"  PASS test_mdl_file_starts_with_signature (header={header[:4].hex()})")
         else:
-            print(f"  FAIL test_mdl_file_starts_with_signature")
+            print("  FAIL test_mdl_file_starts_with_signature")
         return ok
     except Exception as e:
         print(f"  FAIL test_mdl_file_starts_with_signature: {e}")

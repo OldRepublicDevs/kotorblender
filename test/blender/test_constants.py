@@ -41,14 +41,12 @@ from io_scene_kotor.constants import (
     ImportOptions,
     MeshType,
     NodeType,
-    RootType,
     WalkmeshType,
 )
 from io_scene_kotor.utils import (
     is_dummy_type,
     is_mdl_root,
     is_path_point,
-    is_skin_mesh,
     is_mesh_type,
 )
 
@@ -210,7 +208,7 @@ def test_import_options_defaults():
     if ok:
         print("  PASS test_import_options_defaults")
     else:
-        print(f"  FAIL test_import_options_defaults")
+        print("  FAIL test_import_options_defaults")
     return ok
 
 

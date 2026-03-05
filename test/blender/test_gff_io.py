@@ -9,7 +9,6 @@ Run with:
     blender --background --python test/blender/test_gff_io.py
 """
 
-import math
 import os
 import sys
 import tempfile
@@ -35,7 +34,6 @@ from io_scene_kotor.format.gff.types import (
     FIELD_TYPE_DWORD,
     FIELD_TYPE_FLOAT,
     FIELD_TYPE_LIST,
-    FIELD_TYPE_STRUCT,
 )
 
 # ---------------------------------------------------------------------------

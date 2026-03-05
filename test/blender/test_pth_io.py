@@ -119,7 +119,7 @@ def test_single_point_roundtrip():
     """A single isolated path point round-trips with correct coordinates."""
     _clear_scene()
     root = _make_path_root()
-    p0 = _make_path_point("PathPoint000", 5.0, 7.5, parent=root)
+    _make_path_point("PathPoint000", 5.0, 7.5, parent=root)
 
     with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
         path = f.name
@@ -172,7 +172,7 @@ def test_multiple_points_positions():
         if ok:
             print("  PASS test_multiple_points_positions")
         else:
-            print(f"  FAIL test_multiple_points_positions: positions mismatch")
+            print("  FAIL test_multiple_points_positions: positions mismatch")
         return ok
     finally:
         os.unlink(path)
@@ -184,7 +184,7 @@ def test_connectivity_roundtrip():
     root = _make_path_root()
     p0 = _make_path_point("PathPoint000", 0.0, 0.0, parent=root)
     p1 = _make_path_point("PathPoint001", 1.0, 0.0, parent=root)
-    p2 = _make_path_point("PathPoint002", 0.0, 1.0, parent=root)
+    _make_path_point("PathPoint002", 0.0, 1.0, parent=root)
     _add_connection(p0, "PathPoint001")
     _add_connection(p0, "PathPoint002")
     _add_connection(p1, "PathPoint000")

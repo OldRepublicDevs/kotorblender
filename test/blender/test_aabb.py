@@ -37,7 +37,6 @@ from io_scene_kotor.aabb import (
     compute_bounding_box,
     generate_tree,
     new_aabb_node,
-    split_faces,
 )
 
 # ---------------------------------------------------------------------------
