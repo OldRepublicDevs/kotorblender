@@ -77,7 +77,8 @@ jobs:
           tar -xf /tmp/blender.tar.xz --strip-components=1 -C "$BLENDER_DIR"
 
       - name: Verify Blender
-        run: "$BLENDER_DIR/blender" --version
+        run: |
+          "$BLENDER_DIR/blender" --version
 
       - name: Set up extension
         run: |
