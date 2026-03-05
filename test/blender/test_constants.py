@@ -41,13 +41,11 @@ from io_scene_kotor.constants import (
     ImportOptions,
     MeshType,
     NodeType,
-    WalkmeshType,
 )
 from io_scene_kotor.utils import (
     is_dummy_type,
     is_mdl_root,
     is_path_point,
-    is_mesh_type,
 )
 
 # ---------------------------------------------------------------------------
