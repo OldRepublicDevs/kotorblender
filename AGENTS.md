@@ -95,56 +95,56 @@ Extension module name: `bl_ext.user_default.io_scene_kotor`
 
 ---
 
+### IDE setup (type stubs)
+
+Install dev dependencies so your IDE (VS Code / Cursor / PyCharm) gets full
+autocomplete for `bpy`, `mathutils`, `bmesh`, etc.:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+This installs **`fake-bpy-module-4.2`** (Blender 4.2 LTS type stubs) and
+**`ruff`**.  `pyrightconfig.json` in the repo root configures Pyright/Pylance
+to use them with sensible defaults.
+
 ### Key commands
 
 ```bash
 # Build extension package (.zip for distribution)
 make build
 
-# Run all background-mode tests (no game assets needed) — ~2 minutes
+# Run all background-mode tests (no game assets needed)
 make test
 
-# Run individual test files
-make test-registration    # Extension loads, 43 operators, 17 panels, 4 menus
+# Run individual test files during development
+make test-registration    # Extension loading, operators, panels, menus
 make test-gff             # GFF binary format roundtrip
-make test-pth             # PTH import/export
+make test-pth             # PTH import/export roundtrip
 make test-lyt             # LYT area layout export
 make test-aabb            # AABB BSP tree generation
 make test-constants       # Enums, walkmesh materials, utility functions
-make test-mdl             # Minimal MDL export and re-import
+make test-mdl             # Minimal MDL export/reimport
 
 # Full E2E test (requires extracted KotOR game assets in DATA_DIR)
 DATA_DIR=/path/to/kotor/assets make test-e2e
 
-# Syntax check all .py files (fast, no Blender needed)
-make syntax-check
-python3 -c "import py_compile, os; [py_compile.compile(os.path.join(r,f), doraise=True) for r,_,fs in os.walk('io_scene_kotor') for f in fs if f.endswith('.py')]"
-
-# Lint (errors only — pre-existing star-import warnings are excluded)
+# Syntax check + lint
 make lint
-python3 -m ruff check --select E9,F821,F823 io_scene_kotor/
-
-# Full ruff report (informational — 400+ pre-existing warnings from star imports)
-make lint-full
 ```
 
 ---
 
 ### CI/CD (GitHub Actions)
 
-Three workflows live in `.github/workflows/`:
+Two workflows live in `.github/workflows/`:
 
-| File | Trigger | What it does |
-|------|---------|-------------|
-| `ci.yml` | Every push / PR | **lint** (syntax + ruff) + **blender-tests** (all 7 background test scripts) + **build** (extension `.zip` as artifact) |
-| `release.yml` | Tags `v*.*.*` | Builds the package, creates a GitHub Release, attaches the `.zip` |
+| File | Trigger | Jobs |
+|------|---------|------|
+| `ci.yml` | Every push / PR | **lint** (syntax + ruff, no Blender) · **test-and-build** (downloads/caches Blender 4.2, runs all tests via `run_blender_tests.sh`, uploads `.zip` artifact) |
+| `release.yml` | Tags `v*.*.*` | Builds the package and creates a GitHub Release with the `.zip` attached |
 
-The `ci.yml` **blender-tests** job:
-1. Downloads and caches Blender 4.2.0 LTS for Linux x64 (~200 MB).
-2. Symlinks `io_scene_kotor/` into the Blender extensions directory.
-3. Runs each `test/blender/test_*.py` as a separate step so failures are clearly isolated.
-
-To add a new Blender version matrix entry, edit the `matrix.blender-version` list in `ci.yml`.
+Blender (~200 MB) is cached by version so repeat CI runs skip the download.
 
 ---
 

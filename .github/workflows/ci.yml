@@ -6,31 +6,30 @@ on:
   pull_request:
     branches: ["**"]
 
-# Cancel in-progress runs for the same ref
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  BLENDER_VERSION: "4.2.0"
+  BLENDER_DIR: ${{ github.workspace }}/.blender
+
 jobs:
-  # ────────────────────────────────────────────────────────────────────────
-  # Job 1: Syntax check + lint (fast, no Blender needed)
-  # ────────────────────────────────────────────────────────────────────────
+  # ── Fast checks – no Blender needed ──────────────────────────────────────
   lint:
     name: Syntax & Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install ruff
-        run: pip install ruff
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
 
-      - name: Syntax check (py_compile – all .py files)
+      - name: Syntax check (py_compile)
         run: |
           python3 -c "
           import py_compile, os, sys
@@ -44,166 +43,59 @@ jobs:
                       except py_compile.PyCompileError as e:
                           errors.append(str(e))
           if errors:
-              for e in errors:
-                  print('SYNTAX ERROR:', e)
+              [print('SYNTAX ERROR:', e) for e in errors]
               sys.exit(1)
           print(f'All .py files pass syntax check')
           "
 
-      - name: Lint – errors and undefined names only (ruff E9, F821, F823)
-        # Pre-existing star-import warnings (F4xx) are intentionally excluded.
-        # Only fatal errors that would prevent the extension from loading are checked.
-        run: |
-          ruff check --select E9,F821,F823,W191 io_scene_kotor/ \
-            || echo "::warning::ruff found issues – see output above"
+      - name: Lint (fatal errors only – E9, F821, F823)
+        # Star-import warnings (F401/F403) are pre-existing and excluded.
+        run: ruff check --select E9,F821,F823 io_scene_kotor/
 
-      - name: Lint – full report (informational, non-blocking)
-        run: |
-          ruff check io_scene_kotor/ --statistics 2>&1 || true
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Job 2: Blender background-mode tests
-  # ────────────────────────────────────────────────────────────────────────
-  blender-tests:
-    name: Blender Tests (${{ matrix.blender-version }})
+  # ── Blender background-mode tests + extension build ──────────────────────
+  test-and-build:
+    name: Test & Build (Blender ${{ env.BLENDER_VERSION }})
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        blender-version: ["4.2.0"]
-        # Add more versions here as needed, e.g. "3.6.0", "4.1.0"
-
-    env:
-      BLENDER_VERSION: ${{ matrix.blender-version }}
-      BLENDER_ARCHIVE: blender-${{ matrix.blender-version }}-linux-x64.tar.xz
-      BLENDER_DIR: ${{ github.workspace }}/.blender
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Cache Blender ${{ matrix.blender-version }}
-        id: cache-blender
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.BLENDER_DIR }}
-          key: blender-${{ matrix.blender-version }}-linux-x64-v1
-
-      - name: Download Blender ${{ matrix.blender-version }}
-        if: steps.cache-blender.outputs.cache-hit != 'true'
-        run: |
-          MAJOR_MINOR=$(echo "$BLENDER_VERSION" | cut -d. -f1-2)
-          URL="https://download.blender.org/release/Blender${MAJOR_MINOR}/${BLENDER_ARCHIVE}"
-          echo "Downloading Blender from: $URL"
-          wget -q --show-progress "$URL" -O /tmp/blender.tar.xz
-          mkdir -p "$BLENDER_DIR"
-          tar -xf /tmp/blender.tar.xz --strip-components=1 -C "$BLENDER_DIR"
-          echo "Blender installed to $BLENDER_DIR"
-
-      - name: Verify Blender installation
-        run: |
-          "$BLENDER_DIR/blender" --version
-          echo "BLENDER=$BLENDER_DIR/blender" >> "$GITHUB_ENV"
-
-      - name: Set up KotorBlender extension
-        run: |
-          EXT_DIR=~/.config/blender/$(echo "$BLENDER_VERSION" | cut -d. -f1-2)/extensions/user_default
-          mkdir -p "$EXT_DIR"
-          ln -sf "$GITHUB_WORKSPACE/io_scene_kotor" "$EXT_DIR/io_scene_kotor"
-          echo "Extension symlinked: $EXT_DIR/io_scene_kotor -> $GITHUB_WORKSPACE/io_scene_kotor"
-          ls -la "$EXT_DIR/"
-
-      - name: Run registration test
-        run: |
-          "$BLENDER_DIR/blender" --background \
-            --python test/blender/test_registration.py
-
-      - name: Run GFF I/O test
-        run: |
-          "$BLENDER_DIR/blender" --background \
-            --python test/blender/test_gff_io.py
-
-      - name: Run PTH I/O test
-        run: |
-          "$BLENDER_DIR/blender" --background \
-            --python test/blender/test_pth_io.py
-
-      - name: Run LYT export test
-        run: |
-          "$BLENDER_DIR/blender" --background \
-            --python test/blender/test_lyt_export.py
-
-      - name: Run AABB tree test
-        run: |
-          "$BLENDER_DIR/blender" --background \
-            --python test/blender/test_aabb.py
-
-      - name: Run constants & utils test
-        run: |
-          "$BLENDER_DIR/blender" --background \
-            --python test/blender/test_constants.py
-
-      - name: Run MDL minimal export test
-        run: |
-          "$BLENDER_DIR/blender" --background \
-            --python test/blender/test_mdl_minimal.py
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Job 3: Build extension package
-  # ────────────────────────────────────────────────────────────────────────
-  build:
-    name: Build Extension Package
-    runs-on: ubuntu-latest
-    env:
-      BLENDER_VERSION: "4.2.0"
-      BLENDER_DIR: ${{ github.workspace }}/.blender
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Cache Blender
-        id: cache-blender-build
+        id: cache-blender
         uses: actions/cache@v4
         with:
           path: ${{ env.BLENDER_DIR }}
           key: blender-${{ env.BLENDER_VERSION }}-linux-x64-v1
 
       - name: Download Blender
-        if: steps.cache-blender-build.outputs.cache-hit != 'true'
+        if: steps.cache-blender.outputs.cache-hit != 'true'
         run: |
           MAJOR_MINOR=$(echo "$BLENDER_VERSION" | cut -d. -f1-2)
           URL="https://download.blender.org/release/Blender${MAJOR_MINOR}/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          echo "Downloading: $URL"
           wget -q "$URL" -O /tmp/blender.tar.xz
           mkdir -p "$BLENDER_DIR"
           tar -xf /tmp/blender.tar.xz --strip-components=1 -C "$BLENDER_DIR"
 
-      - name: Build extension
+      - name: Verify Blender
+        run: "$BLENDER_DIR/blender" --version
+
+      - name: Set up extension
+        run: |
+          EXT_DIR=~/.config/blender/$(echo "$BLENDER_VERSION" | cut -d. -f1-2)/extensions/user_default
+          mkdir -p "$EXT_DIR"
+          ln -sf "$GITHUB_WORKSPACE/io_scene_kotor" "$EXT_DIR/io_scene_kotor"
+
+      - name: Run tests
+        run: BLENDER="$BLENDER_DIR/blender" bash test/run_blender_tests.sh
+
+      - name: Build extension package
         run: |
           mkdir -p build
           "$BLENDER_DIR/blender" --command extension build \
             --source-dir ./io_scene_kotor \
             --output-dir ./build
-          ls -lh build/
 
-      - name: Verify package contents
-        run: |
-          PKG=$(ls build/*.zip | head -1)
-          echo "Package: $PKG"
-          python3 -c "
-          import zipfile, sys
-          with zipfile.ZipFile('$PKG') as z:
-              names = z.namelist()
-              print(f'Files in package: {len(names)}')
-              required = ['blender_manifest.toml', '__init__.py']
-              for r in required:
-                  found = any(r in n for n in names)
-                  print(f'  {\"OK\" if found else \"MISSING\"}: {r}')
-                  if not found:
-                      sys.exit(1)
-          "
-
-      - name: Upload extension package
+      - name: Upload extension artifact
         uses: actions/upload-artifact@v4
         with:
           name: kotorblender-${{ github.sha }}

@@ -330,7 +330,8 @@ def test_large_list():
     if ok:
         print("  PASS test_large_list (50 items)")
     else:
-        print(f"  FAIL test_large_list: first bad={next(r for r in result_items if r['Idx'] != result_items.index(r))}")
+        bad = next((i for i in range(len(result_items)) if result_items[i].get("Idx") != i), -1)
+        print(f"  FAIL test_large_list: count={len(result_items)}, first bad index={bad}")
     return ok
 
 

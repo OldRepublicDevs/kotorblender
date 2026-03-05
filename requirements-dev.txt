@@ -1,0 +1,14 @@
+# Development dependencies for KotorBlender
+#
+# Install with:
+#   pip install -r requirements-dev.txt
+#
+# fake-bpy-module gives your IDE (VS Code/Cursor/PyCharm) full autocomplete
+# and type information for bpy, mathutils, bmesh, etc.  Install it and
+# restart your IDE language server – no extra configuration needed.
+#
+# Version pinned to Blender 4.2 LTS (the recommended target for this extension).
+# Upgrade to fake-bpy-module-4.3 or fake-bpy-module-5.0 if testing newer targets.
+
+fake-bpy-module-4.2
+ruff
