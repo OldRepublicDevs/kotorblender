@@ -63,7 +63,7 @@ class WalkmeshNodeName:
 def rebuild_object_materials(obj, texture_search_paths=[], lightmap_search_paths=[]):
     try:
         rebuild_object_materials0(obj, texture_search_paths, lightmap_search_paths)
-    except:
+    except Exception:
         logger().exception(f"Error building object [{obj.name}] materials")
         obj.data.materials.clear()
 
