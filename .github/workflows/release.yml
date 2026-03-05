@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"  # e.g. v4.0.4, v4.1.0
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────
+  # Build and publish a versioned extension package on every tag push
+  # ────────────────────────────────────────────────────────────────────────
+  release:
+    name: Build & Release Extension
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed for gh release create / upload
+
+    env:
+      BLENDER_VERSION: "4.2.0"
+      BLENDER_DIR: ${{ github.workspace }}/.blender
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Blender
+        id: cache-blender
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BLENDER_DIR }}
+          key: blender-${{ env.BLENDER_VERSION }}-linux-x64-v1
+
+      - name: Download Blender
+        if: steps.cache-blender.outputs.cache-hit != 'true'
+        run: |
+          MAJOR_MINOR=$(echo "$BLENDER_VERSION" | cut -d. -f1-2)
+          URL="https://download.blender.org/release/Blender${MAJOR_MINOR}/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          wget -q "$URL" -O /tmp/blender.tar.xz
+          mkdir -p "$BLENDER_DIR"
+          tar -xf /tmp/blender.tar.xz --strip-components=1 -C "$BLENDER_DIR"
+
+      - name: Build extension package
+        run: |
+          mkdir -p build
+          "$BLENDER_DIR/blender" --command extension build \
+            --source-dir ./io_scene_kotor \
+            --output-dir ./build
+          PKG=$(ls build/*.zip | head -1)
+          echo "PACKAGE=$PKG" >> "$GITHUB_ENV"
+          echo "Package built: $PKG ($(du -sh "$PKG" | cut -f1))"
+
+      - name: Extract version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "KotorBlender $GITHUB_REF_NAME" \
+            --notes "## KotorBlender $GITHUB_REF_NAME
+
+          ### Installation
+          1. Download the \`.zip\` file below.
+          2. In Blender, go to **Edit → Preferences → Extensions**.
+          3. Click **Install from Disk** and select the downloaded \`.zip\`.
+
+          ### Changes
+          See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          " \
+            "$PACKAGE"

@@ -136,4 +136,4 @@ class GffWriter:
 
     def repack_float_to_int(self, val):
         packed = pack("f", val)
-        return unpack("i", packed)[0]
+        return unpack("I", packed)[0]
