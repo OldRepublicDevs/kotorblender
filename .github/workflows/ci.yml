@@ -54,7 +54,7 @@ jobs:
 
   # ── Blender background-mode tests + extension build ──────────────────────
   test-and-build:
-    name: Test & Build (Blender ${{ env.BLENDER_VERSION }})
+    name: Test & Build (Blender 4.2.0)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
