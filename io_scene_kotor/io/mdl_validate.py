@@ -29,6 +29,10 @@ def _normalized_export_name(obj):
     return name
 
 
+def _is_ascii(s):
+    return s.isascii()
+
+
 def _iter_exportable_objects(root_obj):
     stack = [root_obj]
     while stack:
@@ -70,12 +74,31 @@ def validate_mdl_export(operator, root_obj):
             raise RuntimeError(
                 "Object '{}' has the reserved exported name 'root'".format(obj.name)
             )
-
-    if len(_normalized_export_name(root_obj)) > 16:
-        raise RuntimeError(
-            "Model name '{}' exceeds the 16 character limit".format(
-                _normalized_export_name(root_obj)
+        if not _is_ascii(name):
+            raise RuntimeError(
+                "Object '{}' has a non-ASCII exported name '{}'. "
+                "MDL node names must contain only ASCII characters.".format(
+                    obj.name, name
+                )
             )
+
+    model_name = _normalized_export_name(root_obj)
+    if len(model_name) > 16:
+        raise RuntimeError(
+            "Model name '{}' exceeds the 16 character limit".format(model_name)
+        )
+
+    if not _is_ascii(model_name):
+        raise RuntimeError(
+            "Model name '{}' contains non-ASCII characters. "
+            "MDL model names must contain only ASCII characters.".format(model_name)
+        )
+
+    supermodel = root_obj.kb.supermodel
+    if supermodel and not _is_ascii(supermodel):
+        raise RuntimeError(
+            "Supermodel name '{}' contains non-ASCII characters. "
+            "MDL supermodel names must contain only ASCII characters.".format(supermodel)
         )
 
     # Animroot must point to an exported node.

@@ -31,11 +31,8 @@ from .types import *
 class MdlWriter:
     def __init__(self, path, model, tsl, xbox, compress_quaternions=False):
         self.path = path
-        self.mdl = BinaryWriter(path, "little")
-
-        basepath, _ = os.path.splitext(path)
-        mdx_path = basepath + ".mdx"
-        self.mdx = BinaryWriter(mdx_path, "little")
+        self.mdl = None  # opened in save(), after peek_model() succeeds
+        self.mdx = None  # opened in save(), after peek_model() succeeds
 
         self.model = model
         self.tsl = tsl
@@ -126,6 +123,13 @@ class MdlWriter:
     def save(self):
         self.peek_model()
 
+        # Open output files only after peek_model() succeeds.  Opening with
+        # "wb" truncates any pre-existing file to zero bytes immediately, so we
+        # defer this until we know the export will produce valid output.
+        basepath, _ = os.path.splitext(self.path)
+        self.mdl = BinaryWriter(self.path, "little")
+        self.mdx = BinaryWriter(basepath + ".mdx", "little")
+
         self.save_file_header()
         self.save_geometry_header()
         self.save_model_header()
@@ -188,7 +192,7 @@ class MdlWriter:
     def peek_node_names(self):
         for node in self.nodes:
             self.name_offsets.append(self.mdl_pos)
-            self.mdl_pos += len(node.name) + 1
+            self.mdl_pos += len(node.name.encode("utf-8")) + 1
 
     def peek_animations(self):
         self.off_anim_offsets = self.mdl_pos
@@ -790,7 +794,7 @@ class MdlWriter:
                 fn_ptr1 = MODEL_FN_PTR_1_K1_PC
                 fn_ptr2 = MODEL_FN_PTR_2_K1_PC
 
-        model_name = self.model.name.ljust(32, "\0")
+        model_name = self.model.name
         off_root_node = self.node_offsets[0]
         total_num_nodes = len(self.nodes)
         ref_count = 0
@@ -798,7 +802,7 @@ class MdlWriter:
 
         self.mdl.write_uint32(fn_ptr1)
         self.mdl.write_uint32(fn_ptr2)
-        self.mdl.write_string(model_name)
+        self.mdl.write_fixed_string(model_name, 32)
         self.mdl.write_uint32(off_root_node)
         self.mdl.write_uint32(total_num_nodes)
         self.put_array_def(0, 0)  # runtime array
@@ -823,7 +827,7 @@ class MdlWriter:
         supermodel_ref = 0
         bounding_box, radius = self.compute_model_bounding_box_and_radius()
         scale = self.model.animscale
-        supermodel_name = self.model.supermodel.ljust(32, "\0")
+        supermodel_name = self.model.supermodel
 
         if (
             is_not_null(self.model.animroot)
@@ -851,7 +855,7 @@ class MdlWriter:
             self.mdl.write_float(val)
         self.mdl.write_float(radius)
         self.mdl.write_float(scale)
-        self.mdl.write_string(supermodel_name)
+        self.mdl.write_fixed_string(supermodel_name, 32)
         self.mdl.write_uint32(off_anim_root)
         self.mdl.write_uint32(0)  # unknown
         self.mdl.write_uint32(mdx_size)
@@ -884,16 +888,16 @@ class MdlWriter:
                     fn_ptr1 = ANIM_FN_PTR_1_K1_PC
                     fn_ptr2 = ANIM_FN_PTR_2_K1_PC
 
-            name = anim.name.ljust(32, "\0")
+            name = anim.name
             off_root_node = self.anim_node_offsets[anim_idx][0]
             total_num_nodes = len(self.anim_nodes[anim_idx])
             ref_count = 0
             model_type = MODEL_ANIM
-            anim_root = anim.animroot.ljust(32, "\0")
+            anim_root = anim.animroot
 
             self.mdl.write_uint32(fn_ptr1)
             self.mdl.write_uint32(fn_ptr2)
-            self.mdl.write_string(name)
+            self.mdl.write_fixed_string(name, 32)
             self.mdl.write_uint32(off_root_node)
             self.mdl.write_uint32(total_num_nodes)
             self.put_array_def(0, 0)  # runtime array
@@ -904,13 +908,13 @@ class MdlWriter:
                 self.mdl.write_uint8(0)  # padding
             self.mdl.write_float(anim.length)
             self.mdl.write_float(anim.transtime)
-            self.mdl.write_string(anim_root)
+            self.mdl.write_fixed_string(anim_root, 32)
             self.put_array_def(self.anim_events_offsets[anim_idx], len(anim.events))
             self.mdl.write_uint32(0)  # padding
 
             for time, event in anim.events:
                 self.mdl.write_float(time)
-                self.mdl.write_string(event.ljust(32, "\0"))
+                self.mdl.write_fixed_string(event, 32)
 
             self.save_anim_nodes(anim_idx)
 
@@ -1079,15 +1083,15 @@ class MdlWriter:
             # Emitter Header
 
             if type_flags & NODE_EMITTER:
-                update = node.update.ljust(32, "\0")
-                render = node.emitter_render.ljust(32, "\0")
-                blend = node.blend.ljust(32, "\0")
-                texture = node.texture.ljust(32, "\0")
-                chunk_name = node.chunk_name.ljust(16, "\0")
+                update = node.update
+                render = node.emitter_render
+                blend = node.blend
+                texture = node.texture
+                chunk_name = node.chunk_name
                 twosided_tex = 1 if node.twosidedtex else 0
                 loop = 1 if node.loop else 0
                 frame_blending = 1 if node.frame_blending else 0
-                depth_texture_name = node.depth_texture_name.ljust(32, "\0")
+                depth_texture_name = node.depth_texture_name
 
                 flags = node.extra_flags
                 if node.p2p:
@@ -1125,26 +1129,26 @@ class MdlWriter:
                 self.mdl.write_uint32(node.xgrid)
                 self.mdl.write_uint32(node.ygrid)
                 self.mdl.write_uint32(node.spawntype)
-                self.mdl.write_string(update)
-                self.mdl.write_string(render)
-                self.mdl.write_string(blend)
-                self.mdl.write_string(texture)
-                self.mdl.write_string(chunk_name)
+                self.mdl.write_fixed_string(update, 32)
+                self.mdl.write_fixed_string(render, 32)
+                self.mdl.write_fixed_string(blend, 32)
+                self.mdl.write_fixed_string(texture, 32)
+                self.mdl.write_fixed_string(chunk_name, 16)
                 self.mdl.write_uint32(twosided_tex)
                 self.mdl.write_uint32(loop)
                 self.mdl.write_uint16(node.renderorder)
                 self.mdl.write_uint8(frame_blending)
-                self.mdl.write_string(depth_texture_name)
+                self.mdl.write_fixed_string(depth_texture_name, 32)
                 self.mdl.write_uint8(0)  # padding
                 self.mdl.write_uint32(flags)
 
             # Reference Header
 
             if type_flags & NODE_REFERENCE:
-                ref_model = node.refmodel.ljust(32, "\0")
+                ref_model = node.refmodel
                 reattachable = node.reattachable
 
-                self.mdl.write_string(ref_model)
+                self.mdl.write_fixed_string(ref_model, 32)
                 self.mdl.write_uint32(reattachable)
 
             # Mesh Header
@@ -1158,10 +1162,10 @@ class MdlWriter:
                 diffuse = node.diffuse
                 ambient = node.ambient
                 transparency_hint = node.transparencyhint
-                bitmap = node.bitmap.ljust(32, "\0")
-                bitmap2 = node.bitmap2.ljust(32, "\0")
-                bitmap3 = "".ljust(12, "\0")
-                bitmap4 = "".ljust(12, "\0")
+                bitmap = node.bitmap
+                bitmap2 = node.bitmap2
+                bitmap3 = ""
+                bitmap4 = ""
                 animate_uv = node.animateuv
                 uv_dir_x = node.uvdirectionx
                 uv_dir_y = node.uvdirectiony
@@ -1271,10 +1275,10 @@ class MdlWriter:
                 for val in ambient:
                     self.mdl.write_float(val)
                 self.mdl.write_uint32(transparency_hint)
-                self.mdl.write_string(bitmap)
-                self.mdl.write_string(bitmap2)
-                self.mdl.write_string(bitmap3)
-                self.mdl.write_string(bitmap4)
+                self.mdl.write_fixed_string(bitmap, 32)
+                self.mdl.write_fixed_string(bitmap2, 32)
+                self.mdl.write_fixed_string(bitmap3, 12)
+                self.mdl.write_fixed_string(bitmap4, 12)
 
                 if type_flags & NODE_SABER:
                     self.put_array_def(
