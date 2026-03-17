@@ -159,6 +159,26 @@ def test_zero_face_mesh_validation():
     return _expect_export_failure(root, "has no faces")
 
 
+def test_non_ascii_node_name_rejected():
+    """A node with a non-ASCII name must be rejected before export."""
+    _clear_scene()
+    root = _make_mdl_root("ascii_root")
+    # Blender allows Unicode in object names; MDL does not.
+    child = bpy.data.objects.new("\u00e9mesh", None)  # "émesh"
+    child.parent = root
+    child.kb.node_number = 2
+    child.kb.export_order = 1
+    bpy.context.collection.objects.link(child)
+    return _expect_export_failure(root, "non-ASCII")
+
+
+def test_non_ascii_model_name_rejected():
+    """A model root with a non-ASCII name must be rejected before export."""
+    _clear_scene()
+    root = _make_mdl_root("\u6a21\u578b")  # Chinese characters for "model"
+    return _expect_export_failure(root, "non-ASCII")
+
+
 def run_tests():
     print("\n=== test_mdl_validation.py ===")
     tests = [
@@ -166,6 +186,8 @@ def run_tests():
         test_missing_animroot_validation,
         test_bitmap_length_validation,
         test_zero_face_mesh_validation,
+        test_non_ascii_node_name_rejected,
+        test_non_ascii_model_name_rejected,
     ]
     results = [test() for test in tests]
     passed = sum(results)

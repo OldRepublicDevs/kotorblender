@@ -120,8 +120,21 @@ class MdlReader:
 
         self.model_type = self.mdl.read_uint8()
         if self.model_type != 2:
+            if self.model_type == 0:
+                raise RuntimeError(
+                    "Invalid MDL header: model type field is 0 (expected 2). "
+                    "This usually indicates a truncated or empty MDL file caused "
+                    "by a failed or incomplete export. Check for:\n"
+                    "  \u2013 missing MDL root object\n"
+                    "  \u2013 invalid node hierarchy (e.g. after mesh welding or joining)\n"
+                    "  \u2013 non-ASCII characters in model/node names\n"
+                    "  \u2013 corrupted metadata from a previous failed export"
+                )
             raise RuntimeError(
-                "Invalid model type: expected=2, actual={}".format(self.model_type)
+                "Invalid MDL header: model type field is {} (expected 2). "
+                "Accepted values: 2 (geometry), 5 (animation). "
+                "If this file came from an exporter, re-export the model "
+                "and check for validation warnings.".format(self.model_type)
             )
 
         self.mdl.skip(3)  # padding

@@ -58,5 +58,12 @@ class BinaryWriter:
     def write_c_string(self, val):
         self.file.write((val + "\0").encode("utf-8"))
 
+    def write_fixed_string(self, val, size):
+        """Write a string as exactly *size* bytes: UTF-8 encode, truncate, null-pad."""
+        b = val.encode("utf-8")[:size]
+        self.file.write(b)
+        if len(b) < size:
+            self.file.write(b"\x00" * (size - len(b)))
+
     def write_bytes(self, bytes):
         self.file.write(bytes)

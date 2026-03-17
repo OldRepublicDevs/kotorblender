@@ -260,6 +260,56 @@ def test_export_options_object():
         return False
 
 
+def test_import_empty_mdl_gives_clear_error():
+    """Importing a zero-byte MDL file gives a descriptive error mentioning model type."""
+    with tempfile.NamedTemporaryFile(suffix=".mdl", delete=False) as f:
+        mdl_path = f.name
+    mdx_path = mdl_path[:-4] + ".mdx"
+
+    try:
+        # Write a zero-byte (empty) MDL and MDX so the reader can open both.
+        with open(mdl_path, "wb"):
+            pass
+        with open(mdx_path, "wb"):
+            pass
+
+        opts = ImportOptions()
+        opts.import_geometry = True
+        opts.import_animations = False
+        opts.import_walkmeshes = False
+        opts.build_materials = False
+        opts.build_armature = False
+
+        error_msg = None
+        try:
+            load_mdl(_op, mdl_path, opts)
+        except RuntimeError as exc:
+            error_msg = str(exc)
+
+        if error_msg is None:
+            print("  FAIL test_import_empty_mdl_gives_clear_error: no error was raised")
+            return False
+
+        # The new error message should mention "model type" and provide hints.
+        keywords = ["model type", "0"]
+        ok = all(k.lower() in error_msg.lower() for k in keywords)
+        if ok:
+            print(
+                "  PASS test_import_empty_mdl_gives_clear_error "
+                f"(error: {error_msg[:80]}...)"
+            )
+        else:
+            print(
+                f"  FAIL test_import_empty_mdl_gives_clear_error: "
+                f"error message lacks expected keywords: {error_msg!r}"
+            )
+        return ok
+    finally:
+        for p in (mdl_path, mdx_path):
+            if os.path.exists(p):
+                os.unlink(p)
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -273,6 +323,7 @@ def run_tests():
         test_export_root_with_mesh,
         test_export_then_reimport,
         test_mdl_file_starts_with_signature,
+        test_import_empty_mdl_gives_clear_error,
     ]
     results = [t() for t in tests]
     passed = sum(results)
