@@ -15,35 +15,34 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
 from ..constants import MeshType
-from ..scene.modelnode.trimesh import UV_MAP_LIGHTMAP
 from ..scene.material import NodeName
-from ..utils import is_null, is_mesh_type
+from ..scene.modelnode.trimesh import UV_MAP_LIGHTMAP
+from ..utils import is_mesh_type, is_null
 
 
 class BakeLightmapsOperator(bpy.types.Operator):
-    def _init__(self):
-        self.hide_non_lightmapped = True
-
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        hide_nm = bool(getattr(self, "hide_non_lightmapped", True))
         # Find bake targets
-        objects = (
-            context.selected_objects
+        objects: list[bpy.types.Object] = (
+            list(context.selected_objects)
             if context.selected_objects
-            else context.scene.objects
+            else list(context.scene.objects)
         )
         targets = [obj for obj in objects if self.is_bake_target(obj)]
         if not targets:
             return {"CANCELLED"}
 
         # Optionally, hide everything except lightmapped objects and lights
-        if self.hide_non_lightmapped:
+        if hide_nm:
             target_names = set([obj.name for obj in targets])
             for obj in context.scene.objects:
-                obj.hide_render = obj.type != "LIGHT" and not obj.name in target_names
+                obj.hide_render = obj.type != "LIGHT" and obj.name not in target_names
 
         for obj in targets:
             self.preprocess_target(obj)
@@ -52,12 +51,17 @@ class BakeLightmapsOperator(bpy.types.Operator):
         bpy.ops.object.select_all(action="DESELECT")
         for obj in targets:
             obj.select_set(True)
-        context.view_layer.objects.active = targets[0]
+        view_layer: bpy.types.ViewLayer | None = context.view_layer
+        if view_layer is None:
+            self.report({"ERROR"}, "View layer is None")
+            return {"CANCELLED"}
+        view_layer.objects.active = targets[0]
 
-        context.scene.render.engine = "CYCLES"
+        scene: bpy.types.Scene = context.scene
+        scene.render.engine = "CYCLES"
         # context.scene.cycles.device = "GPU"
-        if context.scene.cycles.samples > 512:
-            context.scene.cycles.samples = 4
+        if scene.cycles.samples > 512:
+            scene.cycles.samples = 4
         bpy.ops.object.bake(margin=2, uv_layer=UV_MAP_LIGHTMAP)
 
         for obj in targets:
@@ -65,42 +69,55 @@ class BakeLightmapsOperator(bpy.types.Operator):
 
         return {"FINISHED"}
 
-    def is_bake_target(self, obj):
-        # TODO: support AABB (grass)
+    def is_bake_target(self, obj: bpy.types.Object) -> bool:
+        # AABB (grass) meshes skipped; support planned.
         if not is_mesh_type(obj, MeshType.TRIMESH):
             return False
-        if not obj.kb.render:
+        kb = getattr(obj, "kb", None)
+        if kb is None:
             return False
-        if not obj.kb.lightmapped:
+        if not kb.render:
             return False
-        if is_null(obj.kb.bitmap):
+        if not kb.lightmapped:
             return False
-        if is_null(obj.kb.bitmap2):
+        if is_null(kb.bitmap):
             return False
-        if not UV_MAP_LIGHTMAP in obj.data.uv_layers:
+        if is_null(kb.bitmap2):
             return False
-        material = obj.active_material
-        if not material or not material.use_nodes:
+        if not isinstance(obj.data, bpy.types.Mesh):
             return False
-        nodes = obj.active_material.node_tree.nodes
-        if not NodeName.DIFFUSE_TEX in nodes:
+        if UV_MAP_LIGHTMAP not in obj.data.uv_layers:
             return False
-        if not NodeName.LIGHTMAP_TEX in nodes:
+        material: bpy.types.Material | None = obj.active_material
+        if material is None or not material.use_nodes:
             return False
-        if not NodeName.WHITE in nodes:
+        node_tree: bpy.types.ShaderNodeTree | None = material.node_tree
+        if node_tree is None:
             return False
-        if not NodeName.DIFFUSE_BSDF in nodes:
+        nodes = node_tree.nodes
+        if NodeName.DIFFUSE_TEX not in nodes:
             return False
-        if not NodeName.DIFF_LM_EMISSION in nodes:
+        if NodeName.LIGHTMAP_TEX not in nodes:
             return False
-        if not NodeName.ADD_DIFFUSE_EMISSION in nodes:
+        if NodeName.WHITE not in nodes:
+            return False
+        if NodeName.DIFFUSE_BSDF not in nodes:
+            return False
+        if NodeName.DIFF_LM_EMISSION not in nodes:
+            return False
+        if NodeName.ADD_DIFFUSE_EMISSION not in nodes:
             return False
         return True
 
-    def preprocess_target(self, obj):
-        material = obj.active_material
-        nodes = material.node_tree.nodes
-        links = material.node_tree.links
+    def preprocess_target(self, obj: bpy.types.Object) -> None:
+        material: bpy.types.Material | None = obj.active_material
+        if material is None:
+            raise ValueError("Object has no active material")
+        node_tree: bpy.types.ShaderNodeTree | None = material.node_tree
+        if node_tree is None:
+            raise ValueError("Material has no node tree")
+        nodes = node_tree.nodes
+        links = node_tree.links
 
         # Replace diffuse * lightmap shader by diffuse
         add_diffuse_emission = nodes[NodeName.ADD_DIFFUSE_EMISSION]
@@ -122,10 +139,15 @@ class BakeLightmapsOperator(bpy.types.Operator):
         lightmap_tex.select = True
         nodes.active = lightmap_tex
 
-    def postprocess_target(self, obj):
-        material = obj.active_material
-        nodes = material.node_tree.nodes
-        links = material.node_tree.links
+    def postprocess_target(self, obj: bpy.types.Object) -> None:
+        material: bpy.types.Material | None = obj.active_material
+        if material is None:
+            raise ValueError("Object has no active material")
+        node_tree: bpy.types.ShaderNodeTree | None = material.node_tree
+        if node_tree is None:
+            raise ValueError("Material has no node tree")
+        nodes = node_tree.nodes
+        links = node_tree.links
 
         # Replace diffuse shader by diffuse * lightmap
         add_diffuse_emission = nodes[NodeName.ADD_DIFFUSE_EMISSION]
@@ -147,8 +169,9 @@ class KB_OT_bake_lightmaps_auto(BakeLightmapsOperator):
     bl_label = "Bake Lightmaps (auto)"
     bl_description = "Bake lighting and shadows into lightmap textures, hiding non-lightmapped objects from render"
 
-    def __init__(self):
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         self.hide_non_lightmapped = True
+        return self.execute(context)
 
 
 class KB_OT_bake_lightmaps_manual(BakeLightmapsOperator):
@@ -156,5 +179,6 @@ class KB_OT_bake_lightmaps_manual(BakeLightmapsOperator):
     bl_label = "Bake Lightmaps (manual)"
     bl_description = "Bake lighting and shadows into lightmap textures, user is responsible for setting object visibility"
 
-    def __init__(self):
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         self.hide_non_lightmapped = False
+        return self.execute(context)

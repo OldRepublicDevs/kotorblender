@@ -16,24 +16,36 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
-from ...constants import DummyType, NodeType
+from __future__ import annotations
+
+import bpy
+
+from ...constants import DummyType, ExportOptions, ImportOptions, NodeType
 
 from .base import BaseNode
 
 
 class DummyNode(BaseNode):
-    def __init__(self, name="UNNAMED"):
+    def __init__(self, name: str = "UNNAMED") -> None:
         BaseNode.__init__(self, name)
 
-        self.nodetype = NodeType.DUMMY
-        self.dummytype = DummyType.NONE
+        self.nodetype: str = NodeType.DUMMY
+        self.dummytype: str = DummyType.NONE
 
-    def set_object_data(self, obj, options):
+    def set_object_data(self, obj: bpy.types.Object, options: ImportOptions) -> None:
         BaseNode.set_object_data(self, obj, options)
 
-        obj.kb.dummytype = self.dummytype
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object [{obj.name}] has no kb attribute")
+        kb.dummytype = self.dummytype
 
-    def load_object_data(self, obj, eval_obj, options):
+    def load_object_data(
+        self, obj: bpy.types.Object, eval_obj: bpy.types.Object, options: ExportOptions
+    ) -> None:
         BaseNode.load_object_data(self, obj, eval_obj, options)
 
-        self.dummytype = obj.kb.dummytype
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object [{obj.name}] has no kb attribute")
+        self.dummytype = kb.dummytype

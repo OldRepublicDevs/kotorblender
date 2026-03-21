@@ -15,6 +15,7 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
@@ -27,21 +28,32 @@ class KB_OT_add_lens_flare(bpy.types.Operator):
     bl_description = "Add a new lens flare entry to the light's flare list"
 
     @classmethod
-    def poll(cls, context):
-        obj = context.object
-        if not obj:
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
             cls.poll_message_set(context, "Select an object")
             return False
         if obj.type != "LIGHT":
             cls.poll_message_set(context, "Select a light object")
             return False
-        if not obj.kb.lensflares:
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
+        if not kb.lensflares:
             cls.poll_message_set(context, "Light must have lens flares enabled")
             return False
         return True
 
-    def execute(self, context):
-        flare = context.object.kb.flare_list.add()
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            self.report({"ERROR"}, "No object selected")
+            return {"CANCELLED"}
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            self.report({"ERROR"}, "Object.kb is None")
+            return {"CANCELLED"}
+        flare = kb.flare_list.add()
         flare.texture = NULL
 
         return {"FINISHED"}

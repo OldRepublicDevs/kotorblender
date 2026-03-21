@@ -15,22 +15,24 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import os
 
 import bpy
-
 from bpy_extras.io_utils import ImportHelper
 
-from ...constants import PACKAGE_NAME, ImportOptions
+from ...constants import ImportOptions
 from ...io import mdl
-from ...utils import logger, semicolon_separated_to_absolute_paths
+from ...utils import logger
 
 
 class KB_OT_import_mdl(bpy.types.Operator, ImportHelper):
     bl_idname = "kb.mdlimport"
     bl_label = "Import KotOR MDL"
-    bl_description = "Import a KotOR binary model (.mdl/.mdx) with optional animations and walkmeshes"
+    bl_description = (
+        "Import a KotOR binary model (.mdl/.mdx) with optional animations and walkmeshes"
+    )
     bl_options = {"UNDO"}
 
     filename_ext = ".mdl"
@@ -52,14 +54,23 @@ class KB_OT_import_mdl(bpy.types.Operator, ImportHelper):
     )
 
     build_materials: bpy.props.BoolProperty(
-        name="Build Materials", description="Build object materials", default=True
+        name="Build Materials",
+        description="Build object materials",
+        default=True,
     )
 
     build_armature: bpy.props.BoolProperty(
-        name="Build Armature", description="Build armature from MDL root"
+        name="Build Armature",
+        description="Build armature from MDL root",
     )
 
-    def execute(self, context):
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        """When filepath is set (e.g. drag-and-drop), run execute(); otherwise open file browser."""
+        if self.filepath:
+            return self.execute(context)
+        return ImportHelper.invoke(self, context, event)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
         options = ImportOptions()
         options.import_geometry = self.import_geometry
         options.import_animations = self.import_animations
@@ -67,16 +78,8 @@ class KB_OT_import_mdl(bpy.types.Operator, ImportHelper):
         options.build_materials = self.build_materials
         options.build_armature = self.build_armature
 
-        preferences = context.preferences
-        addon_preferences = preferences.addons[PACKAGE_NAME].preferences
-        working_dir = os.path.dirname(self.filepath)
-        # Coerce to str: Blender 5.x can expose addon prefs as _PropertyDeferred
-        options.texture_search_paths = semicolon_separated_to_absolute_paths(
-            str(addon_preferences.texture_search_paths), working_dir
-        )
-        options.lightmap_search_paths = semicolon_separated_to_absolute_paths(
-            str(addon_preferences.lightmap_search_paths), working_dir
-        )
+        # Texture/lightmap search paths are built in load_mdl() from addon preferences
+        # if not already set. Operators can still override by setting them here if needed.
 
         try:
             mdl.load_mdl(self, self.filepath, options)

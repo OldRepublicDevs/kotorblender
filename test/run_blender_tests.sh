@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # run_blender_tests.sh
 #
+# Optional: same behavior as ``python test/run_blender_tests.py`` (used by ``make test`` on all platforms).
 # Runs all KotorBlender background-mode Blender tests.
 # Each test/blender/test_*.py script exits 0 (pass) or 1 (fail).
 #

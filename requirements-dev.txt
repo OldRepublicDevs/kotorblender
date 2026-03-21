@@ -10,6 +10,12 @@
 # Version pinned to Blender 4.2 LTS (the recommended target for this extension).
 # Upgrade to fake-bpy-module-4.3 or fake-bpy-module-5.0 if testing newer targets.
 
+fake-bpy-module-3.60
+fake-bpy-module-4.0
+fake-bpy-module-4.1
 fake-bpy-module-4.2
+fake-bpy-module-4.4
+fake-bpy-module-5.0
+fake-bpy-module-5.1
 pytest
 ruff

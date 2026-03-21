@@ -16,7 +16,10 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+from __future__ import annotations
+
 import os
+from typing import Any
 
 import bpy
 
@@ -24,11 +27,15 @@ from ..constants import DummyType
 from ..format.gff.reader import GffReader
 from ..format.gff.writer import GffWriter
 from ..utils import is_path_point
+from ..vendor.pykotor_adapter import convert_pykotor_gff_to_tree, convert_tree_to_pykotor_gff, get_use_pykotor_readers, load_gff_via_pykotor, save_gff_via_pykotor
 
 
-def load_pth(operator, filepath):
-    def get_point_name(idx):
-        return "PathPoint{0:0>3}".format(idx)
+def load_pth(
+    operator: bpy.types.Operator,
+    filepath: str,
+) -> None:
+    def get_point_name(idx: int) -> str:
+        return f"PathPoint{idx:0>3}"
 
     basename = os.path.basename(filepath)
     pathname = "Path_" + os.path.splitext(basename)[0]
@@ -36,12 +43,28 @@ def load_pth(operator, filepath):
         path_object = bpy.data.objects[pathname]
     else:
         path_object = bpy.data.objects.new(pathname, None)
-        path_object.kb.dummytype = DummyType.PTHROOT
-        bpy.context.collection.objects.link(path_object)
+        kb = getattr(path_object, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object '{path_object.name}' has no kb attribute")
+        kb.dummytype = DummyType.PTHROOT
+        collection = bpy.context.collection
+        if collection is None:
+            raise ValueError("No collection found")
+        collection.objects.link(path_object)
 
-    operator.report({"INFO"}, "Loading path from '{}'".format(filepath))
-    loader = GffReader(filepath, "PTH")
-    tree = loader.load()
+    operator.report({"INFO"}, f"Loading path from '{filepath}'")
+    tree = None
+    if get_use_pykotor_readers():
+        pykotor_gff = load_gff_via_pykotor(filepath)
+        if pykotor_gff:
+            tree = convert_pykotor_gff_to_tree(pykotor_gff)
+        if not tree:
+            # Fallback to current reader
+            loader = GffReader(filepath, "PTH")
+            tree = loader.load()
+    else:
+        loader = GffReader(filepath, "PTH")
+        tree = loader.load()
     points = []
 
     for i, point in enumerate(tree["Path_Points"]):
@@ -49,8 +72,14 @@ def load_pth(operator, filepath):
         object = bpy.data.objects.new(name, None)
         object.parent = path_object
         object.location = [point["X"], point["Y"], 0.0]
-        object.kb.dummytype = DummyType.PATHPOINT
-        bpy.context.collection.objects.link(object)
+        kb = getattr(object, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object '{object.name}' has no kb attribute")
+        kb.dummytype = DummyType.PATHPOINT
+        collection = bpy.context.collection
+        if collection is None:
+            raise ValueError("No collection found")
+        collection.objects.link(object)
         points.append((point, object))
 
     for point, object in points:
@@ -64,18 +93,25 @@ def load_pth(operator, filepath):
                 connection.point = name
 
 
-def save_pth(operator, filepath):
+def save_pth(
+    operator: bpy.types.Operator,
+    filepath: str,
+) -> None:
     point_objects = [obj for obj in bpy.data.objects if is_path_point(obj)]
 
     point_idx_by_name = dict()
     for idx, obj in enumerate(point_objects):
         point_idx_by_name[obj.name] = idx
 
-    points = []
-    conections = []
+    points: list[dict[str, Any]] = []
+    conections: list[dict[str, Any]] = []
     for obj in point_objects:
         first_conection = len(conections)
-        for object_connection in obj.kb.path_connection_list:
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("obj is None")
+
+        for object_connection in kb.path_connection_list:
             conection = dict()
             conection["_type"] = 3
             conection["_fields"] = {"Destination": 4}
@@ -85,7 +121,7 @@ def save_pth(operator, filepath):
         point = dict()
         point["_type"] = 2
         point["_fields"] = {"Conections": 4, "First_Conection": 4, "X": 8, "Y": 8}
-        point["Conections"] = len(obj.kb.path_connection_list)
+        point["Conections"] = len(kb.path_connection_list)
         point["First_Conection"] = first_conection
         point["X"] = obj.location[0]
         point["Y"] = obj.location[1]
@@ -97,6 +133,19 @@ def save_pth(operator, filepath):
     tree["Path_Points"] = points
     tree["Path_Conections"] = conections
 
-    operator.report({"INFO"}, "Saving path to '{}'".format(filepath))
-    saver = GffWriter(tree, filepath, "PTH")
-    saver.save()
+    operator.report({"INFO"}, f"Saving path to '{filepath}'")
+    if get_use_pykotor_readers():
+        pykotor_gff = convert_tree_to_pykotor_gff(tree, "PTH")
+        if pykotor_gff is not None:
+            if save_gff_via_pykotor(pykotor_gff, filepath):
+                return
+        # Fallback to current writer
+    try:
+        saver = GffWriter(tree, filepath, "PTH")
+        saver.save()
+    except Exception as e:
+        operator.report({"ERROR"}, f"Failed to save PTH: {e.__class__.__name__}: {e}")
+        return
+
+    operator.report({"INFO"}, f"Saved path to '{filepath}'")
+    return

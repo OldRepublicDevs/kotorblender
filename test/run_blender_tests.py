@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Run all test/blender/test_*.py scripts under Blender (background).
-Use when make/bash is not available (e.g. Windows).
+Cross-platform (Windows PowerShell, cmd, Linux, macOS); ``make test`` uses this script.
 
 Usage:
-  python test/run_blender_tests.py [--filter SUBSTRING]
-  BLENDER=/path/to/blender python test/run_blender_tests.py
+  python test/run_blender_tests.py [--blender PATH] [--filter SUBSTRING]
+  python test/run_blender_tests.py --blender "C:/Program Files/.../blender.exe" --sync-only
+  BLENDER=/path/to/blender python test/run_blender_tests.py   # optional env fallback
 
 Exit: 0 if all pass, 1 if any fail.
 """
@@ -53,7 +54,86 @@ def _find_blender() -> str:
     return "blender"
 
 
-BLENDER = _find_blender()
+def _strip_quotes(path: str) -> str:
+    p = path.strip()
+    if len(p) >= 2 and p[0] == p[-1] and p[0] in "\"'":
+        return p[1:-1]
+    return p
+
+
+def _parse_runner_argv(argv: list[str]) -> tuple[str | None, list[str]]:
+    """Split ``--blender PATH`` from argv; return (override or None, remaining args)."""
+    override: str | None = None
+    rest: list[str] = []
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--blender" and i + 1 < len(argv):
+            override = _strip_quotes(argv[i + 1])
+            i += 2
+            continue
+        rest.append(argv[i])
+        i += 1
+    return override, rest
+
+
+def _resolve_blender_exe(cli_override: str | None) -> str:
+    if cli_override:
+        return cli_override
+    return _find_blender()
+
+
+def _strip_glob_wheels_from_manifest(manifest_path: str) -> bool:
+    """Blender 4.4+ rejects wheel paths with * or ?. Clear wheels[] in the copied manifest if needed."""
+    try:
+        import tomllib
+    except ImportError:
+        return False
+    try:
+        with open(manifest_path, "rb") as f:
+            raw = f.read()
+        data = tomllib.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return False
+    wheels = data.get("wheels")
+    if not isinstance(wheels, list):
+        return False
+    if not any(isinstance(w, str) and ("*" in w or "?" in w) for w in wheels):
+        return False
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            lines = f.readlines()
+    except OSError:
+        return False
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        m = re.match(r"^(\s*)wheels\s*=\s*(.*)$", lines[i])
+        if not m:
+            out.append(lines[i])
+            i += 1
+            continue
+        indent, rest = m.group(1), m.group(2)
+        depth = rest.count("[") - rest.count("]")
+        if depth == 0 and "]" in rest:
+            out.append(f"{indent}wheels = []\n")
+            i += 1
+            continue
+        out.append(f"{indent}wheels = []\n")
+        i += 1
+        while i < len(lines) and depth > 0:
+            depth += lines[i].count("[") - lines[i].count("]")
+            i += 1
+    try:
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            f.writelines(out)
+    except OSError:
+        return False
+    print(
+        "Note: cleared glob wheel entries in synced blender_manifest.toml "
+        "(Blender 4.4+ requires concrete .whl filenames; run `make wheel-download` to bundle PyKotor).",
+        file=sys.stderr,
+    )
+    return True
 
 
 def _sync_addon_to_blender(blender_exe: str) -> None:
@@ -82,8 +162,7 @@ def _sync_addon_to_blender(blender_exe: str) -> None:
         else:
             base = os.environ.get("HOME", os.path.expanduser("~"))
             ext_base = os.path.join(base, ".config", "blender", major_minor, "extensions", "user_default")
-        if not os.path.isdir(ext_base):
-            return
+        os.makedirs(ext_base, exist_ok=True)
         dest = os.path.join(ext_base, "io_scene_kotor")
         for root, dirs, files in os.walk(ADDON_SOURCE):
             rel = os.path.relpath(root, ADDON_SOURCE)
@@ -92,16 +171,46 @@ def _sync_addon_to_blender(blender_exe: str) -> None:
                 os.makedirs(target_dir)
             for f in files:
                 shutil.copy2(os.path.join(root, f), os.path.join(target_dir, f))
-    except Exception:
-        pass
+        manifest_dest = os.path.join(dest, "blender_manifest.toml")
+        if os.path.isfile(manifest_dest):
+            _strip_glob_wheels_from_manifest(manifest_dest)
+    except Exception as e:
+        print(f"Warning: addon sync failed ({e})", file=sys.stderr)
 
 
-def main():
-    filter_sub = None
-    args = list(sys.argv[1:])
+def main() -> int:
+    blender_override, args = _parse_runner_argv(sys.argv[1:])
+    blender_exe = _resolve_blender_exe(blender_override)
+
+    if args and args[0] == "--sync-only":
+        # Used by .vscode tasks: sync addon to Blender's extensions dir then exit.
+        try:
+            ver = subprocess.run(
+                [blender_exe, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if ver.returncode != 0:
+                print(f"ERROR: Blender not found or failed: {blender_exe}", file=sys.stderr)
+                return 1
+            _sync_addon_to_blender(blender_exe)
+            return 0
+        except FileNotFoundError:
+            print(
+                f"ERROR: Blender not found at '{blender_exe}'. "
+                "Pass --blender PATH or set BLENDER.",
+                file=sys.stderr,
+            )
+            return 1
+
+    filter_sub: str | None = None
     if args and args[0] == "--filter" and len(args) >= 2:
         filter_sub = args[1]
         args = args[2:]
+    if args:
+        print(f"ERROR: unknown arguments: {' '.join(args)}", file=sys.stderr)
+        return 1
 
     if not os.path.isdir(TEST_DIR):
         print(f"ERROR: Test directory not found: {TEST_DIR}", file=sys.stderr)
@@ -109,20 +218,20 @@ def main():
 
     try:
         ver = subprocess.run(
-            [BLENDER, "--version"],
+            [blender_exe, "--version"],
             capture_output=True,
             text=True,
             timeout=10,
         )
         if ver.returncode != 0:
-            print(f"ERROR: Blender not found or failed: {BLENDER}", file=sys.stderr)
+            print(f"ERROR: Blender not found or failed: {blender_exe}", file=sys.stderr)
             return 1
         print("=== KotorBlender Tests |", (ver.stdout or ver.stderr or "").split("\n")[0])
-        _sync_addon_to_blender(BLENDER)
+        _sync_addon_to_blender(blender_exe)
     except FileNotFoundError:
         print(
-            f"ERROR: Blender not found at '{BLENDER}'.",
-            "Set BLENDER to your executable (e.g. on Windows: set BLENDER=C:\\...\\Blender 4.2\\blender.exe)",
+            f"ERROR: Blender not found at '{blender_exe}'. "
+            "Use: make test (from repo root) or python test/run_blender_tests.py --blender PATH",
             file=sys.stderr,
         )
         return 1
@@ -142,7 +251,7 @@ def main():
         print("")
         print(">>>", name)
         exit_code = subprocess.run(
-            [BLENDER, "--background", "--python", path],
+            [blender_exe, "--background", "--python", path],
             cwd=os.path.dirname(os.path.dirname(SCRIPT_DIR)),
             timeout=120,
         ).returncode

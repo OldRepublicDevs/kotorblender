@@ -18,28 +18,35 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING
 
 import bpy
 
 from ...scene.animation import Animation
 from ...utils import is_mdl_root
 
+if TYPE_CHECKING:
+    import bpy.stub_internal.rna_enums as rna_enums
+
 
 class KB_OT_add_animation(bpy.types.Operator):
-    bl_idname: ClassVar[str] = "kb.add_animation"
-    bl_label: ClassVar[str] = "Add animation to the list"
-    bl_description: ClassVar[str] = "Add a new animation entry to the KotOR model's animation list"
+    bl_idname = "kb.add_animation"
+    bl_label = "Add animation to the list"
+    bl_description = "Add a new animation entry to the KotOR model's animation list"
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        if not context.object or not is_mdl_root(context.object):
-            cls.poll_message_set(context, "Select a KotOR model object")
+        obj: bpy.types.Object | None = context.object
+        if obj is None or not is_mdl_root(obj):
+            cls.poll_message_set("Select a KotOR model object")
             return False
         return True
 
-    def execute(self, context: bpy.types.Context) -> set[str]:
-        obj = context.object
+    def execute(self, context: bpy.types.Context) -> set[rna_enums.OperatorReturnItems]:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            self.report({"ERROR"}, "No object selected")
+            return {"CANCELLED"}
         Animation.append_to_object(obj, "newanim", 0, 0.25, obj.name)
 
         return {"FINISHED"}

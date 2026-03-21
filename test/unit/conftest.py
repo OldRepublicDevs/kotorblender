@@ -71,6 +71,26 @@ sys.modules["io_scene_kotor.format.gff"].writer = sys.modules["io_scene_kotor.fo
 _load_module("io_scene_kotor.constants", os.path.join(_addon_root, "constants.py"), "io_scene_kotor")
 sys.modules["io_scene_kotor"].constants = sys.modules["io_scene_kotor.constants"]  # pyright: ignore[reportAttributeAccessIssue]
 
+# format.mdl.types (depends on constants only)
+_ensure_package("io_scene_kotor.format.mdl", os.path.join(_addon_root, "format", "mdl"))
+_load_module(
+    "io_scene_kotor.format.mdl.types",
+    os.path.join(_addon_root, "format", "mdl", "types.py"),
+    "io_scene_kotor.format.mdl",
+)
+sys.modules["io_scene_kotor.format"].mdl = sys.modules["io_scene_kotor.format.mdl"]  # pyright: ignore[reportAttributeAccessIssue]
+sys.modules["io_scene_kotor.format.mdl"].types = sys.modules["io_scene_kotor.format.mdl.types"]  # pyright: ignore[reportAttributeAccessIssue]
+
+# format.bwm.types (no bpy)
+_ensure_package("io_scene_kotor.format.bwm", os.path.join(_addon_root, "format", "bwm"))
+_load_module(
+    "io_scene_kotor.format.bwm.types",
+    os.path.join(_addon_root, "format", "bwm", "types.py"),
+    "io_scene_kotor.format.bwm",
+)
+sys.modules["io_scene_kotor.format"].bwm = sys.modules["io_scene_kotor.format.bwm"]  # pyright: ignore[reportAttributeAccessIssue]
+sys.modules["io_scene_kotor.format.bwm"].types = sys.modules["io_scene_kotor.format.bwm.types"]  # pyright: ignore[reportAttributeAccessIssue]
+
 
 def pytest_collection_finish(session: pytest.Session) -> None:
     """Emit discovery output for Python Test Adapter (LittleFoxTeam) when its plugin is not loaded."""

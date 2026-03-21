@@ -15,11 +15,11 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import math
 
 import bpy
-
 from bpy.types import Operator
 from mathutils import Vector
 
@@ -48,36 +48,30 @@ def get_or_create_camera_object(name):
 def get_or_create_text(name):
     if name in bpy.data.texts:
         return bpy.data.texts[name]
-    else:
-        return bpy.data.texts.new(name)
+    return bpy.data.texts.new(name)
 
 
 class RenderMinimapOperator(Operator):
-    def __init__(self, reset_render=False, hide_untextured=False):
-        self.reset_render = reset_render
-        self.hide_untextured = hide_untextured
-
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        hide_untextured = bool(getattr(self, "hide_untextured", False))
+        reset_render = bool(getattr(self, "reset_render", False))
         aabbs = [obj for obj in context.scene.objects if is_aabb_mesh(obj)]
         if not aabbs:
             return {"CANCELLED"}
 
-        if self.hide_untextured:
+        if hide_untextured:
             bpy.ops.kb.hide_untextured()
 
         # Set walkmesh materials opacity
         for aabb in aabbs:
             for material in aabb.data.materials:
-                if not material.name in NAME_TO_WALKMESH_MATERIAL:
+                if material.name not in NAME_TO_WALKMESH_MATERIAL:
                     continue
                 _, _, walkable = NAME_TO_WALKMESH_MATERIAL[material.name]
                 if not material.use_nodes:
                     continue
                 nodes = material.node_tree.nodes
-                if (
-                    WalkmeshNodeName.COLOR not in nodes
-                    or WalkmeshNodeName.OPACITY not in nodes
-                ):
+                if WalkmeshNodeName.COLOR not in nodes or WalkmeshNodeName.OPACITY not in nodes:
                     continue
                 color_node = nodes[WalkmeshNodeName.COLOR]
                 color_node.outputs[0].default_value = [1.0] * 4
@@ -127,11 +121,11 @@ class RenderMinimapOperator(Operator):
         camera.data.type = "ORTHO"
         camera.data.ortho_scale = MINIMAP_SCALE * max(size_x, aspect * size_y)
 
-        if not camera.name in bpy.context.scene.objects:
+        if camera.name not in bpy.context.scene.objects:
             bpy.context.scene.collection.objects.link(camera)
         bpy.context.scene.camera = camera
 
-        if self.reset_render:
+        if reset_render:
             bpy.context.scene.render.resolution_x = MINIMAP_WIDTH
             bpy.context.scene.render.resolution_y = MINIMAP_HEIGHT
         bpy.ops.render.render(write_still=True)
@@ -141,15 +135,15 @@ class RenderMinimapOperator(Operator):
         _, bottom_right, _, top_left = corners_world
         coords_text = get_or_create_text("MinimapCoords")
         lines = (
-            "NorthAxis={}".format(north_axis),
-            "WorldPt1X={}".format(top_left.x),
-            "WorldPt1Y={}".format(top_left.y),
-            "WorldPt2X={}".format(bottom_right.x),
-            "WorldPt2Y={}".format(bottom_right.y),
-            "MapPt1X={}".format(0.0),
-            "MapPt1Y={}".format(0.0),
-            "MapPt2X={}".format(1.0 / (440.0 / 512.0)),
-            "MapPt2Y={}".format(1.0),
+            f"NorthAxis={north_axis}",
+            f"WorldPt1X={top_left.x}",
+            f"WorldPt1Y={top_left.y}",
+            f"WorldPt2X={bottom_right.x}",
+            f"WorldPt2Y={bottom_right.y}",
+            f"MapPt1X={0.0}",
+            f"MapPt1Y={0.0}",
+            f"MapPt2X={1.0 / (440.0 / 512.0)}",
+            f"MapPt2Y={1.0}",
         )
         coords_text.from_string("\n".join(lines))
 
@@ -157,16 +151,13 @@ class RenderMinimapOperator(Operator):
         for aabb in aabbs:
             aabb.delta_location.z -= WALKMESH_Z_OFFSET
             for material in aabb.data.materials:
-                if not material.name in NAME_TO_WALKMESH_MATERIAL:
+                if material.name not in NAME_TO_WALKMESH_MATERIAL:
                     continue
                 _, color, _ = NAME_TO_WALKMESH_MATERIAL[material.name]
                 if not material.use_nodes:
                     continue
                 nodes = material.node_tree.nodes
-                if (
-                    WalkmeshNodeName.COLOR not in nodes
-                    or WalkmeshNodeName.OPACITY not in nodes
-                ):
+                if WalkmeshNodeName.COLOR not in nodes or WalkmeshNodeName.OPACITY not in nodes:
                     continue
                 color_node = nodes[WalkmeshNodeName.COLOR]
                 color_node.outputs[0].default_value = [*color, 1.0]
@@ -179,18 +170,17 @@ class RenderMinimapOperator(Operator):
 class KB_OT_render_minimap_auto(RenderMinimapOperator):
     bl_idname = "kb.render_minimap_auto"
     bl_label = "Render Minimap (auto)"
-    bl_description = "Render scene to an image, hiding untextures meshes and resetting render properties"
+    bl_description = (
+        "Render scene to an image, hiding untextures meshes and resetting render properties"
+    )
 
-    def __init__(self):
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         self.reset_render = True
         self.hide_untextured = True
+        return self.execute(context)
 
 
 class KB_OT_render_minimap_manual(RenderMinimapOperator):
     bl_idname = "kb.render_minimap_manual"
     bl_label = "Render Minimap (manual)"
     bl_description = "Render scene to an image, user is responsible for setting render properties and object visibility"
-
-    def __init__(self):
-        self.reset_render = False
-        self.hide_untextured = False

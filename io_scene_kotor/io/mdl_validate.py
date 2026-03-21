@@ -16,8 +16,10 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+from __future__ import annotations
+
 import re
-from typing import Generator
+from collections.abc import Generator
 
 import bpy
 
@@ -32,6 +34,7 @@ class _Op:
 
 
 _op = _Op()
+
 
 def _normalized_export_name(obj: bpy.types.Object) -> str:
     name = obj.name
@@ -63,9 +66,7 @@ def validate_mdl_export(operator: _Op, root_obj: bpy.types.Object) -> None:
     seen_actual = set()
     for name in lowered_actual:
         if name in seen_actual:
-            raise RuntimeError(
-                "Duplicate exported node names are not allowed: {}".format(name)
-            )
+            raise RuntimeError(f"Duplicate exported node names are not allowed: {name}")
         seen_actual.add(name)
 
     # For animroot we accept either actual or normalized name.
@@ -75,22 +76,18 @@ def validate_mdl_export(operator: _Op, root_obj: bpy.types.Object) -> None:
     for obj in export_objects:
         name = obj.name
         if not name:
-            raise RuntimeError("Object '{}' has an empty exported name".format(obj.name))
+            raise RuntimeError(f"Object '{obj.name}' has an empty exported name")
         if " " in name or "\t" in name:
             raise RuntimeError(
-                "Object '{}' has an invalid exported name '{}'".format(obj.name, name)
+                f"Object '{obj.name}' has an invalid exported name '{name}'",
             )
         if name.lower() == "root":
-            raise RuntimeError(
-                "Object '{}' has the reserved exported name 'root'".format(obj.name)
-            )
+            raise RuntimeError(f"Object '{obj.name}' has the reserved exported name 'root'")
         # Node names have no 16-char limit in the binary format; only root model name does.
 
     if len(_normalized_export_name(root_obj)) > 16:
         raise RuntimeError(
-            "Model name '{}' exceeds the 16 character limit".format(
-                _normalized_export_name(root_obj)
-            )
+            f"Model name '{_normalized_export_name(root_obj)}' exceeds the 16 character limit",
         )
 
     # Animroot must point to an exported node.
@@ -98,38 +95,36 @@ def validate_mdl_export(operator: _Op, root_obj: bpy.types.Object) -> None:
         animroot_name = root_obj.kb.animroot.lower()
         if animroot_name not in seen_names:
             raise RuntimeError(
-                "Anim Root '{}' does not match any exported node".format(
-                    root_obj.kb.animroot
-                )
+                f"Anim Root '{root_obj.kb.animroot}' does not match any exported node",
             )
 
     # Only one collision/AABB mesh is allowed on the main model.
     aabb_meshes = [
-        obj
-        for obj in export_objects
-        if obj.type == "MESH" and obj.kb.meshtype == MeshType.AABB
+        obj for obj in export_objects if obj.type == "MESH" and obj.kb.meshtype == MeshType.AABB
     ]
     if len(aabb_meshes) > 1:
         raise RuntimeError(
             "Multiple AABB meshes found in model export: {}".format(
-                ", ".join(obj.name for obj in aabb_meshes)
-            )
+                ", ".join(obj.name for obj in aabb_meshes),
+            ),
         )
 
     overweight_vertices = []
     for obj in export_objects:
         if obj.type == "MESH":
-            if obj.kb.meshtype in {
-                MeshType.TRIMESH,
-                MeshType.DANGLYMESH,
-                MeshType.SKIN,
-                MeshType.AABB,
-                MeshType.LIGHTSABER,
-            } and len(obj.data.polygons) == 0:
+            if (
+                obj.kb.meshtype
+                in {
+                    MeshType.TRIMESH,
+                    MeshType.DANGLYMESH,
+                    MeshType.SKIN,
+                    MeshType.AABB,
+                    MeshType.LIGHTSABER,
+                }
+                and len(obj.data.polygons) == 0
+            ):
                 raise RuntimeError(
-                    "Mesh object '{}' has no faces and cannot be exported".format(
-                        obj.name
-                    )
+                    f"Mesh object '{obj.name}' has no faces and cannot be exported",
                 )
 
             for texture_label, texture_name in (
@@ -138,9 +133,7 @@ def validate_mdl_export(operator: _Op, root_obj: bpy.types.Object) -> None:
             ):
                 if texture_name and len(texture_name) > 16:
                     raise RuntimeError(
-                        "Object '{}' has {} '{}' longer than 16 characters".format(
-                            obj.name, texture_label, texture_name
-                        )
+                        f"Object '{obj.name}' has {texture_label} '{texture_name}' longer than 16 characters",
                     )
 
             if obj.kb.meshtype == MeshType.SKIN:
@@ -155,12 +148,8 @@ def validate_mdl_export(operator: _Op, root_obj: bpy.types.Object) -> None:
         grouped = {}
         for obj_name, _, _ in overweight_vertices:
             grouped[obj_name] = grouped.get(obj_name, 0) + 1
-        detail = ", ".join(
-            "{}:{} verts".format(obj_name, count) for obj_name, count in grouped.items()
-        )
+        detail = ", ".join(f"{obj_name}:{count} verts" for obj_name, count in grouped.items())
         operator.report(
             {"WARNING"},
-            "Skin weights exceed 4 influences on export; top 4 will be kept ({})".format(
-                detail
-            ),
+            f"Skin weights exceed 4 influences on export; top 4 will be kept ({detail})",
         )

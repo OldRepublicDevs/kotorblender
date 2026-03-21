@@ -15,37 +15,48 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
+from ...constants import PropertyName
 from ...utils import is_mdl_root
 
 
 class KB_PT_model(bpy.types.Panel):
     bl_label = "KotOR Model"
+    bl_description = "Root MDL object settings: classification, supermodel, fog, and export-related options"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, context: bpy.types.Context) -> bool:
         return is_mdl_root(context.object)
 
-    def draw(self, context):
-        obj = context.object
+    def draw(self, context: bpy.types.Context) -> None:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            raise ValueError("Object is None")
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
         layout.use_property_split = True
 
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("Object.kb is None")
+
         row = layout.row()
-        row.prop(obj.kb, "classification")
+        row.prop(kb, PropertyName.CLASSIFICATION)
         row = layout.row()
-        row.prop(obj.kb, "supermodel")
+        row.prop(kb, PropertyName.SUPERMODEL)
         row = layout.row()
-        row.prop(obj.kb, "animscale")
+        row.prop(kb, PropertyName.ANIMSCALE)
         row = layout.row()
-        row.prop_search(obj.kb, "animroot", context.collection, "objects")
+        row.prop_search(kb, PropertyName.ANIMROOT, context.collection, "objects")
         row = layout.row()
-        row.prop(obj.kb, "affected_by_fog")
+        row.prop(kb, PropertyName.AFFECTED_BY_FOG)
 
         row = layout.row()
         row.operator("kb.rebuild_all_materials")

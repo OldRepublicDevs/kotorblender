@@ -1,14 +1,23 @@
 schema_version = "1.0.0"
 
 id = "io_scene_kotor"
-version = "4.0.7"
+version = "5.0.0"
 name = "KotorBlender"
-tagline = "Import, edit and export KotOR models"
-maintainer = "seedhartha <seedhartha.github@gmail.com>"
+tagline = "KotOR I & II asset tools: MDL, LYT, PTH, walkmeshes"
+maintainer = "OldRepublicDevs, OpenKotOR"
 type = "add-on"
 
 blender_version_min = "3.6.0"
 
 license = [
   "SPDX:GPL-3.0-or-later",
+]
+
+# PyKotor wheels — run `make wheel-download` from repo root (populates io_scene_kotor/wheels/*.whl + this list).
+# CI/release run that before building the extension zip. Blender cannot pip-install at enable time.
+# Blender 4.4+ requires explicit filenames here (no globs).
+wheels = [
+  "./wheels/defusedxml-0.7.1-py2.py3-none-any.whl",
+  "./wheels/ply-3.11-py2.py3-none-any.whl",
+  "./wheels/pykotor-2.3.1-py3-none-any.whl",
 ]

@@ -15,21 +15,30 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 from struct import pack, unpack
 
-from ..binwriter import BinaryWriter
+from ...format.binwriter import BinaryWriter
 
-from .types import *
+from .types import (
+    FILE_VERSION,
+    FIELD_TYPE_DWORD,
+    FIELD_TYPE_FLOAT,
+    FIELD_TYPE_LIST,
+    FIELD_TYPE_STRUCT,
+    GffField,
+    GffStruct,
+)
 
 
 class GffWriter:
-    def __init__(self, tree, path, file_type):
-        self.tree = tree
-        self.writer = BinaryWriter(path, "little")
-        self.file_type = file_type.ljust(4)
+    def __init__(self, tree: dict[str, object], path: str, file_type: str) -> None:
+        self.tree: dict[str, object] = tree
+        self.writer: BinaryWriter = BinaryWriter(path, "little")
+        self.file_type: str = file_type.ljust(4)
 
-    def save(self):
+    def save(self) -> None:
         self.structs = []
         self.fields = []
         self.labels = []
@@ -83,7 +92,7 @@ class GffWriter:
         for idx in self.list_indices:
             self.writer.write_uint32(idx)
 
-    def decompose_tree(self):
+    def decompose_tree(self) -> None:
         num_structs = 0
         queue = [self.tree]
 
@@ -117,9 +126,7 @@ class GffWriter:
                         self.list_indices.append(num_structs)
                         queue.append(item)
                 else:
-                    raise NotImplementedError(
-                        "Field type {} is not supported".format(field_type)
-                    )
+                    raise NotImplementedError(f"Field type {field_type} is not supported")
 
                 field = GffField(field_type, label_idx, data_or_data_offset)
                 self.fields.append(field)
@@ -134,6 +141,6 @@ class GffWriter:
             struct = GffStruct(tree["_type"], data_or_data_offset, len(field_indices))
             self.structs.append(struct)
 
-    def repack_float_to_int(self, val):
+    def repack_float_to_int(self, val: float) -> int:
         packed = pack("f", val)
         return unpack("I", packed)[0]

@@ -16,11 +16,12 @@ from io_scene_kotor.constants import (
     ANIM_FPS,
     ANIM_PADDING,
     ANIM_REST_POSE_OFFSET,
-    UV_MAP_MAIN,
-    UV_MAP_LIGHTMAP,
-    WALKMESH_MATERIALS,
     NAME_TO_WALKMESH_MATERIAL,
     NON_WALKABLE,
+    USE_PYKOTOR_READERS,
+    UV_MAP_LIGHTMAP,
+    UV_MAP_MAIN,
+    WALKMESH_MATERIALS,
     Classification,
     DummyType,
     ExportOptions,
@@ -28,6 +29,7 @@ from io_scene_kotor.constants import (
     MeshType,
     NodeType,
 )
+from io_scene_kotor.vendor.pykotor_adapter import get_use_pykotor_readers
 
 
 def test_animation_constants():
@@ -78,7 +80,7 @@ def test_classification_values():
         "PLACEABLE",
         "FLYER",
     }
-    actual = {getattr(Classification, k) for k in dir(Classification) if not k.startswith("_")}
+    actual = {e.value for e in Classification}
     assert expected == actual
 
 
@@ -95,20 +97,21 @@ def test_dummy_type_values():
         "USE1",
         "USE2",
     }
-    actual = {getattr(DummyType, k) for k in dir(DummyType) if not k.startswith("_")}
+    actual = {e.value for e in DummyType}
     assert expected == actual
 
 
 def test_mesh_type_values():
     """MeshType enum has all expected string constants."""
     expected = {"TRIMESH", "DANGLYMESH", "LIGHTSABER", "SKIN", "AABB", "EMITTER"}
-    actual = {getattr(MeshType, k) for k in dir(MeshType) if not k.startswith("_")}
+    actual = {e.value for e in MeshType}
     assert expected == actual
 
 
 def test_node_type_values():
     """NodeType enum has all expected string constants."""
     expected = {
+        "UNDEFINED",
         "DUMMY",
         "REFERENCE",
         "TRIMESH",
@@ -119,7 +122,7 @@ def test_node_type_values():
         "AABB",
         "LIGHTSABER",
     }
-    actual = {getattr(NodeType, k) for k in dir(NodeType) if not k.startswith("_")}
+    actual = {e.value for e in NodeType}
     assert expected == actual
 
 
@@ -141,3 +144,14 @@ def test_import_options_defaults():
     assert opts.import_walkmeshes is True
     assert opts.build_materials is True
     assert opts.build_armature is False
+
+
+def test_use_pykotor_readers_default():
+    """USE_PYKOTOR_READERS defaults to False for safe migration."""
+    assert USE_PYKOTOR_READERS is False
+
+
+def test_get_use_pykotor_readers_fallback():
+    """get_use_pykotor_readers() is False when flag is False (or PyKotor unavailable)."""
+    # With default USE_PYKOTOR_READERS=False, getter must always be False
+    assert get_use_pykotor_readers() is False

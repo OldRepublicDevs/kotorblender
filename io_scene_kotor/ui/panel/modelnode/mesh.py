@@ -15,10 +15,11 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
-from ....constants import MeshType
+from ....constants import MeshType, PropertyName
 from ....utils import is_mesh_type
 
 
@@ -30,45 +31,56 @@ class KB_PT_mesh(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
-        obj = context.object
-        return obj and obj.type == "MESH" and obj.kb.meshtype != MeshType.EMITTER
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            return False
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
+        return obj.type == "MESH" and kb.meshtype != MeshType.EMITTER
 
-    def draw(self, context):
-        obj = context.object
+    def draw(self, context: bpy.types.Context) -> None:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            raise ValueError("Object is None")
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
         layout.use_property_split = True
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("Object.kb is None")
 
         row = layout.row()
-        row.prop(obj.kb, "bitmap")
+        row.prop(kb, PropertyName.BITMAP)
         row = layout.row()
-        row.prop(obj.kb, "bitmap2")
+        row.prop(kb, PropertyName.BITMAP2)
         row = layout.row()
-        row.prop(obj.kb, "diffuse")
+        row.prop(kb, PropertyName.DIFFUSE)
         row = layout.row()
-        row.prop(obj.kb, "ambient")
+        row.prop(kb, PropertyName.AMBIENT)
         row = layout.row()
-        row.prop(obj.kb, "selfillumcolor")
+        row.prop(kb, PropertyName.SELFILLUMCOLOR)
         row = layout.row()
-        row.prop(obj.kb, "alpha")
+        row.prop(kb, PropertyName.ALPHA)
         row = layout.row()
-        row.prop(obj.kb, "transparencyhint")
-
+        row.prop(kb, PropertyName.TRANSPARENCYHINT)
         row = layout.row()
         col = row.column(align=True)
-        col.prop(obj.kb, "render")
-        col.prop(obj.kb, "shadow")
-        col.prop(obj.kb, "lightmapped")
-        col.prop(obj.kb, "tangentspace")
-        col.prop(obj.kb, "background_geometry")
-        col.prop(obj.kb, "beaming")
-        col.prop(obj.kb, "rotatetexture")
-        col.prop(obj.kb, "animateuv")
+        col.prop(kb, PropertyName.RENDER)
+        col.prop(kb, PropertyName.SHADOW)
+        col.prop(kb, PropertyName.LIGHTMAPPED)
+        col.prop(kb, PropertyName.TANGENTSPACE)
+        col.prop(kb, PropertyName.BACKGROUND_GEOMETRY)
+        col.prop(kb, PropertyName.BEAMING)
+        col.prop(kb, PropertyName.ROTATETEXTURE)
+        col.prop(kb, PropertyName.ANIMATEUV)
 
         row = layout.row()
         col = row.column(align=True, heading="TSL only")
-        col.prop(obj.kb, "hologram_donotdraw")
-        col.prop(obj.kb, "dirt_enabled")
+        col.prop(kb, PropertyName.HOLOGRAM_DONOTDRAW)
+        col.prop(kb, PropertyName.DIRT_ENABLED)
 
         row = layout.row()
         row.operator("kb.rebuild_material")
@@ -82,28 +94,35 @@ class KB_PT_mesh_uv_anim(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
-        obj = context.object
-        return (
-            obj
-            and obj.type == "MESH"
-            and obj.kb.meshtype != MeshType.EMITTER
-            and obj.kb.animateuv
-        )
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            return False
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
+        return obj.type == "MESH" and kb.meshtype != MeshType.EMITTER and kb.animateuv
 
-    def draw(self, context):
-        obj = context.object
+    def draw(self, context: bpy.types.Context) -> None:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            raise ValueError("Object is None")
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
         layout.use_property_split = True
 
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("Object.kb is None")
         row = layout.row()
         col = row.column(align=True)
-        col.prop(obj.kb, "uvdirectionx", text="Direction X")
-        col.prop(obj.kb, "uvdirectiony", text="Y")
+        col.prop(kb, "uvdirectionx", text="Direction X")
+        col.prop(kb, "uvdirectiony", text="Y")
         row = layout.row()
         col = row.column(align=True)
-        col.prop(obj.kb, "uvjitter", text="Jitter Amount")
-        col.prop(obj.kb, "uvjitterspeed", text="Speed")
+        col.prop(kb, "uvjitter", text="Jitter Amount")
+        col.prop(kb, "uvjitterspeed", text="Speed")
 
 
 class KB_PT_mesh_dirt(bpy.types.Panel):
@@ -114,24 +133,31 @@ class KB_PT_mesh_dirt(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
-        obj = context.object
-        return (
-            obj
-            and obj.type == "MESH"
-            and obj.kb.meshtype != MeshType.EMITTER
-            and obj.kb.dirt_enabled
-        )
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            return False
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
+        return obj.type == "MESH" and kb.meshtype != MeshType.EMITTER and kb.dirt_enabled
 
-    def draw(self, context):
-        obj = context.object
+    def draw(self, context: bpy.types.Context) -> None:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            raise ValueError("Object is None")
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
         layout.use_property_split = True
 
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("Object.kb is None")
         row = layout.row()
-        row.prop(obj.kb, "dirt_texture")
+        row.prop(kb, PropertyName.DIRT_TEXTURE)
         row = layout.row()
-        row.prop(obj.kb, "dirt_worldspace")
+        row.prop(kb, PropertyName.DIRT_WORLDSPACE)
 
 
 class KB_PT_mesh_dangly(bpy.types.Panel):
@@ -142,23 +168,36 @@ class KB_PT_mesh_dangly(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
-        obj = context.object
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            return False
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
         return is_mesh_type(obj, MeshType.DANGLYMESH)
 
-    def draw(self, context):
-        obj = context.object
+    def draw(self, context: bpy.types.Context) -> None:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            raise ValueError("Object is None")
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
         layout.use_property_split = True
 
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("Object.kb is None")
+
         row = layout.row()
-        row.prop_search(obj.kb, "constraints", obj, "vertex_groups", text="Constraints")
+        row.prop_search(kb, PropertyName.CONSTRAINTS, obj, "vertex_groups", text="Constraints")
         row = layout.row()
-        row.prop(obj.kb, "period")
+        row.prop(kb, PropertyName.PERIOD)
         row = layout.row()
-        row.prop(obj.kb, "tightness")
+        row.prop(kb, PropertyName.TIGHTNESS)
         row = layout.row()
-        row.prop(obj.kb, "displacement")
+        row.prop(kb, PropertyName.DISPLACEMENT)
 
 
 class KB_PT_mesh_aabb(bpy.types.Panel):
@@ -169,14 +208,27 @@ class KB_PT_mesh_aabb(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            return False
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
         obj = context.object
         return is_mesh_type(obj, MeshType.AABB)
 
-    def draw(self, context):
-        obj = context.object
+    def draw(self, context: bpy.types.Context) -> None:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            raise ValueError("Object is None")
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("Object.kb is None")
         layout.use_property_split = True
 
         row = layout.row()
-        row.prop(obj.kb, "lytposition")
+        row.prop(kb, PropertyName.LYTPOSITION)

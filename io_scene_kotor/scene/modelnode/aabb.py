@@ -16,27 +16,30 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
-import bpy
+from __future__ import annotations
+from typing import Any
 
+import bpy
 from mathutils import Vector
 
-from ...constants import NON_WALKABLE, MeshType, NodeType
+from ...constants import ExportOptions, ImportOptions, NON_WALKABLE, MeshType, NodeType
 from ..material import rebuild_walkmesh_materials
+
 from .trimesh import TrimeshNode
 
 ROOM_LINKS_COLORS = "RoomLinks"
 
 
 class AabbNode(TrimeshNode):
-    def __init__(self, name="UNNAMED"):
+    def __init__(self, name: str = "UNNAMED") -> None:
         TrimeshNode.__init__(self, name)
         self.nodetype = NodeType.AABB
         self.meshtype = MeshType.AABB
 
-        self.lytposition = (0.0, 0.0, 0.0)
-        self.roomlinks = dict()
+        self.lytposition: tuple[float, float, float] = (0.0, 0.0, 0.0)
+        self.roomlinks: dict[int, int] = {}
 
-    def compute_lyt_position(self, wok_geom):
+    def compute_lyt_position(self, wok_geom: Any) -> None:
         wok_position = Vector(wok_geom.position)
         wok_vert = Vector(wok_geom.verts[wok_geom.facelist.vertices[0][0]])
         wok_mat_id = wok_geom.facelist.materials[0]
@@ -48,7 +51,9 @@ class AabbNode(TrimeshNode):
                 self.lytposition = wok_vert + wok_position - mdl_vert_from_root
                 break
 
-    def add_to_collection(self, collection, options):
+    def add_to_collection(
+        self, collection: bpy.types.Collection, options: ImportOptions
+    ) -> bpy.types.Object:
         mesh = self.mdl_to_edge_loop_mesh()
         bl_mesh = self.create_blender_mesh(self.name, mesh)
         obj = bpy.data.objects.new(self.name, bl_mesh)
@@ -62,7 +67,7 @@ class AabbNode(TrimeshNode):
 
         return obj
 
-    def apply_room_links(self, mesh):
+    def apply_room_links(self, mesh: bpy.types.Mesh) -> None:
         if ROOM_LINKS_COLORS in mesh.vertex_colors:
             colors = mesh.vertex_colors[ROOM_LINKS_COLORS]
         else:
@@ -72,7 +77,7 @@ class AabbNode(TrimeshNode):
             wok_face_idx = wok_edge_idx // 3
             aabb_face = None
             for walkable_idx, polygon in enumerate(
-                [p for p in mesh.polygons if p.material_index not in NON_WALKABLE]
+                [p for p in mesh.polygons if p.material_index not in NON_WALKABLE],
             ):
                 if walkable_idx == wok_face_idx:
                     aabb_face = polygon
@@ -90,24 +95,32 @@ class AabbNode(TrimeshNode):
             return
         colors = obj.data.vertex_colors[ROOM_LINKS_COLORS]
         for walkable_idx, tri in enumerate(
-            [p for p in obj.data.loop_triangles if p.material_index not in NON_WALKABLE]
+            [p for p in obj.data.loop_triangles if p.material_index not in NON_WALKABLE],
         ):
             for edge, loop_idx in enumerate(tri.loops):
                 color = colors.data[loop_idx].color
-                if color[0] > 0.0 or color[2] > 0.0 and (255.0 * color[1]) < 200.0:
+                if color[0] > 0.0 or (color[2] > 0.0 and (255.0 * color[1]) < 200.0):
                     continue
                 edge_idx = 3 * walkable_idx + edge
                 transition = int((255.0 * color[1]) - 200.0)
                 self.roomlinks[edge_idx] = transition
 
-    def set_object_data(self, obj, options):
+    def set_object_data(self, obj: bpy.types.Object, options: ImportOptions) -> None:
         TrimeshNode.set_object_data(self, obj, options)
 
-        obj.kb.lytposition = self.lytposition
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object [{obj.name}] has no kb attribute")
+        kb.lytposition = self.lytposition
 
-    def load_object_data(self, obj, eval_obj, options):
+    def load_object_data(
+        self, obj: bpy.types.Object, eval_obj: bpy.types.Object, options: ExportOptions
+    ) -> None:
         TrimeshNode.load_object_data(self, obj, eval_obj, options)
 
-        self.lytposition = obj.kb.lytposition
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object [{obj.name}] has no kb attribute")
+        self.lytposition = kb.lytposition
 
         self.unapply_room_links(eval_obj)

@@ -26,6 +26,7 @@ if MODULE not in bpy.context.preferences.addons:  # pyright: ignore[reportOption
 
 from io_scene_kotor.constants import Classification, DummyType, ExportOptions, MeshType  # noqa: E402
 from io_scene_kotor.io.mdl import save_mdl  # noqa: E402
+from io_scene_kotor.io.mdl_validate import validate_mdl_export  # noqa: E402
 
 
 class _Op:
@@ -97,6 +98,21 @@ def _cleanup_paths(*paths: str) -> None:
     for path in paths:
         if os.path.exists(path):
             os.unlink(path)
+
+
+def _expect_validate_failure(root: bpy.types.Object, expected_substring: str) -> bool:
+    try:
+        validate_mdl_export(_op, root)
+    except RuntimeError as exc:
+        ok = expected_substring.lower() in str(exc).lower()
+        if ok:
+            print(f"  PASS validate_mdl_export: {expected_substring}")
+        else:
+            print(f"  FAIL validate wrong error: {exc}")
+        return ok
+    else:
+        print("  FAIL validate_mdl_export unexpectedly succeeded")
+        return False
 
 
 def _expect_export_failure(root: bpy.types.Object, expected_substring: str) -> bool:
@@ -173,6 +189,37 @@ def test_zero_face_mesh_validation():
     return _expect_export_failure(root, "has no faces")
 
 
+def test_validate_direct_whitespace_in_node_name():
+    _clear_scene()
+    root = _make_mdl_root("ws_root")
+    _make_mesh("bad mesh", root)
+    return _expect_validate_failure(root, "invalid exported name")
+
+
+def test_validate_direct_reserved_root_node_name():
+    _clear_scene()
+    root = _make_mdl_root("reserved_root")
+    _make_mesh("root", root)
+    return _expect_validate_failure(root, "reserved exported name")
+
+
+def test_validate_direct_root_model_name_too_long():
+    _clear_scene()
+    root = _make_mdl_root("x" * 17)
+    _make_mesh("tri_01", root)
+    return _expect_validate_failure(root, "16 character")
+
+
+def test_validate_direct_multiple_aabb_meshes():
+    _clear_scene()
+    root = _make_mdl_root("two_aabb")
+    w1 = _make_mesh("walk_a", root, node_number=2)
+    w1.kb.meshtype = MeshType.AABB
+    w2 = _make_mesh("walk_b", root, node_number=3)
+    w2.kb.meshtype = MeshType.AABB
+    return _expect_validate_failure(root, "multiple aabb")
+
+
 def run_tests():
     print("\n=== test_mdl_validation.py ===")
     tests = [
@@ -180,6 +227,10 @@ def run_tests():
         test_missing_animroot_validation,
         test_bitmap_length_validation,
         test_zero_face_mesh_validation,
+        test_validate_direct_whitespace_in_node_name,
+        test_validate_direct_reserved_root_node_name,
+        test_validate_direct_root_model_name_too_long,
+        test_validate_direct_multiple_aabb_meshes,
     ]
     results = [test() for test in tests]
     passed = sum(results)

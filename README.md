@@ -6,11 +6,20 @@ Significant changes have been introduced since KotORBlender 1.01, including, but
 
 ## Features
 
-- Import & export MDL models, including animations and walkmeshes
+- Import & export MDL models, including animations and walkmeshes; import `.wok` / `.pwk` / `.dwk` alone via **File → Import** or drag-and-drop
 - Import & export LYT files
 - Import & export PTH files
 - Lightmap texture baking
 - Area minimap rendering
+- **Game Installation Browser** - Browse and select KotOR game installations
+- **Module Browser** - Browse module resources (Core, Modules, Override, Textures, Saves)
+- **Resource Creation** - Create new KotOR resource files (UTC, UTP, UTD, UTI, UTS, UTT, UTM, UTW, UTE, DLG, NSS, TLK, ERF, GFF)
+- **Resource Editors** - Edit KotOR resource files with dedicated property panels
+- **Module Operations** - Pack/unpack modules, extract resources, extract textures
+- **Texture Operations** - Convert TPC/TGA, batch convert textures
+- **Toolset Features** - Module Designer, Indoor Map Builder, File Search, KotorDiff, TSLPatchData Editor
+- **Save Game Editor** - Edit KotOR save game files
+- **PyKotor** - Required for module browser, archives, and most KotOR file tooling; **bundled as wheels** in official release zips (see Installation)
 
 ## Compatibility
 
@@ -36,6 +45,8 @@ Current version of KotorBlender is fully compatible with Blender versions 3.6, 4
     1. Set cloned repository as current directory
     1. Create a symlink on Windows: `mklink /D "%APPDATA%\Blender Foundation\Blender\3.6\scripts\addons\io_scene_kotor" "%CD%/io_scene_kotor"`
     1. Create a symlink on Linux: `ln -s $(pwd)/io_scene_kotor ~/.config/blender/3.6/scripts/addons/io_scene_kotor`
+
+**PyKotor:** Blender extensions are **not** normal Python packages — there is no `pip install` when the user clicks Install. Dependencies must be **wheel files inside the .zip**; Blender installs them when you enable the add-on. Official releases are built with **`make build`**, which downloads PyKotor from PyPI and packs it into the zip. **Symlink from git:** run **`make wheel-download`** once (lighter than a full zip build). On Windows use `PYTHON=python` if `python3` is not on `PATH`. See `io_scene_kotor/wheels/README.md`.
 
 ## Usage
 
@@ -105,6 +116,23 @@ Fine-tuning:
 1. Import PTH into Blender via File → Import → KotOR Path (.pth)
 1. Create/move path points, or modify path connections via Object Properties
 1. Export PTH via File → Export → KotOR Path (.pth)
+
+### Game Installation and Module Browser
+
+1. Navigate to Scene Properties → KotOR Game Installation
+1. Select game type (KotOR 1, KotOR 2, or Custom Path)
+1. Click "Refresh Modules" to discover available modules
+1. Select a module and click "Open Module" to browse its resources
+1. Use the Module Browser panel in the 3D Viewport sidebar to browse resources by type
+1. Extract resources or open them in appropriate editors
+
+### Resource Creation and Editing
+
+1. Create new resources via Editor → KotOR → Resources → New
+1. Edit existing resources via Editor → KotOR → Editors
+1. Resource property panels appear in Object Properties when a resource object is selected
+1. Use File → Import → KotOR Module to import entire modules
+1. Use File → Import → KotOR Save Game to edit save game files
 
 ## Contributing and testing
 

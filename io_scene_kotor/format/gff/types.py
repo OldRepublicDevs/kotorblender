@@ -15,6 +15,7 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 FILE_VERSION = "V3.2"
 
@@ -25,20 +26,20 @@ FIELD_TYPE_LIST = 15
 
 
 class KeyValue:
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
+    def __init__(self, key: str, value: int | float | dict[str, object] | list[dict[str, object]]) -> None:
+        self.key: str = key
+        self.value: int | float | dict[str, object] | list[dict[str, object]] = value
 
 
 class GffStruct:
-    def __init__(self, type, data_or_data_offset, num_fields):
-        self.type = type
-        self.data_or_data_offset = data_or_data_offset
-        self.num_fields = num_fields
+    def __init__(self, type: int, data_or_data_offset: int, num_fields: int) -> None:
+        self.type: int = type
+        self.data_or_data_offset: int = data_or_data_offset
+        self.num_fields: int = num_fields
 
 
 class GffField:
-    def __init__(self, type, label_idx, data_or_data_offset):
-        self.type = type
-        self.label_idx = label_idx
-        self.data_or_data_offset = data_or_data_offset
+    def __init__(self, type: int, label_idx: int, data_or_data_offset: int) -> None:
+        self.type: int = type
+        self.label_idx: int = label_idx
+        self.data_or_data_offset: int = data_or_data_offset

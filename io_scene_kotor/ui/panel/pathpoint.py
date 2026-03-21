@@ -15,6 +15,7 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
@@ -28,12 +29,21 @@ class KB_PT_path_point(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, context: bpy.types.Context) -> bool:
         return is_path_point(context.object)
 
-    def draw(self, context):
+    def draw(self, context: bpy.types.Context) -> None:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            raise ValueError("Object is None")
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
         layout.use_property_split = True
+
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("Object.kb is None")
 
         row = layout.row()
         box = row.box()
@@ -42,9 +52,9 @@ class KB_PT_path_point(bpy.types.Panel):
         row.template_list(
             "KB_UL_path_points",
             "path_points",
-            context.object.kb,
+            kb,
             "path_connection_list",
-            context.object.kb,
+            kb,
             "path_connection_idx",
         )
         col = row.column(align=True)

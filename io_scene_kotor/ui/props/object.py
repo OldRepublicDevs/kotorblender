@@ -15,33 +15,33 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
-from ...constants import Classification, DummyType, MeshType, NULL
+from ...constants import NULL, BlendType, Classification, DummyType, EmitterRenderType, MeshType, P2PType, SpawnType, UpdateType
 from ...scene.modelnode.light import LightNode
-
 from .anim import AnimPropertyGroup
 from .lensflare import LensFlarePropertyGroup
 from .pathconnection import PathConnectionPropertyGroup
 
 
-def on_update_light_power(self, context):
-    obj = context.object
-    if obj and obj.type == "LIGHT":
+def on_update_light_power(self: object, context: bpy.types.Context) -> None:
+    obj: bpy.types.Object | None = context.object
+    if obj is not None and obj.type == "LIGHT":
         LightNode.calc_light_power(obj)
 
 
 class ObjectPropertyGroup(bpy.types.PropertyGroup):
     # Model Node
-    node_number: bpy.props.IntProperty(
+    node_number: bpy.props.IntProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Node Number",
         description="Must be unique per model and equal to this node number in supermodel",
         default=-1,
         min=-1,
         max=1000,
     )
-    export_order: bpy.props.IntProperty(
+    export_order: bpy.props.IntProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Export Order",
         description="Export order relative to parent",
         min=0,
@@ -49,12 +49,12 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     )
 
     # Model
-    supermodel: bpy.props.StringProperty(
+    supermodel: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Supermodel",
         description="Name of the model to inherit animations from",
         default=NULL,
     )
-    classification: bpy.props.EnumProperty(
+    classification: bpy.props.EnumProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Classification",
         items=[
             (Classification.OTHER, "Other", "Unknown", 0),
@@ -68,43 +68,43 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
         ],
         default=Classification.OTHER,
     )
-    subclassification: bpy.props.IntProperty(name="Subclassification")
-    affected_by_fog: bpy.props.BoolProperty(
+    subclassification: bpy.props.IntProperty(name="Subclassification")  # pyright: ignore[reportInvalidTypeForm]
+    affected_by_fog: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Affected by Fog",
         description="This model should be affected by area fog",
         default=True,
     )
-    animroot: bpy.props.StringProperty(
+    animroot: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Anim Root",
         description="Animations should only affect children of selected object",
         default=NULL,
     )
-    animscale: bpy.props.FloatProperty(
+    animscale: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Anim Scale",
         description="Scale of this model relative to its supermodel",
         default=1.0,
         min=0.0,
     )
-    classification_unk1: bpy.props.IntProperty(
+    classification_unk1: bpy.props.IntProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Classification Unknown",
         description="Preserved unknown model-header byte",
         default=0,
         min=0,
         max=255,
     )
-    bounding_box_min: bpy.props.FloatVectorProperty(
+    bounding_box_min: bpy.props.FloatVectorProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Bounding Box Min",
         description="Preserved model-space minimum bounds",
         subtype="XYZ",
         default=(0.0, 0.0, 0.0),
     )
-    bounding_box_max: bpy.props.FloatVectorProperty(
+    bounding_box_max: bpy.props.FloatVectorProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Bounding Box Max",
         description="Preserved model-space maximum bounds",
         subtype="XYZ",
         default=(0.0, 0.0, 0.0),
     )
-    model_radius: bpy.props.FloatProperty(
+    model_radius: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Model Radius",
         description="Preserved model header radius",
         default=0.0,
@@ -113,10 +113,9 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
 
     # Animations
     anim_list: bpy.props.CollectionProperty(type=AnimPropertyGroup)
-    anim_list_idx: bpy.props.IntProperty()
-
+    anim_list_idx: bpy.props.IntProperty()  # pyright: ignore[reportInvalidTypeForm]
     # Dummy Node
-    dummytype: bpy.props.EnumProperty(
+    dummytype: bpy.props.EnumProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Type",
         items=[
             (DummyType.NONE, "None", "", 0),
@@ -133,13 +132,14 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     )
 
     # Reference Node
-    refmodel: bpy.props.StringProperty(
-        name="Reference Model", description="Name of another model", default="fx_ref"
+    refmodel: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Reference Model",
+        description="Name of another model",
+        default="fx_ref",
     )
-    reattachable: bpy.props.BoolProperty(name="Reattachable")
-
+    reattachable: bpy.props.BoolProperty(name="Reattachable")  # pyright: ignore[reportInvalidTypeForm]
     # Mesh Node
-    meshtype: bpy.props.EnumProperty(
+    meshtype: bpy.props.EnumProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Type",
         items=[
             (MeshType.TRIMESH, "Trimesh", "", 0),
@@ -151,34 +151,42 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
         ],
         default=MeshType.TRIMESH,
     )
-    bitmap: bpy.props.StringProperty(name="Main Texture")
-    bitmap2: bpy.props.StringProperty(name="Lightmap")
-    alpha: bpy.props.FloatProperty(name="Alpha", default=1.0, min=0.0, max=1.0)
-    render: bpy.props.BoolProperty(
-        name="Render", description="This object should be rendered", default=True
+    bitmap: bpy.props.StringProperty(name="Main Texture")  # pyright: ignore[reportInvalidTypeForm]
+    bitmap2: bpy.props.StringProperty(name="Lightmap")  # pyright: ignore[reportInvalidTypeForm]
+    alpha: bpy.props.FloatProperty(name="Alpha", default=1.0, min=0.0, max=1.0)  # pyright: ignore[reportInvalidTypeForm]
+    render: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Render",
+        description="This object should be rendered",
+        default=True,
     )
-    shadow: bpy.props.BoolProperty(
-        name="Shadow", description="This object should cast shadows", default=True
+    shadow: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Shadow",
+        description="This object should cast shadows",
+        default=True,
     )
-    lightmapped: bpy.props.BoolProperty(
-        name="Lightmapped", description="This object is lightmapped"
+    lightmapped: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Lightmapped",
+        description="This object is lightmapped",
     )
-    beaming: bpy.props.BoolProperty(
-        name="Beaming", description="This object should cast beams"
+    beaming: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Beaming",
+        description="This object should cast beams",
     )
-    tangentspace: bpy.props.BoolProperty(
-        name="Tangent Space", description="This object is normal mapped"
+    tangentspace: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Tangent Space",
+        description="This object is normal mapped",
     )
-    rotatetexture: bpy.props.BoolProperty(
+    rotatetexture: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Rotate Texture",
         description="Texture should be automatically rotated to prevent seams",
     )
-    background_geometry: bpy.props.BoolProperty(
+    background_geometry: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Background Geometry",
         description="This object is part of background geometry",
     )
     dirt_enabled: bpy.props.BoolProperty(
-        name="Dirt", description="Enable dirt (TSL only)"
+        name="Dirt",
+        description="Enable dirt (TSL only)",
     )
     dirt_texture: bpy.props.IntProperty(name="Dirt Texture", default=1)
     dirt_worldspace: bpy.props.IntProperty(name="Dirt World Space", default=1)
@@ -187,7 +195,8 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
         description="This object should be hidden in hologram mode (e.g., tongue)",
     )
     animateuv: bpy.props.BoolProperty(
-        name="Animate UV", description="Animate texture coordinates"
+        name="Animate UV",
+        description="Animate texture coordinates",
     )
     uvdirectionx: bpy.props.FloatProperty(name="X Direction", default=1.0)
     uvdirectiony: bpy.props.FloatProperty(name="Y Direction")
@@ -216,56 +225,73 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
         max=1.0,
     )
     lytposition: bpy.props.FloatVectorProperty(
-        name="LYT Position", description="Room position in LYT file", subtype="XYZ"
+        name="LYT Position",
+        description="Room position in LYT file",
+        subtype="XYZ",
     )
 
     # Danglymesh
-    period: bpy.props.FloatProperty(name="Period", default=1.0, min=0.0, max=32.0)
-    tightness: bpy.props.FloatProperty(name="Tightness", default=1.0, min=0.0, max=32.0)
-    displacement: bpy.props.FloatProperty(
-        name="Displacement", default=0.5, min=0.0, max=32.0
+    period: bpy.props.FloatProperty(name="Period", default=1.0, min=0.0, max=32.0)  # pyright: ignore[reportInvalidTypeForm]
+    tightness: bpy.props.FloatProperty(name="Tightness", default=1.0, min=0.0, max=32.0)  # pyright: ignore[reportInvalidTypeForm]
+    displacement: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Displacement",
+        default=0.5,
+        min=0.0,
+        max=32.0,
     )
-    constraints: bpy.props.StringProperty(
+    constraints: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Constraints",
         description="Name of the vertex group to store constraints in",
     )
 
     # Light
-    ambientonly: bpy.props.BoolProperty(name="Ambient Only")
-    lightpriority: bpy.props.IntProperty(
-        name="Light Priority", default=3, soft_min=1, soft_max=5
+    ambientonly: bpy.props.BoolProperty(name="Ambient Only")  # pyright: ignore[reportInvalidTypeForm]
+    lightpriority: bpy.props.IntProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Light Priority",
+        default=3,
+        soft_min=1,
+        soft_max=5,
     )
-    fadinglight: bpy.props.BoolProperty(name="Fading Light")
-    dynamictype: bpy.props.IntProperty(
+    fadinglight: bpy.props.BoolProperty(name="Fading Light")  # pyright: ignore[reportInvalidTypeForm]
+    dynamictype: bpy.props.IntProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Dynamic Type",
         description="This light should affect: 0 - ???\n1 - Area geometry AND dynamic objects\n2 - Dynamic objects ONLY",
         min=0,
         max=2,
     )
-    affectdynamic: bpy.props.BoolProperty(
-        name="Affect Dynamic", description="This light should affect dynamic objects"
+    affectdynamic: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Affect Dynamic",
+        description="This light should affect dynamic objects",
     )
-    lensflares: bpy.props.BoolProperty(name="Lens Flares")
-    flareradius: bpy.props.FloatProperty(name="Flare Radius", min=0.0, max=1e6)
-    flare_list: bpy.props.CollectionProperty(type=LensFlarePropertyGroup)
-    flare_list_idx: bpy.props.IntProperty()
+    lensflares: bpy.props.BoolProperty(name="Lens Flares")  # pyright: ignore[reportInvalidTypeForm]
+    flareradius: bpy.props.FloatProperty(name="Flare Radius", min=0.0, max=1e6)  # pyright: ignore[reportInvalidTypeForm]
+    flare_list: bpy.props.CollectionProperty(type=LensFlarePropertyGroup)  # pyright: ignore[reportInvalidTypeForm]
+    flare_list_idx: bpy.props.IntProperty()  # pyright: ignore[reportInvalidTypeForm]
     radius: bpy.props.FloatProperty(
-        name="Radius", min=0.0, max=1e6, update=on_update_light_power
+        name="Radius",  # pyright: ignore[reportInvalidTypeForm]
+        min=0.0,
+        max=1e6,
+        update=on_update_light_power,
     )
     multiplier: bpy.props.FloatProperty(
-        name="Multiplier", default=1.0, min=0.0, max=10.0, update=on_update_light_power
+        name="Multiplier",  # pyright: ignore[reportInvalidTypeForm]
+        default=1.0,
+        min=0.0,
+        max=10.0,
+        update=on_update_light_power,
     )
-    negativelight: bpy.props.BoolProperty(
-        name="Negative Light", update=on_update_light_power
+    negativelight: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Negative Light",
+        update=on_update_light_power,
     )
-    shadowradius: bpy.props.FloatProperty(
+    shadowradius: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Shadow Radius",
         description="Animated light shadow radius",
         default=0.0,
         min=0.0,
         max=1e6,
     )
-    verticaldisplacement: bpy.props.FloatProperty(
+    verticaldisplacement: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Vertical Displacement",
         description="Animated light vertical displacement",
         default=0.0,
@@ -274,107 +300,167 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     )
 
     # Emitter
-    alphaend: bpy.props.FloatProperty(name="Alpha End", default=1.0, min=0.0, max=1.0)
-    alphastart: bpy.props.FloatProperty(
-        name="Alpha Start", default=1.0, min=0.0, max=1.0
+    alphaend: bpy.props.FloatProperty(name="Alpha End", default=1.0, min=0.0, max=1.0)  # pyright: ignore[reportInvalidTypeForm]
+    alphastart: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Alpha Start",
+        default=1.0,
+        min=0.0,
+        max=1.0,
     )
-    birthrate: bpy.props.FloatProperty(
-        name="Birthrate", default=10.0, soft_min=-90.0, soft_max=400.0
+    birthrate: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Birthrate",
+        default=10.0,
+        soft_min=-90.0,
+        soft_max=400.0,
     )
-    bounce_co: bpy.props.FloatProperty(name="Bounce Coefficient", min=0.0, max=1.0)
-    combinetime: bpy.props.FloatProperty(name="Combine Time", min=0.0, soft_max=3.0)
-    drag: bpy.props.FloatProperty(
-        name="Drag", description="Drag (m/s²)", min=0.0, max=1.0
+    bounce_co: bpy.props.FloatProperty(name="Bounce Coefficient", min=0.0, max=1.0)  # pyright: ignore[reportInvalidTypeForm]
+    combinetime: bpy.props.FloatProperty(name="Combine Time", min=0.0, soft_max=3.0)  # pyright: ignore[reportInvalidTypeForm]
+    drag: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Drag",
+        description="Drag (m/s²)",
+        min=0.0,
+        max=1.0,
     )
-    fps: bpy.props.FloatProperty(
+    fps: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="FPS",
         description="Frames Per Second",
         default=24.0,
         min=0.0,
         soft_max=60.0,
     )
-    frameend: bpy.props.FloatProperty(name="End Frame", min=0.0, soft_max=255.0)
-    framestart: bpy.props.FloatProperty(name="Start Frame", min=0.0, soft_max=255.0)
-    grav: bpy.props.FloatProperty(
-        name="Gravity", description="Gravity (m/s²)", min=0.0, soft_max=10.0
+    frameend: bpy.props.FloatProperty(name="End Frame", min=0.0, soft_max=255.0)  # pyright: ignore[reportInvalidTypeForm]
+    framestart: bpy.props.FloatProperty(name="Start Frame", min=0.0, soft_max=255.0)  # pyright: ignore[reportInvalidTypeForm]
+    grav: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Gravity",
+        description="Gravity (m/s²)",
+        min=0.0,
+        soft_max=10.0,
     )
-    lifeexp: bpy.props.FloatProperty(
-        name="Life Expectancy", default=1.0, soft_min=-1.0, soft_max=92.0
+    lifeexp: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Life Expectancy",
+        default=1.0,
+        soft_min=-1.0,
+        soft_max=92.0,
     )
-    mass: bpy.props.FloatProperty(name="Mass", default=1.0, soft_min=-0.5, soft_max=9.0)
-    p2p_bezier2: bpy.props.FloatProperty(name="Bezier 2", min=0.0, soft_max=0.2)
-    p2p_bezier3: bpy.props.FloatProperty(name="Bezier 3", min=0.0, soft_max=3.0)
-    particlerot: bpy.props.FloatProperty(
-        name="Particle Rotation", soft_min=-5.0, soft_max=720.0
+    mass: bpy.props.FloatProperty(name="Mass", default=1.0, soft_min=-0.5, soft_max=9.0)  # pyright: ignore[reportInvalidTypeForm]
+    p2p_bezier2: bpy.props.FloatProperty(name="Bezier 2", min=0.0, soft_max=0.2)  # pyright: ignore[reportInvalidTypeForm]
+    p2p_bezier3: bpy.props.FloatProperty(name="Bezier 3", min=0.0, soft_max=3.0)  # pyright: ignore[reportInvalidTypeForm]
+    particlerot: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Particle Rotation",
+        soft_min=-5.0,
+        soft_max=720.0,
     )
-    randvel: bpy.props.FloatProperty(name="Random Velocity", min=0.0, soft_max=20.0)
-    sizestart: bpy.props.FloatProperty(
-        name="Size Start", default=1.0, min=0.0, soft_max=255.0
+    randvel: bpy.props.FloatProperty(name="Random Velocity", min=0.0, soft_max=20.0)  # pyright: ignore[reportInvalidTypeForm]
+    sizestart: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Size Start",
+        default=1.0,
+        min=0.0,
+        soft_max=255.0,
     )
-    sizeend: bpy.props.FloatProperty(
-        name="Size End", default=1.0, min=0.0, soft_max=255.0
+    sizeend: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Size End",
+        default=1.0,
+        min=0.0,
+        soft_max=255.0,
     )
-    sizestart_y: bpy.props.FloatProperty(name="Y Size Start", min=0.0, soft_max=40.0)
-    sizeend_y: bpy.props.FloatProperty(name="Y Size End", min=0.0, soft_max=60.0)
-    spread: bpy.props.FloatProperty(name="Spread", min=0.0, soft_max=360.0)
-    threshold: bpy.props.FloatProperty(name="Threshold", min=0.0, max=1.0)
-    velocity: bpy.props.FloatProperty(name="Velocity", soft_min=-2.0, soft_max=200.0)
-    xsize: bpy.props.FloatProperty(name="Size X", min=0.0, soft_max=10000.0)
-    ysize: bpy.props.FloatProperty(name="Size Y", min=0.0, soft_max=10000.0)
-    blurlength: bpy.props.FloatProperty(
-        name="Blur Length", default=10.0, min=0.0, soft_max=10.0
+    sizestart_y: bpy.props.FloatProperty(name="Y Size Start", min=0.0, soft_max=40.0)  # pyright: ignore[reportInvalidTypeForm]
+    sizeend_y: bpy.props.FloatProperty(name="Y Size End", min=0.0, soft_max=60.0)  # pyright: ignore[reportInvalidTypeForm]
+    spread: bpy.props.FloatProperty(name="Spread", min=0.0, soft_max=360.0)  # pyright: ignore[reportInvalidTypeForm]
+    threshold: bpy.props.FloatProperty(name="Threshold", min=0.0, max=1.0)  # pyright: ignore[reportInvalidTypeForm]
+    velocity: bpy.props.FloatProperty(name="Velocity", soft_min=-2.0, soft_max=200.0)  # pyright: ignore[reportInvalidTypeForm]
+    xsize: bpy.props.FloatProperty(name="Size X", min=0.0, soft_max=10000.0)  # pyright: ignore[reportInvalidTypeForm]
+    ysize: bpy.props.FloatProperty(name="Size Y", min=0.0, soft_max=10000.0)  # pyright: ignore[reportInvalidTypeForm]
+    blurlength: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Blur Length",
+        default=10.0,
+        min=0.0,
+        soft_max=10.0,
     )
-    lightningdelay: bpy.props.FloatProperty(
+    lightningdelay: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Lightning Delay",
         description="Lighting delay (seconds)",
         min=0.0,
         soft_max=0.15,
     )
-    lightningradius: bpy.props.FloatProperty(
+    lightningradius: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
         name="Lightning Radius",
         description="Lighting radius (meters)",
         min=0.0,
         soft_max=0.5,
     )
-    lightningsubdiv: bpy.props.FloatProperty(
-        name="Lightning Subdivisions", min=0.0, soft_max=10.0
+    lightningsubdiv: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Lightning Subdivisions",
+        min=0.0,
+        soft_max=10.0,
     )
-    lightningscale: bpy.props.FloatProperty(
-        name="Lightning Scale", default=1.0, min=0.0, max=1.0
+    lightningscale: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Lightning Scale",
+        default=1.0,
+        min=0.0,
+        max=1.0,
     )
-    lightningzigzag: bpy.props.FloatProperty(
-        name="Lightning Zig-Zag", min=0.0, soft_max=25
+    lightningzigzag: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Lightning Zig-Zag",
+        min=0.0,
+        soft_max=25,
     )
-    alphamid: bpy.props.FloatProperty(
-        name="Alpha Mid", default=1.0, soft_min=-100.0, soft_max=100.0
+    alphamid: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Alpha Mid",
+        default=1.0,
+        soft_min=-100.0,
+        soft_max=100.0,
     )
-    percentstart: bpy.props.FloatProperty(
-        name="Percent Start", default=1.0, min=0.0, max=1.0
+    percentstart: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Percent Start",
+        default=1.0,
+        min=0.0,
+        max=1.0,
     )
-    percentmid: bpy.props.FloatProperty(
-        name="Percent Mid", default=1.0, min=0.0, max=1.0
+    percentmid: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Percent Mid",
+        default=1.0,
+        min=0.0,
+        max=1.0,
     )
-    percentend: bpy.props.FloatProperty(
-        name="Percent End", default=1.0, min=0.0, max=1.0
+    percentend: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Percent End",
+        default=1.0,
+        min=0.0,
+        max=1.0,
     )
-    sizemid: bpy.props.FloatProperty(
-        name="sizeMid", default=1.0, min=0.0, soft_max=255.0
+    sizemid: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="sizeMid",
+        default=1.0,
+        min=0.0,
+        soft_max=255.0,
     )
-    sizemid_y: bpy.props.FloatProperty(name="sizeMid_y", min=0.0, soft_max=50.0)
-    randombirthrate: bpy.props.FloatProperty(
-        name="Random Birthrate", default=10.0, soft_min=-40.0, soft_max=100.0
+    sizemid_y: bpy.props.FloatProperty(name="sizeMid_y", min=0.0, soft_max=50.0)  # pyright: ignore[reportInvalidTypeForm]
+    randombirthrate: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Random Birthrate",
+        default=10.0,
+        soft_min=-40.0,
+        soft_max=100.0,
     )
-    targetsize: bpy.props.FloatProperty(
-        name="Target Size", default=1.0, min=0.0, soft_max=2.0
+    targetsize: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Target Size",
+        default=1.0,
+        min=0.0,
+        soft_max=2.0,
     )
-    numcontrolpts: bpy.props.FloatProperty(
-        name="Number of Control Points", min=0.0, max=1.0
+    numcontrolpts: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Number of Control Points",
+        min=0.0,
+        max=1.0,
     )
     controlptradius: bpy.props.FloatProperty(
-        name="Control Point Radius", min=0.0, soft_max=2.0
+        name="Control Point Radius",
+        min=0.0,
+        soft_max=2.0,
     )
     controlptdelay: bpy.props.FloatProperty(
-        name="Control Point Delay", min=0.0, soft_max=22.0
+        name="Control Point Delay",
+        min=0.0,
+        soft_max=22.0,
     )
     tangentspread: bpy.props.FloatProperty(
         name="Tangent Spread",
@@ -406,10 +492,14 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     )
     deadspace: bpy.props.FloatProperty(name="Dead Space", min=0.0)
     blastradius: bpy.props.FloatProperty(
-        name="Blast Radius", description="Blast radius (meters)", min=0.0
+        name="Blast Radius",
+        description="Blast radius (meters)",
+        min=0.0,
     )
     blastlength: bpy.props.FloatProperty(
-        name="Blast Length", description="Blast length (seconds)", min=0.0
+        name="Blast Length",
+        description="Blast length (seconds)",
+        min=0.0,
     )
     num_branches: bpy.props.IntProperty(name="Number of Branches")
     controlptsmoothing: bpy.props.FloatProperty(name="Control Point Smoothing")
@@ -418,44 +508,47 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     spawntype: bpy.props.EnumProperty(
         name="Spawn",
         description="Spawn type",
-        items=[("Normal", "Normal", "", 0), ("Trail", "Trail", "", 1)],
-        default="Normal",
+        items=[
+            (SpawnType.NORMAL, "Normal", "", 0),
+            (SpawnType.TRAIL, "Trail", "", 1),
+        ],
+        default=SpawnType.NORMAL,
     )
     update: bpy.props.EnumProperty(
         name="Update",
         description="Update type",
         items=[
-            ("NONE", "", "", 0),
-            ("Fountain", "Fountain", "", 1),
-            ("Single", "Single", "", 2),
-            ("Explosion", "Explosion", "", 3),
-            ("Lightning", "Lightning", "", 4),
+            (UpdateType.NONE, "", "", 0),
+            (UpdateType.FOUNTAIN, "Fountain", "", 1),
+            (UpdateType.SINGLE, "Single", "", 2),
+            (UpdateType.EXPLOSION, "Explosion", "", 3),
+            (UpdateType.LIGHTNING, "Lightning", "", 4),
         ],
-        default="NONE",
+        default=UpdateType.NONE,
     )
     emitter_render: bpy.props.EnumProperty(
         name="Render",
         items=[
-            ("NONE", "", "", 0),
-            ("Normal", "Normal", "", 1),
-            ("Linked", "Linked", "", 2),
-            ("Billboard_to_Local_Z", "Billboard to local Z", "", 3),
-            ("Billboard_to_World_Z", "Billboard to world Z", "", 4),
-            ("Aligned_to_World_Z", "Aligned to world Z", "", 5),
-            ("Aligned_to_Particle_Dir", "Aligned to particle dir.", "", 6),
-            ("Motion_Blur", "Motion Blur", "", 7),
+            (EmitterRenderType.NONE, "", "", 0),
+            (EmitterRenderType.NORMAL, "Normal", "", 1),
+            (EmitterRenderType.LINKED, "Linked", "", 2),
+            (EmitterRenderType.BILLBOARD_TO_LOCAL_Z, "Billboard to local Z", "", 3),
+            (EmitterRenderType.BILLBOARD_TO_WORLD_Z, "Billboard to world Z", "", 4),
+            (EmitterRenderType.ALIGNED_TO_WORLD_Z, "Aligned to world Z", "", 5),
+            (EmitterRenderType.ALIGNED_TO_PARTICLE_DIR, "Aligned to particle dir.", "", 6),
+            (EmitterRenderType.MOTION_BLUR, "Motion Blur", "", 7),
         ],
-        default="NONE",
+        default=EmitterRenderType.NONE,
     )
     blend: bpy.props.EnumProperty(
         name="Blend",
         items=[
-            ("NONE", "", "", 0),
-            ("Normal", "Normal", "", 1),
-            ("Punch-Through", "Punch-Through", "", 2),
-            ("Lighten", "Lighten", "", 3),
+            (BlendType.NONE, "", "", 0),
+            (BlendType.NORMAL, "Normal", "", 1),
+            (BlendType.PUNCH_THROUGH, "Punch-Through", "", 2),
+            (BlendType.LIGHTEN, "Lighten", "", 3),
         ],
-        default="NONE",
+        default=BlendType.NONE,
     )
     texture: bpy.props.StringProperty(name="Texture", maxlen=32)
     chunk_name: bpy.props.StringProperty(name="Chunk Name", maxlen=16)
@@ -464,13 +557,18 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     renderorder: bpy.props.IntProperty(name="Render Order", min=0)
     frame_blending: bpy.props.BoolProperty(name="Frame Blending")
     depth_texture_name: bpy.props.StringProperty(
-        name="Depth Texture Name", default=NULL, maxlen=32
+        name="Depth Texture Name",
+        default=NULL,
+        maxlen=32,
     )
     p2p: bpy.props.BoolProperty(name="P2P")
     p2p_type: bpy.props.EnumProperty(
         name="Type",
-        items=[("Bezier", "Bezier", "Bezier", 0), ("Gravity", "Gravity", "Gravity", 1)],
-        default="Bezier",
+        items=[
+            (P2PType.BEZIER, "Bezier", "Bezier", 0),
+            (P2PType.GRAVITY, "Gravity", "Gravity", 1),
+        ],
+        default=P2PType.BEZIER,
     )
     affected_by_wind: bpy.props.BoolProperty(name="Affected By Wind")
     tinted: bpy.props.BoolProperty(
@@ -494,7 +592,6 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
         max=0xFFFF,
     )
     detonate: bpy.props.FloatProperty(name="Detonate", default=0.0)
-
     # Path Points
     path_connection_list: bpy.props.CollectionProperty(type=PathConnectionPropertyGroup)
     path_connection_idx: bpy.props.IntProperty()

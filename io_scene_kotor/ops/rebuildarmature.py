@@ -33,14 +33,22 @@ class KB_OT_rebuild_armature(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        if not context.object or not is_mdl_root(context.object):
+        obj: bpy.types.Object | None = context.object
+        if obj is None or not is_mdl_root(obj):
             cls.poll_message_set(context, "Select a KotOR model object")
             return False
-        if context.object.kb.classification != Classification.CHARACTER:
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
+        if kb.classification != Classification.CHARACTER:
             cls.poll_message_set(context, "Select a KotOR character model")
             return False
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        armature.rebuild_armature(context.object)
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            self.report({"ERROR"}, "No object selected")
+            return {"CANCELLED"}
+        armature.rebuild_armature(obj)
         return {"FINISHED"}

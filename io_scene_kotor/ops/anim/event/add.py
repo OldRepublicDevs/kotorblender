@@ -15,6 +15,7 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
@@ -29,18 +30,26 @@ class KB_OT_add_anim_event(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     @classmethod
-    def poll(cls, context):
-        if not context.object or not is_mdl_root(context.object):
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object | None = context.object
+        if obj is None or not is_mdl_root(obj):
             cls.poll_message_set(context, "Select a KotOR model object")
             return False
         return True
 
-    def execute(self, context):
-        obj = context.object
-        anim_list = obj.kb.anim_list
-        anim_list_idx = obj.kb.anim_list_idx
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            self.report({"ERROR"}, "No object selected")
+            return {"CANCELLED"}
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            self.report({"ERROR"}, "Object.kb is None")
+            return {"CANCELLED"}
+        anim_list = kb.anim_list
+        anim_list_idx = kb.anim_list_idx
 
-        if anim_list_idx < 0 or anim_list_idx > len(anim_list):
+        if anim_list_idx < 0 or anim_list_idx >= len(anim_list):
             return {"CANCELLED"}
 
         anim = anim_list[anim_list_idx]

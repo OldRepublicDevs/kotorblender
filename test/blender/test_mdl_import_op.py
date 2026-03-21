@@ -31,12 +31,16 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 if WORKSPACE_ROOT not in sys.path:
     sys.path.insert(0, WORKSPACE_ROOT)
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
 
-MODULE = "bl_ext.user_default.io_scene_kotor"
+from test_helpers import get_addon_module_name
+
+MODULE = get_addon_module_name()
 if MODULE not in bpy.context.preferences.addons:
     bpy.ops.preferences.addon_enable(module=MODULE)
 
-from io_scene_kotor.constants import PACKAGE_NAME, DummyType, Classification, ExportOptions
+from io_scene_kotor.constants import DummyType, Classification, ExportOptions
 from io_scene_kotor.io.mdl import save_mdl
 from io_scene_kotor.utils import semicolon_separated_to_absolute_paths
 
@@ -85,7 +89,15 @@ def test_import_prefs_paths_resolve():
     """
     try:
         context = bpy.context
-        addon_preferences = context.preferences.addons[PACKAGE_NAME].preferences
+        addons = context.preferences.addons
+        addon_preferences = None
+        for key in (get_addon_module_name(), "bl_ext.user_default.io_scene_kotor", "io_scene_kotor"):
+            if key in addons:
+                addon_preferences = addons[key].preferences
+                break
+        if addon_preferences is None:
+            print("  FAIL test_import_prefs_paths_resolve: addon preferences not found")
+            return False
         working_dir = os.path.dirname(os.path.abspath(__file__))
 
         texture_paths = semicolon_separated_to_absolute_paths(

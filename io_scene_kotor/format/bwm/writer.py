@@ -15,17 +15,18 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 from mathutils import Vector
 
 from ...aabb import generate_tree
 from ...constants import NON_WALKABLE, DummyType, WalkmeshType
+from ...format.binwriter import BinaryWriter
+from ...format.mdl.types import *  # noqa: F403
 from ...scene.modelnode.aabb import AabbNode
 from ...scene.modelnode.dummy import DummyNode
 from ...scene.modelnode.trimesh import FaceList
-from ..binwriter import BinaryWriter
-from ..mdl.types import *
-from .types import *
+from .types import *  # noqa: F403
 
 
 class SimilarVertex:
@@ -86,21 +87,13 @@ class BwmWriter:
         self.save_perimeters()
 
     def peek_walkmesh(self):
-        self.bwm_type = (
-            BWM_TYPE_WOK
-            if self.walkmesh.walkmesh_type == WalkmeshType.WOK
-            else BWM_TYPE_PWK_DWK
-        )
-        self.geom_node = self.walkmesh.root_node.find_node(
-            lambda node: isinstance(node, AabbNode)
-        )
+        self.bwm_type = BWM_TYPE_WOK if self.walkmesh.walkmesh_type == WalkmeshType.WOK else BWM_TYPE_PWK_DWK
+        self.geom_node = self.walkmesh.root_node.find_node(lambda node: isinstance(node, AabbNode))
         self.use_node1 = self.walkmesh.root_node.find_node(
-            lambda node: isinstance(node, DummyNode)
-            and node.dummytype == DummyType.USE1
+            lambda node: isinstance(node, DummyNode) and node.dummytype == DummyType.USE1,
         )
         self.use_node2 = self.walkmesh.root_node.find_node(
-            lambda node: isinstance(node, DummyNode)
-            and node.dummytype == DummyType.USE2
+            lambda node: isinstance(node, DummyNode) and node.dummytype == DummyType.USE2,
         )
 
         self.peek_vertices()
@@ -195,14 +188,11 @@ class BwmWriter:
         face_indices = walkable_face_indices + non_walkable_face_indices
         for face_idx in face_indices:
             self.facelist.vertices.append(
-                [
-                    self.old_to_new_vert_idx[vert_idx]
-                    for vert_idx in self.geom_node.facelist.vertices[face_idx]
-                ]
+                [self.old_to_new_vert_idx[vert_idx] for vert_idx in self.geom_node.facelist.vertices[face_idx]],
             )
             self.facelist.materials.append(self.geom_node.facelist.materials[face_idx])
             self.facelist.normals.append(
-                self._mesh_normal_to_baked_space(self.geom_node.facelist.normals[face_idx])
+                self._mesh_normal_to_baked_space(self.geom_node.facelist.normals[face_idx]),
             )
 
     def peek_aabbs(self):
@@ -247,7 +237,7 @@ class BwmWriter:
                     most_significant_plane,
                     child_idx1,
                     child_idx2,
-                )
+                ),
             )
 
     def peek_edges(self):
@@ -256,10 +246,7 @@ class BwmWriter:
             self.adjacent_edges.append([-1, -1, -1])
         for face_idx in range(self.num_walkable_faces):
             face = self.facelist.vertices[face_idx]
-            edges = [
-                tuple(sorted(edge))
-                for edge in [(face[0], face[1]), (face[1], face[2]), (face[2], face[0])]
-            ]
+            edges = [tuple(sorted(edge)) for edge in [(face[0], face[1]), (face[1], face[2]), (face[2], face[0])]]
             for other_face_idx in range(face_idx + 1, self.num_walkable_faces):
                 other_face = self.facelist.vertices[other_face_idx]
                 other_edges = [
@@ -301,12 +288,8 @@ class BwmWriter:
                     adj_edge_idx = self.adjacent_edges[next_face][next_edge]
                     if adj_edge_idx == -1:
                         edge_idx = 3 * next_face + next_edge
-                        if not edge_idx in visited_edges:
-                            transition = (
-                                self.geom_node.roomlinks[edge_idx]
-                                if edge_idx in self.geom_node.roomlinks
-                                else -1
-                            )
+                        if edge_idx not in visited_edges:
+                            transition = self.geom_node.roomlinks[edge_idx] if edge_idx in self.geom_node.roomlinks else -1
                             self.outer_edges.append((edge_idx, transition))
                             visited_edges.add(edge_idx)
                             next_edge = (next_edge + 1) % 3
@@ -324,16 +307,8 @@ class BwmWriter:
         position = (0.0, 0.0, 0.0)
 
         if self.walkmesh.walkmesh_type == WalkmeshType.DWK:
-            o1 = (
-                (self.use_node1.from_root @ Vector((0.0, 0.0, 0.0)))
-                if self.use_node1
-                else Vector((0.0, 0.0, 0.0))
-            )
-            o2 = (
-                (self.use_node2.from_root @ Vector((0.0, 0.0, 0.0)))
-                if self.use_node2
-                else Vector((0.0, 0.0, 0.0))
-            )
+            o1 = (self.use_node1.from_root @ Vector((0.0, 0.0, 0.0))) if self.use_node1 else Vector((0.0, 0.0, 0.0))
+            o2 = (self.use_node2.from_root @ Vector((0.0, 0.0, 0.0))) if self.use_node2 else Vector((0.0, 0.0, 0.0))
             abs_use_vec1 = [o1.x, o1.y, o1.z]
             abs_use_vec2 = [o2.x, o2.y, o2.z]
         else:

@@ -16,23 +16,29 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+from __future__ import annotations
+
+from typing import Any
+
+import bpy
+
 from ...constants import MeshType, NodeType
-from .trimesh import TrimeshNode
+from .trimesh import EdgeLoopMesh, TrimeshNode
 
 
 class SkinmeshNode(TrimeshNode):
-    def __init__(self, name="UNNAMED"):
+    def __init__(self, name: str = "UNNAMED") -> None:
         TrimeshNode.__init__(self, name)
-        self.nodetype = NodeType.SKIN
-        self.meshtype = MeshType.SKIN
+        self.nodetype: str = NodeType.SKIN
+        self.meshtype: str = MeshType.SKIN
 
-    def apply_edge_loop_mesh(self, mesh, obj):
-        TrimeshNode.apply_edge_loop_mesh(self, mesh, obj)
+    def apply_edge_loop_mesh(self, mesh: object, obj: bpy.types.Object) -> None:  # type: ignore[override]
+        TrimeshNode.apply_edge_loop_mesh(self, mesh, obj)  # pyright: ignore[reportArgumentType]
         self.apply_bone_weights(mesh, obj)
 
-    def apply_bone_weights(self, mesh, obj):
+    def apply_bone_weights(self, mesh: object, obj: bpy.types.Object) -> None:
         groups = dict()
-        for vert_idx, vert_weights in enumerate(mesh.weights):
+        for vert_idx, vert_weights in enumerate(mesh.weights):  # pyright: ignore[reportAttributeAccessIssue]
             for bone_name, weight in vert_weights:
                 if bone_name in groups:
                     groups[bone_name].add([vert_idx], weight, "REPLACE")
@@ -41,14 +47,23 @@ class SkinmeshNode(TrimeshNode):
                     group.add([vert_idx], weight, "REPLACE")
                     groups[bone_name] = group
 
-    def unapply_edge_loop_mesh(self, obj):
+    def unapply_edge_loop_mesh(
+        self,
+        obj: bpy.types.Object,
+    ) -> EdgeLoopMesh:
         mesh = TrimeshNode.unapply_edge_loop_mesh(self, obj)
         self.unapply_bone_weights(obj, mesh)
         return mesh
 
-    def unapply_bone_weights(self, obj, mesh):
+    def unapply_bone_weights(
+        self,
+        obj: bpy.types.Object,
+        mesh: Any,
+    ) -> None:
         mesh.weights = [[]] * len(mesh.verts)
         for vert_idx in range(len(mesh.verts)):
+            assert obj.data is not None, "Object data is None"
+            assert isinstance(obj.data, bpy.types.Mesh), "Object data is not a mesh"
             vert = obj.data.vertices[vert_idx]
             vert_weights = []
             for group_weight in vert.groups:

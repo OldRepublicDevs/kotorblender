@@ -23,6 +23,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Bundle PyKotor wheels
+        run: |
+          python helper_scripts/makefile_fs.py clean-whl io_scene_kotor/wheels
+          python -m pip install -U pip
+          python -m pip wheel "pykotor==2.3.1" -w io_scene_kotor/wheels
+          python helper_scripts/sync_extension_wheels.py
+
       - name: Cache Blender
         id: cache-blender
         uses: actions/cache@v4
@@ -41,10 +52,7 @@ jobs:
 
       - name: Build extension package
         run: |
-          mkdir -p build
-          "$BLENDER_DIR/blender" --command extension build \
-            --source-dir ./io_scene_kotor \
-            --output-dir ./build
+          SKIP_WHEEL_DOWNLOAD=1 BLENDER="$BLENDER_DIR/blender" make build
           PKG=$(ls build/*.zip | head -1)
           echo "PACKAGE=$PKG" >> "$GITHUB_ENV"
           echo "Package built: $PKG ($(du -sh "$PKG" | cut -f1))"

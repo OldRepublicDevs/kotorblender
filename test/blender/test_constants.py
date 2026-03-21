@@ -126,7 +126,7 @@ def test_non_walkable_list():
 def test_classification_values():
     """Classification enum has the expected string constants."""
     expected = {"OTHER", "TILE", "CHARACTER", "DOOR", "EFFECT", "GUI", "LIGHTSABER", "PLACEABLE", "FLYER"}
-    actual = {getattr(Classification, k) for k in dir(Classification) if not k.startswith("_")}
+    actual = {e.value for e in Classification}
     ok = expected == actual
     if ok:
         print(f"  PASS test_classification_values ({len(actual)} values)")
@@ -138,7 +138,7 @@ def test_classification_values():
 def test_dummy_type_values():
     """DummyType enum has all expected string constants."""
     expected = {"NONE", "MDLROOT", "PWKROOT", "DWKROOT", "PTHROOT", "REFERENCE", "PATHPOINT", "USE1", "USE2"}
-    actual = {getattr(DummyType, k) for k in dir(DummyType) if not k.startswith("_")}
+    actual = {e.value for e in DummyType}
     ok = expected == actual
     if ok:
         print(f"  PASS test_dummy_type_values ({len(actual)} values)")
@@ -150,7 +150,7 @@ def test_dummy_type_values():
 def test_mesh_type_values():
     """MeshType enum has all expected string constants."""
     expected = {"TRIMESH", "DANGLYMESH", "LIGHTSABER", "SKIN", "AABB", "EMITTER"}
-    actual = {getattr(MeshType, k) for k in dir(MeshType) if not k.startswith("_")}
+    actual = {e.value for e in MeshType}
     ok = expected == actual
     if ok:
         print(f"  PASS test_mesh_type_values ({len(actual)} values)")
@@ -161,8 +161,19 @@ def test_mesh_type_values():
 
 def test_node_type_values():
     """NodeType enum has all expected string constants."""
-    expected = {"DUMMY", "REFERENCE", "TRIMESH", "DANGLYMESH", "SKIN", "EMITTER", "LIGHT", "AABB", "LIGHTSABER"}
-    actual = {getattr(NodeType, k) for k in dir(NodeType) if not k.startswith("_")}
+    expected = {
+        "DUMMY",
+        "REFERENCE",
+        "TRIMESH",
+        "DANGLYMESH",
+        "SKIN",
+        "EMITTER",
+        "LIGHT",
+        "AABB",
+        "LIGHTSABER",
+        "UNDEFINED",
+    }
+    actual = {e.value for e in NodeType}
     ok = expected == actual
     if ok:
         print(f"  PASS test_node_type_values ({len(actual)} values)")

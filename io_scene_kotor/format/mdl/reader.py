@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 from mathutils import Matrix, Quaternion, Vector
 
 from ...constants import NULL, NodeType
+from ...format.binreader import BinaryReader
 from ...scene.animation import Animation
 from ...scene.animnode import AnimationNode
 from ...scene.model import Model
@@ -39,11 +40,11 @@ from ...scene.modelnode.reference import ReferenceNode
 from ...scene.modelnode.skinmesh import SkinmeshNode
 from ...scene.modelnode.trimesh import FaceList, TrimeshNode
 from ...utils import logger
-from ..binreader import BinaryReader
+
 from .types import *
 
 if TYPE_CHECKING:
-    from io_scene_kotor.scene.modelnode.base import BaseNode
+    from ...scene.modelnode.base import BaseNode
 
 MDL_OFFSET = 12
 
@@ -131,7 +132,7 @@ class MdlReader:
 
         self.model_type = self.mdl.read_uint8()
         if self.model_type != 2:
-            raise RuntimeError("Invalid model type: expected=2, actual={}".format(self.model_type))
+            raise RuntimeError(f"Invalid model type: expected=2, actual={self.model_type}")
 
         self.mdl.skip(3)  # padding
 
@@ -157,7 +158,9 @@ class MdlReader:
 
         mdx_size = self.mdl.read_uint32()
         if mdx_size != self.mdx_size:
-            raise RuntimeError("MDX size mismatch: expected={}, actual={}".format(self.mdx_size, mdx_size))
+            raise RuntimeError(
+                f"MDX size mismatch: expected={self.mdx_size}, actual={mdx_size}",
+            )
 
         _mdx_offset = self.mdl.read_uint32()
         self.name_arr = self.get_array_def()
@@ -193,7 +196,9 @@ class MdlReader:
         children_arr = self.get_array_def()
 
         if name_index >= len(self.names):
-            raise RuntimeError("Node name index out of range: index={}, count={}".format(name_index, len(self.names)))
+            raise RuntimeError(
+                f"Node name index out of range: index={name_index}, count={len(self.names)}",
+            )
         name = self.names[name_index]
         self.node_names.append(name)
 
@@ -223,7 +228,9 @@ class MdlReader:
         controller_data_arr = self.get_array_def()
 
         if name_index >= len(self.names):
-            raise RuntimeError("Node name index out of range: index={}, count={}".format(name_index, len(self.names)))
+            raise RuntimeError(
+                f"Node name index out of range: index={name_index}, count={len(self.names)}",
+            )
         name = self.names[name_index]
         node_type: str = self.get_node_type(type_flags)
         node: BaseNode = self.new_node(name, node_type)
@@ -238,12 +245,20 @@ class MdlReader:
         node.export_order = export_order
         node.position = tuple(position)
         node.orientation = tuple(orientation)
-        node.from_root = node.from_root @ Matrix.Translation(Vector(position)) @ Quaternion(orientation).to_matrix().to_4x4()
+        node.from_root = (
+            node.from_root
+            @ Matrix.Translation(Vector(position))
+            @ Quaternion(orientation).to_matrix().to_4x4()
+        )
 
         if offset == self.off_anim_root and self.model:
             self.model.animroot = name
 
         if type_flags & NODE_LIGHT:
+            if not isinstance(node, LightNode):
+                raise TypeError(
+                    f"Expected LightNode for NODE_LIGHT flag, got {type(node).__name__}",
+                )
             flare_radius = self.mdl.read_float()
             unknown_arr = self.get_array_def()
             flare_size_arr = self.get_array_def()
@@ -258,17 +273,21 @@ class MdlReader:
             flare = self.mdl.read_uint32()
             fading_light = self.mdl.read_uint32()
 
-            node.shadow = shadow  # pyright: ignore[reportAttributeAccessIssue]
-            node.lightpriority = light_priority  # pyright: ignore[reportAttributeAccessIssue]
-            node.ambientonly = ambient_only  # pyright: ignore[reportAttributeAccessIssue]
-            node.dynamictype = dynamic_type  # pyright: ignore[reportAttributeAccessIssue]
-            node.affectdynamic = affect_dynamic  # pyright: ignore[reportAttributeAccessIssue]
-            node.fadinglight = fading_light  # pyright: ignore[reportAttributeAccessIssue]
-            node.lensflares = flare  # pyright: ignore[reportAttributeAccessIssue]
-            node.flareradius = flare_radius  # pyright: ignore[reportAttributeAccessIssue]
-            node.flare_list = FlareList()  # pyright: ignore[reportAttributeAccessIssue]
+            node.shadow = shadow
+            node.lightpriority = light_priority
+            node.ambientonly = ambient_only
+            node.dynamictype = dynamic_type
+            node.affectdynamic = affect_dynamic
+            node.fadinglight = fading_light
+            node.lensflares = flare
+            node.flareradius = flare_radius
+            node.flare_list = FlareList()
 
         if type_flags & NODE_EMITTER:
+            if not isinstance(node, EmitterNode):
+                raise TypeError(
+                    f"Expected EmitterNode for NODE_EMITTER flag, got {type(node).__name__}",
+                )
             dead_space = self.mdl.read_float()
             blast_radius = self.mdl.read_float()
             blast_length = self.mdl.read_float()
@@ -291,46 +310,54 @@ class MdlReader:
             flags = self.mdl.read_uint32()
 
             # object data
-            node.deadspace = dead_space  # pyright: ignore[reportAttributeAccessIssue]
-            node.blastradius = blast_radius  # pyright: ignore[reportAttributeAccessIssue]
-            node.blastlength = blast_length  # pyright: ignore[reportAttributeAccessIssue]
-            node.num_branches = num_branches  # pyright: ignore[reportAttributeAccessIssue]
-            node.controlptsmoothing = ctrl_point_smoothing  # pyright: ignore[reportAttributeAccessIssue]
-            node.xgrid = x_grid  # pyright: ignore[reportAttributeAccessIssue]
-            node.ygrid = y_grid  # pyright: ignore[reportAttributeAccessIssue]
-            node.spawntype = spawn_type  # pyright: ignore[reportAttributeAccessIssue]
-            node.update = update  # pyright: ignore[reportAttributeAccessIssue]
-            node.emitter_render = emitter_render  # pyright: ignore[reportAttributeAccessIssue]
-            node.blend = blend  # pyright: ignore[reportAttributeAccessIssue]
-            node.texture = texture  # pyright: ignore[reportAttributeAccessIssue]
-            node.chunk_name = chunk_name  # pyright: ignore[reportAttributeAccessIssue]
-            node.twosidedtex = twosided_tex != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.loop = loop != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.renderorder = render_order  # pyright: ignore[reportAttributeAccessIssue]
-            node.frame_blending = frame_blending != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.depth_texture_name = depth_texture_name if len(depth_texture_name) > 0 and depth_texture_name.lower() != "null" else NULL  # pyright: ignore[reportAttributeAccessIssue]
+            node.deadspace = dead_space
+            node.blastradius = blast_radius
+            node.blastlength = blast_length
+            node.num_branches = num_branches
+            node.controlptsmoothing = ctrl_point_smoothing
+            node.xgrid = x_grid
+            node.ygrid = y_grid
+            node.spawntype = spawn_type
+            node.update = update
+            node.emitter_render = emitter_render
+            node.blend = blend
+            node.texture = texture
+            node.chunk_name = chunk_name
+            node.twosidedtex = twosided_tex != 0
+            node.loop = loop != 0
+            node.renderorder = render_order
+            node.frame_blending = frame_blending != 0
+            node.depth_texture_name = (
+                depth_texture_name
+                if len(depth_texture_name) > 0 and depth_texture_name.lower() != "null"
+                else NULL
+            )
             # flags
-            node.p2p = flags & EMITTER_FLAG_P2P != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.p2p_sel = flags & EMITTER_FLAG_P2P_SEL != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.affected_by_wind = flags & EMITTER_FLAG_AFFECTED_WIND != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.tinted = flags & EMITTER_FLAG_TINTED != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.bounce = flags & EMITTER_FLAG_BOUNCE != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.random = flags & EMITTER_FLAG_RANDOM != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.inherit = flags & EMITTER_FLAG_INHERIT != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.inheritvel = flags & EMITTER_FLAG_INHERIT_VEL != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.inherit_local = flags & EMITTER_FLAG_INHERIT_LOCAL != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.splat = flags & EMITTER_FLAG_SPLAT != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.inherit_part = flags & EMITTER_FLAG_INHERIT_PART != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.depth_texture = flags & EMITTER_FLAG_DEPTH_TEXTURE != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.flag13 = flags & EMITTER_FLAG_13 != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.extra_flags = flags & ~EMITTER_FLAG_KNOWN_MASK  # pyright: ignore[reportAttributeAccessIssue]
+            node.p2p = flags & EMITTER_FLAG_P2P != 0
+            node.p2p_sel = flags & EMITTER_FLAG_P2P_SEL != 0
+            node.affected_by_wind = flags & EMITTER_FLAG_AFFECTED_WIND != 0
+            node.tinted = flags & EMITTER_FLAG_TINTED != 0
+            node.bounce = flags & EMITTER_FLAG_BOUNCE != 0
+            node.random = flags & EMITTER_FLAG_RANDOM != 0
+            node.inherit = flags & EMITTER_FLAG_INHERIT != 0
+            node.inheritvel = flags & EMITTER_FLAG_INHERIT_VEL != 0
+            node.inherit_local = flags & EMITTER_FLAG_INHERIT_LOCAL != 0
+            node.splat = flags & EMITTER_FLAG_SPLAT != 0
+            node.inherit_part = flags & EMITTER_FLAG_INHERIT_PART != 0
+            node.depth_texture = flags & EMITTER_FLAG_DEPTH_TEXTURE != 0
+            node.flag13 = flags & EMITTER_FLAG_13 != 0
+            node.extra_flags = flags & ~EMITTER_FLAG_KNOWN_MASK
 
         if type_flags & NODE_REFERENCE:
+            if not isinstance(node, ReferenceNode):
+                raise TypeError(
+                    f"Expected ReferenceNode for NODE_REFERENCE flag, got {type(node).__name__}",
+                )
             ref_model = self.mdl.read_c_string_up_to(32)
             reattachable = self.mdl.read_uint32()
 
-            node.refmodel = ref_model  # pyright: ignore[reportAttributeAccessIssue]
-            node.reattachable = reattachable  # pyright: ignore[reportAttributeAccessIssue]
+            node.refmodel = ref_model
+            node.reattachable = reattachable
 
         if type_flags & NODE_MESH:
             fn_ptr1 = self.mdl.read_uint32()
@@ -393,33 +420,39 @@ class MdlReader:
             if not self.xbox:
                 off_vert_arr = self.mdl.read_uint32()
 
-            node.render = render  # pyright: ignore[reportAttributeAccessIssue]
-            node.shadow = shadow  # pyright: ignore[reportAttributeAccessIssue]
-            node.lightmapped = has_lightmap  # pyright: ignore[reportAttributeAccessIssue]
-            node.beaming = beaming  # pyright: ignore[reportAttributeAccessIssue]
-            node.tangentspace = 1 if mdx_data_bitmap & MDX_FLAG_TANGENT1 else 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.rotatetexture = rotate_texture  # pyright: ignore[reportAttributeAccessIssue]
-            node.background_geometry = background_geometry  # pyright: ignore[reportAttributeAccessIssue]
-            node.animateuv = animate_uv  # pyright: ignore[reportAttributeAccessIssue]
-            node.uvdirectionx = uv_dir_x  # pyright: ignore[reportAttributeAccessIssue]
-            node.uvdirectiony = uv_dir_y  # pyright: ignore[reportAttributeAccessIssue]
-            node.uvjitter = uv_jitter  # pyright: ignore[reportAttributeAccessIssue]
-            node.uvjitterspeed = uv_jitter_speed  # pyright: ignore[reportAttributeAccessIssue]
-            node.transparencyhint = transparency_hint  # pyright: ignore[reportAttributeAccessIssue]
-            node.ambient = ambient  # pyright: ignore[reportAttributeAccessIssue]
-            node.diffuse = diffuse  # pyright: ignore[reportAttributeAccessIssue]
-            node.center = average  # pyright: ignore[reportAttributeAccessIssue]
+            # NODE_MESH can be TrimeshNode, DanglymeshNode, SkinmeshNode, or LightsaberNode
+            if not isinstance(node, (TrimeshNode, DanglymeshNode, SkinmeshNode, LightsaberNode)):
+                raise TypeError(
+                    f"Expected TrimeshNode subclass for NODE_MESH flag, got {type(node).__name__}",
+                )
+
+            node.render = render
+            node.shadow = shadow
+            node.lightmapped = has_lightmap
+            node.beaming = beaming
+            node.tangentspace = 1 if mdx_data_bitmap & MDX_FLAG_TANGENT1 else 0
+            node.rotatetexture = rotate_texture
+            node.background_geometry = background_geometry
+            node.animateuv = animate_uv
+            node.uvdirectionx = uv_dir_x
+            node.uvdirectiony = uv_dir_y
+            node.uvjitter = uv_jitter
+            node.uvjitterspeed = uv_jitter_speed
+            node.transparencyhint = transparency_hint
+            node.ambient = ambient
+            node.diffuse = diffuse
+            node.center = average
 
             if len(bitmap) > 0 and bitmap.lower() != "null":
-                node.bitmap = bitmap  # pyright: ignore[reportAttributeAccessIssue]
+                node.bitmap = bitmap
             if len(bitmap2) > 0 and bitmap2.lower() != "null":
-                node.bitmap2 = bitmap2  # pyright: ignore[reportAttributeAccessIssue]
+                node.bitmap2 = bitmap2
 
             if self.tsl:
-                node.dirt_enabled = dirt_enabled  # pyright: ignore[reportAttributeAccessIssue]
-                node.dirt_texture = dirt_texture  # pyright: ignore[reportAttributeAccessIssue]
-                node.dirt_worldspace = dirt_coord_space  # pyright: ignore[reportAttributeAccessIssue]
-                node.hologram_donotdraw = hide_in_holograms  # pyright: ignore[reportAttributeAccessIssue]
+                node.dirt_enabled = dirt_enabled
+                node.dirt_texture = dirt_texture
+                node.dirt_worldspace = dirt_coord_space
+                node.hologram_donotdraw = hide_in_holograms
 
         if type_flags & NODE_SKIN:
             unknown_arr = self.get_array_def()
@@ -434,15 +467,19 @@ class MdlReader:
             self.mdl.skip(4)  # padding
 
         if type_flags & NODE_DANGLY:
+            if not isinstance(node, DanglymeshNode):
+                raise TypeError(
+                    f"Expected DanglymeshNode for NODE_DANGLY flag, got {type(node).__name__}",
+                )
             constraint_arr = self.get_array_def()
             displacement = self.mdl.read_float()
             tightness = self.mdl.read_float()
             period = self.mdl.read_float()
             off_vert_data = self.mdl.read_uint32()
 
-            node.displacement = displacement  # pyright: ignore[reportAttributeAccessIssue]
-            node.period = period  # pyright: ignore[reportAttributeAccessIssue]
-            node.tightness = tightness  # pyright: ignore[reportAttributeAccessIssue]
+            node.displacement = displacement
+            node.period = period
+            node.tightness = tightness
 
         if type_flags & NODE_AABB:
             off_root_aabb = self.mdl.read_uint32()
@@ -458,15 +495,54 @@ class MdlReader:
         if controller_arr.count > 0:
             controllers = self.load_controllers(controller_arr, controller_data_arr)
             if type_flags & NODE_MESH:
-                node.alpha = controllers[CTRL_MESH_ALPHA][0][1] if CTRL_MESH_ALPHA in controllers else 1.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.scale = controllers[CTRL_MESH_SCALE][0][1] if CTRL_MESH_SCALE in controllers else 1.0
-                node.selfillumcolor = controllers[CTRL_MESH_SELFILLUMCOLOR][0][1:] if CTRL_MESH_SELFILLUMCOLOR in controllers else [0.0] * 3  # pyright: ignore[reportAttributeAccessIssue]
+                if not isinstance(
+                    node,
+                    (TrimeshNode, DanglymeshNode, SkinmeshNode, LightsaberNode),
+                ):
+                    raise TypeError(
+                        f"Expected TrimeshNode subclass for NODE_MESH flag, got {type(node).__name__}",
+                    )
+                node.alpha = (
+                    controllers[CTRL_MESH_ALPHA][0][1] if CTRL_MESH_ALPHA in controllers else 1.0
+                )
+                node.scale = (
+                    controllers[CTRL_MESH_SCALE][0][1] if CTRL_MESH_SCALE in controllers else 1.0
+                )
+                node.selfillumcolor = (
+                    controllers[CTRL_MESH_SELFILLUMCOLOR][0][1:]
+                    if CTRL_MESH_SELFILLUMCOLOR in controllers
+                    else [0.0] * 3
+                )
             elif type_flags & NODE_LIGHT:
-                node.radius = controllers[CTRL_LIGHT_RADIUS][0][1] if CTRL_LIGHT_RADIUS in controllers else 1.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.shadowradius = controllers[CTRL_LIGHT_SHADOWRADIUS][0][1] if CTRL_LIGHT_SHADOWRADIUS in controllers else 0.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.verticaldisplacement = controllers[CTRL_LIGHT_VERTICALDISPLACEMENT][0][1] if CTRL_LIGHT_VERTICALDISPLACEMENT in controllers else 0.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.multiplier = controllers[CTRL_LIGHT_MULTIPLIER][0][1] if CTRL_LIGHT_MULTIPLIER in controllers else 1.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.color = controllers[CTRL_LIGHT_COLOR][0][1:] if CTRL_LIGHT_COLOR in controllers else [1.0] * 3  # pyright: ignore[reportAttributeAccessIssue]
+                if not isinstance(node, LightNode):
+                    raise TypeError(
+                        f"Expected LightNode for NODE_LIGHT flag, got {type(node).__name__}",
+                    )
+                node.radius = (
+                    controllers[CTRL_LIGHT_RADIUS][0][1]
+                    if CTRL_LIGHT_RADIUS in controllers
+                    else 1.0
+                )
+                node.shadowradius = (
+                    controllers[CTRL_LIGHT_SHADOWRADIUS][0][1]
+                    if CTRL_LIGHT_SHADOWRADIUS in controllers
+                    else 0.0
+                )
+                node.verticaldisplacement = (
+                    controllers[CTRL_LIGHT_VERTICALDISPLACEMENT][0][1]
+                    if CTRL_LIGHT_VERTICALDISPLACEMENT in controllers
+                    else 0.0
+                )
+                node.multiplier = (
+                    controllers[CTRL_LIGHT_MULTIPLIER][0][1]
+                    if CTRL_LIGHT_MULTIPLIER in controllers
+                    else 1.0
+                )
+                node.color = (
+                    controllers[CTRL_LIGHT_COLOR][0][1:]
+                    if CTRL_LIGHT_COLOR in controllers
+                    else [1.0] * 3
+                )
             elif type_flags & NODE_EMITTER:
                 for val, key, dim in EMITTER_CONTROLLER_KEYS:
                     if val not in controllers:
@@ -477,22 +553,28 @@ class MdlReader:
                         setattr(node, key, controllers[val][0][1 : dim + 1])
 
         if type_flags & NODE_LIGHT:
+            if not isinstance(node, LightNode):
+                raise TypeError(
+                    f"Expected LightNode for NODE_LIGHT flag, got {type(node).__name__}",
+                )
             self.mdl.seek(MDL_OFFSET + flare_size_arr.offset)
-            node.flare_list.sizes = [self.mdl.read_float() for _ in range(flare_size_arr.count)]  # pyright: ignore[reportAttributeAccessIssue]
+            node.flare_list.sizes = [self.mdl.read_float() for _ in range(flare_size_arr.count)]
 
             self.mdl.seek(MDL_OFFSET + flare_position_arr.offset)
-            node.flare_list.positions = [self.mdl.read_float() for _ in range(flare_position_arr.count)]  # pyright: ignore[reportAttributeAccessIssue]
+            node.flare_list.positions = [
+                self.mdl.read_float() for _ in range(flare_position_arr.count)
+            ]
 
             self.mdl.seek(MDL_OFFSET + flare_color_shift_arr.offset)
             for _ in range(flare_color_shift_arr.count):
                 color_shift = [self.mdl.read_float() for _ in range(3)]
-                node.flare_list.colorshifts.append(color_shift)  # pyright: ignore[reportAttributeAccessIssue]
+                node.flare_list.colorshifts.append(color_shift)
 
             self.mdl.seek(MDL_OFFSET + flare_tex_name_arr.offset)
             tex_name_offsets = [self.mdl.read_uint32() for _ in range(flare_tex_name_arr.count)]
             for tex_name_offset in tex_name_offsets:
                 self.mdl.seek(MDL_OFFSET + tex_name_offset)
-                node.flare_list.textures.append(self.mdl.read_c_string())  # pyright: ignore[reportAttributeAccessIssue]
+                node.flare_list.textures.append(self.mdl.read_c_string())
 
         node_by_bone: dict[int, int] = dict()
         if type_flags & NODE_SKIN:
@@ -513,12 +595,16 @@ class MdlReader:
                 node_by_bone[bone_idx] = node_idx
 
         if type_flags & NODE_MESH:
-            node.facelist = FaceList()  # pyright: ignore[reportAttributeAccessIssue]
+            if not isinstance(node, (TrimeshNode, DanglymeshNode, SkinmeshNode, LightsaberNode)):
+                raise TypeError(
+                    f"Expected TrimeshNode subclass for NODE_MESH flag, got {type(node).__name__}",
+                )
+            node.facelist = FaceList()
             if type_flags & NODE_SABER:
                 for face in SABER_FACES:
-                    node.facelist.vertices.append(face)  # pyright: ignore[reportAttributeAccessIssue]
-                    node.facelist.uv.append(face)  # pyright: ignore[reportAttributeAccessIssue]
-                    node.facelist.materials.append(0)  # pyright: ignore[reportAttributeAccessIssue]
+                    node.facelist.vertices.append(face)
+                    node.facelist.uv.append(face)
+                    node.facelist.materials.append(0)
             elif face_arr.count > 0:
                 self.mdl.seek(MDL_OFFSET + face_arr.offset)
                 for _ in range(face_arr.count):
@@ -527,9 +613,9 @@ class MdlReader:
                     material_id = self.mdl.read_uint32()
                     adjacent_faces = [self.mdl.read_uint16() for _ in range(3)]
                     vert_indices = [self.mdl.read_uint16() for _ in range(3)]
-                    node.facelist.vertices.append(tuple(vert_indices))  # pyright: ignore[reportAttributeAccessIssue]
-                    node.facelist.uv.append(tuple(vert_indices))  # pyright: ignore[reportAttributeAccessIssue]
-                    node.facelist.materials.append(material_id)  # pyright: ignore[reportAttributeAccessIssue]
+                    node.facelist.vertices.append(tuple(vert_indices))
+                    node.facelist.uv.append(tuple(vert_indices))
+                    node.facelist.materials.append(material_id)
                 if index_count_arr.count > 0:
                     self.mdl.seek(MDL_OFFSET + index_count_arr.offset)
                     num_indices = self.mdl.read_uint32()
@@ -537,14 +623,21 @@ class MdlReader:
                     self.mdl.seek(MDL_OFFSET + index_offset_arr.offset)
                     off_indices = self.mdl.read_uint32()
 
-            node.verts = []  # pyright: ignore[reportAttributeAccessIssue]
-            node.uv1 = []  # pyright: ignore[reportAttributeAccessIssue]
-            node.uv2 = []  # pyright: ignore[reportAttributeAccessIssue]
-            node.weights = []  # pyright: ignore[reportAttributeAccessIssue]
+            node.verts = []
+            node.uv1 = []
+            node.uv2 = []
+            node.weights = []
 
             if type_flags & NODE_SABER:
+                if not isinstance(node, LightsaberNode):
+                    raise TypeError(
+                        f"Expected LightsaberNode for NODE_SABER flag, got {type(node).__name__}",
+                    )
                 saber_verts = []
-                self.mdl.seek(MDL_OFFSET + off_saber_verts)  # pyright: ignore[reportPossiblyUnboundVariable]
+                # off_saber_verts is defined earlier in the NODE_SABER block
+                if "off_saber_verts" not in locals():
+                    raise ValueError("off_saber_verts not defined for NODE_SABER")
+                self.mdl.seek(MDL_OFFSET + off_saber_verts)
                 for i in range(NUM_SABER_VERTS):
                     saber_verts.append([self.mdl.read_float() for _ in range(3)])
                 saber_tverts = []
@@ -557,13 +650,13 @@ class MdlReader:
                     saber_normals.append([self.mdl.read_float() for _ in range(3)])
 
                 for i in range(8):
-                    node.verts.append(saber_verts[i])  # pyright: ignore[reportAttributeAccessIssue]
-                    node.normals.append(saber_normals[i])  # pyright: ignore[reportAttributeAccessIssue]
-                    node.uv1.append(saber_tverts[i])  # pyright: ignore[reportAttributeAccessIssue]
+                    node.verts.append(saber_verts[i])
+                    node.normals.append(saber_normals[i])
+                    node.uv1.append(saber_tverts[i])
                 for i in range(88, 96):
-                    node.verts.append(saber_verts[i])  # pyright: ignore[reportAttributeAccessIssue]
-                    node.normals.append(saber_normals[i])  # pyright: ignore[reportAttributeAccessIssue]
-                    node.uv1.append(saber_tverts[i])  # pyright: ignore[reportAttributeAccessIssue]
+                    node.verts.append(saber_verts[i])
+                    node.normals.append(saber_normals[i])
+                    node.uv1.append(saber_tverts[i])
 
             elif self.mdx is not None and mdx_data_size > 0:
                 for i in range(num_verts):
@@ -604,8 +697,14 @@ class MdlReader:
                         node.weights.append(vert_weights)
 
         if type_flags & NODE_DANGLY:
+            if not isinstance(node, DanglymeshNode):
+                raise TypeError(
+                    f"Expected DanglymeshNode for NODE_DANGLY flag, got {type(node).__name__}",
+                )
+            if "constraint_arr" not in locals():
+                raise ValueError("constraint_arr not defined for NODE_DANGLY")
             self.mdl.seek(MDL_OFFSET + constraint_arr.offset)
-            node.constraints = [self.mdl.read_float() for _ in range(constraint_arr.count)]  # pyright: ignore[reportAttributeAccessIssue]
+            node.constraints = [self.mdl.read_float() for _ in range(constraint_arr.count)]
 
         self.mdl.seek(MDL_OFFSET + children_arr.offset)
         child_offsets = [self.mdl.read_uint32() for _ in range(children_arr.count)]
@@ -671,8 +770,10 @@ class MdlReader:
                 event_name = self.mdl.read_c_string_up_to(32)
                 anim.events.append((time, event_name))
 
-        anim.root_node = self.load_anim_nodes(off_root_node, anim)  # pyright: ignore[reportAttributeAccessIssue]
-        self.model.animations.append(anim)  # pyright: ignore[reportOptionalMemberAccess]
+        if self.model is None:
+            raise RuntimeError("Model not initialized")
+        anim.root_node = self.load_anim_nodes(off_root_node, anim)
+        self.model.animations.append(anim)
 
     def load_anim_nodes(self, offset, anim, parent=None):
         self.mdl.seek(MDL_OFFSET + offset)
@@ -690,7 +791,9 @@ class MdlReader:
         controller_data_arr = self.get_array_def()
 
         if name_index >= len(self.names):
-            raise RuntimeError("Animation node name index out of range: index={}, count={}".format(name_index, len(self.names)))
+            raise RuntimeError(
+                f"Animation node name index out of range: index={name_index}, count={len(self.names)}",
+            )
         name = self.names[name_index]
         node = AnimationNode(name)
         node.node_number = node_number
@@ -704,24 +807,38 @@ class MdlReader:
                 if CTRL_BASE_POSITION in controllers:
                     node.keyframes["position"] = [row for row in controllers[CTRL_BASE_POSITION]]
                 if CTRL_BASE_ORIENTATION in controllers:
-                    orientations = [self.orientation_controller_to_quaternion(row[1:]) for row in controllers[CTRL_BASE_ORIENTATION]]
-                    node.keyframes["orientation"] = [[row[0]] + orientations[i] for i, row in enumerate(controllers[CTRL_BASE_ORIENTATION])]
+                    orientations = [
+                        self.orientation_controller_to_quaternion(row[1:])
+                        for row in controllers[CTRL_BASE_ORIENTATION]
+                    ]
+                    node.keyframes["orientation"] = [
+                        [row[0]] + orientations[i]
+                        for i, row in enumerate(controllers[CTRL_BASE_ORIENTATION])
+                    ]
                 if isinstance(supernode, TrimeshNode):
                     if CTRL_MESH_ALPHA in controllers:
                         node.keyframes["alpha"] = [row for row in controllers[CTRL_MESH_ALPHA]]
                     if CTRL_MESH_SCALE in controllers:
                         node.keyframes["scale"] = [row for row in controllers[CTRL_MESH_SCALE]]
                     if CTRL_MESH_SELFILLUMCOLOR in controllers:
-                        node.keyframes["selfillumcolor"] = [row for row in controllers[CTRL_MESH_SELFILLUMCOLOR]]
+                        node.keyframes["selfillumcolor"] = [
+                            row for row in controllers[CTRL_MESH_SELFILLUMCOLOR]
+                        ]
                 if isinstance(supernode, LightNode):
                     if CTRL_LIGHT_RADIUS in controllers:
                         node.keyframes["radius"] = [row for row in controllers[CTRL_LIGHT_RADIUS]]
                     if CTRL_LIGHT_SHADOWRADIUS in controllers:
-                        node.keyframes["shadowradius"] = [row for row in controllers[CTRL_LIGHT_SHADOWRADIUS]]
+                        node.keyframes["shadowradius"] = [
+                            row for row in controllers[CTRL_LIGHT_SHADOWRADIUS]
+                        ]
                     if CTRL_LIGHT_VERTICALDISPLACEMENT in controllers:
-                        node.keyframes["verticaldisplacement"] = [row for row in controllers[CTRL_LIGHT_VERTICALDISPLACEMENT]]
+                        node.keyframes["verticaldisplacement"] = [
+                            row for row in controllers[CTRL_LIGHT_VERTICALDISPLACEMENT]
+                        ]
                     if CTRL_LIGHT_MULTIPLIER in controllers:
-                        node.keyframes["multiplier"] = [row for row in controllers[CTRL_LIGHT_MULTIPLIER]]
+                        node.keyframes["multiplier"] = [
+                            row for row in controllers[CTRL_LIGHT_MULTIPLIER]
+                        ]
                     if CTRL_LIGHT_COLOR in controllers:
                         node.keyframes["color"] = [row for row in controllers[CTRL_LIGHT_COLOR]]
                 if isinstance(supernode, EmitterNode):
@@ -753,8 +870,12 @@ class MdlReader:
             self.mdl.skip(3)  # padding
             keys.append(
                 ControllerKey(  # noqa: F405
-                    ctrl_type, num_rows, timekeys_start, values_start, num_columns
-                )
+                    ctrl_type,
+                    num_rows,
+                    timekeys_start,
+                    values_start,
+                    num_columns,
+                ),
             )
         controllers = dict()
         for key in keys:
@@ -770,8 +891,14 @@ class MdlReader:
                 bezier = key.num_columns & CTRL_FLAG_BEZIER
                 if bezier:
                     num_columns *= 3
-            values = [self.mdl.read_uint32() if integral else self.mdl.read_float() for _ in range(num_columns * key.num_rows)]
-            controllers[key.ctrl_type] = [[timekeys[i]] + values[i * num_columns : i * num_columns + num_columns] for i in range(key.num_rows)]
+            values = [
+                self.mdl.read_uint32() if integral else self.mdl.read_float()
+                for _ in range(num_columns * key.num_rows)
+            ]
+            controllers[key.ctrl_type] = [
+                [timekeys[i]] + values[i * num_columns : i * num_columns + num_columns]
+                for i in range(key.num_rows)
+            ]
         return controllers
 
     def get_node_type(self, flags: int) -> str:
@@ -814,7 +941,7 @@ class MdlReader:
         num_columns: int = len(values)
         if num_columns == 4:
             return values
-        elif num_columns == 1:
+        if num_columns == 1:
             comp = values[0]
             x = ((comp & 0x7FF) / 1023.0) - 1.0
             y = (((comp >> 11) & 0x7FF) / 1023.0) - 1.0
@@ -825,15 +952,14 @@ class MdlReader:
             else:
                 w = 0.0
             return [x, y, z, w]
-        else:
-            raise RuntimeError("Unsupported number of orientation columns: " + str(num_columns))
+        raise RuntimeError("Unsupported number of orientation columns: " + str(num_columns))
 
     def get_array_def(self) -> ArrayDefinition:
         offset = self.mdl.read_uint32()
         count1 = self.mdl.read_uint32()
         count2 = self.mdl.read_uint32()
         if count1 != count2:
-            raise RuntimeError("Array count mismatch: count1={}, count2={}".format(count1, count2))
+            raise RuntimeError(f"Array count mismatch: count1={count1}, count2={count2}")
 
         return ArrayDefinition(offset, count1)
 

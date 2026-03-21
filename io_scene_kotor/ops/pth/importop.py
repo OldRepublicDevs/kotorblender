@@ -15,9 +15,9 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
-
 from bpy_extras.io_utils import ImportHelper
 
 from ...io import pth
@@ -33,7 +33,13 @@ class KB_OT_import_pth(bpy.types.Operator, ImportHelper):
 
     filter_glob: bpy.props.StringProperty(default="*.pth", options={"HIDDEN"})
 
-    def execute(self, context):
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        """When filepath is set (e.g. drag-and-drop), run execute(); otherwise open file browser."""
+        if self.filepath:
+            return self.execute(context)
+        return ImportHelper.invoke(self, context, event)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
         try:
             pth.load_pth(self, self.filepath)
         except Exception as e:

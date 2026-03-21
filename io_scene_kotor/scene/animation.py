@@ -16,26 +16,30 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+from __future__ import annotations
+
 import math
 import re
+from typing import Any
 
-from ..constants import DummyType, ANIM_PADDING, NULL
-from ..utils import find_object, time_to_frame, frame_to_time
+import bpy
 
+from ..constants import ANIM_PADDING, NULL, DummyType
+from ..utils import find_object, frame_to_time, time_to_frame
 from .animnode import AnimationNode
 
 
 class Animation:
-    def __init__(self, name="UNNAMED"):
-        self.name = name
-        self.length = 1.0
-        self.transtime = 0.25
-        self.animroot = NULL
-        self.root_node = None
+    def __init__(self, name: str = "UNNAMED") -> None:
+        self.name: str = name
+        self.length: float = 1.0
+        self.transtime: float = 0.25
+        self.animroot: str = NULL
+        self.root_node: AnimationNode | None = None
 
-        self.events = []
+        self.events: list[tuple[float, str]] = []
 
-    def add_to_objects(self, mdl_root, animscale):
+    def add_to_objects(self, mdl_root: bpy.types.Object, animscale: float) -> None:
         list_anim = Animation.append_to_object(
             mdl_root, self.name, self.length, self.transtime, self.animroot
         )
@@ -45,11 +49,28 @@ class Animation:
         self.add_nodes_to_objects(list_anim, self.root_node, mdl_root, animscale)
 
     def add_nodes_to_objects(
-        self, anim, node, mdl_root, animscale, below_animroot=False
-    ):
-        obj = find_object(mdl_root, lambda o: o.kb.node_number == node.node_number)
-        if obj:
-            if not below_animroot and obj.name.lower() == mdl_root.kb.animroot.lower():
+        self,
+        anim: Any,
+        node: AnimationNode | None,
+        mdl_root: bpy.types.Object,
+        animscale: float,
+        below_animroot: bool = False,
+    ) -> None:
+        if node is None:
+            return
+
+        def _match_node(o: bpy.types.Object) -> bool:
+            kb = getattr(o, "kb", None)
+            return kb is not None and kb.node_number == node.node_number
+
+        obj = find_object(mdl_root, _match_node)
+        if obj is not None:
+            mdl_kb = getattr(mdl_root, "kb", None)
+            if (
+                not below_animroot
+                and mdl_kb is not None
+                and obj.name.lower() == mdl_kb.animroot.lower()
+            ):
                 below_animroot = True
             if below_animroot:
                 node.add_keyframes_to_object(anim, obj, mdl_root.name, animscale)
@@ -59,9 +80,17 @@ class Animation:
 
     @classmethod
     def append_to_object(
-        cls, mdl_root, name, length=0.0, transtime=0.25, animroot=NULL
-    ):
-        anim = mdl_root.kb.anim_list.add()
+        cls,
+        mdl_root: bpy.types.Object,
+        name: str,
+        length: float = 0.0,
+        transtime: float = 0.25,
+        animroot: str = NULL,
+    ) -> Any:
+        kb = getattr(mdl_root, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object '{mdl_root.name}' has no kb attribute")
+        anim = kb.anim_list.add()
         anim.name = name
         anim.root = animroot
         anim.transtime = transtime
@@ -70,18 +99,21 @@ class Animation:
         return anim
 
     @classmethod
-    def append_event_to_object_anim(cls, list_anim, name, time):
+    def append_event_to_object_anim(cls, list_anim: Any, name: str, time: float) -> None:
         event = list_anim.event_list.add()
         event.name = name
         event.frame = list_anim.frame_start + time_to_frame(time)
 
     @classmethod
-    def get_next_frame(cls, mdl_root):
-        last_frame = max([a.frame_end for a in mdl_root.kb.anim_list])
+    def get_next_frame(cls, mdl_root: bpy.types.Object) -> int:
+        kb = getattr(mdl_root, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object '{mdl_root.name}' has no kb attribute")
+        last_frame = max([a.frame_end for a in kb.anim_list])
         return int(math.ceil((last_frame + ANIM_PADDING) / 10.0)) * 10
 
     @classmethod
-    def from_list_anim(cls, list_anim, mdl_root):
+    def from_list_anim(cls, list_anim: Any, mdl_root: bpy.types.Object) -> Animation:
         anim = Animation(list_anim.name)
         anim.length = frame_to_time(list_anim.frame_end - list_anim.frame_start)
         anim.transtime = list_anim.transtime
@@ -96,22 +128,39 @@ class Animation:
         return anim
 
     @classmethod
-    def animation_node_from_object(cls, anim, obj, parent=None):
+    def animation_node_from_object(
+        cls,
+        anim: Any,
+        obj: bpy.types.Object,
+        parent: AnimationNode | None = None,
+    ) -> AnimationNode:
         name = obj.name
         if re.match(r".+\.\d{3}$", name):
             name = name[:-4]
 
         node = AnimationNode(name)
-        node.node_number = obj.kb.node_number
-        node.parent = parent
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object '{obj.name}' has no kb attribute")
+        node.node_number = kb.node_number
+        if node is None:
+            raise ValueError(f"Object '{obj.name}' has no kb attribute")
+        node.parent = parent  # pyright: ignore[reportAttributeAccessIssue]
 
         node.load_keyframes_from_object(anim, obj)
         if obj.type == "LIGHT":
             node.load_keyframes_from_object(anim, obj.data)
         node.animated = bool(node.keyframes)
 
-        for child_obj in sorted(obj.children, key=lambda o: o.kb.export_order):
-            if child_obj.type == "EMPTY" and child_obj.kb.dummytype in [
+        def _match_child(o: bpy.types.Object) -> bool:
+            kb = getattr(o, "kb", None)
+            return kb is not None and kb.export_order != 0
+
+        for child_obj in sorted(obj.children, key=_match_child):
+            child_kb = getattr(child_obj, "kb", None)
+            if child_kb is None:
+                raise ValueError(f"Object '{child_obj.name}' has no kb attribute")
+            if child_obj.type == "EMPTY" and child_kb.dummytype in [
                 DummyType.PWKROOT,
                 DummyType.DWKROOT,
             ]:

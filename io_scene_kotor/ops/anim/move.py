@@ -18,29 +18,38 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
-
 import bpy
 
+from ...constants import Direction
 from ...utils import is_mdl_root
 
 
 class KB_OT_move_animation(bpy.types.Operator):
-    bl_idname: ClassVar[str] = "kb.move_animation"
-    bl_label: ClassVar[str] = "Move an animation in the list, without affecting keyframes"
-    bl_description: ClassVar[str] = "Reorder the selected animation up or down in the list without changing keyframes"
-    bl_options: ClassVar[set[str]] = {"UNDO"}
+    bl_idname = "kb.move_animation"
+    bl_label = "Move an animation in the list, without affecting keyframes"
+    bl_description = (
+        "Reorder the selected animation up or down in the list without changing keyframes"
+    )
+    bl_options = {"UNDO"}
 
-    direction: bpy.props.EnumProperty(items=[("UP", "Up", ""), ("DOWN", "Down", "")])  # pyright: ignore[reportInvalidTypeForm]
+    direction: bpy.props.EnumProperty(
+        items=[
+            (Direction.UP, "Up", ""),
+            (Direction.DOWN, "Down", ""),
+        ],
+    )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        obj = context.object
-        if not obj or not is_mdl_root(obj):
+        obj: bpy.types.Object | None = context.object
+        if obj is None or not is_mdl_root(obj):
             cls.poll_message_set(context, "Select a KotOR model object")
             return False
-        anim_list = obj.kb.anim_list
-        anim_list_idx = obj.kb.anim_list_idx
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
+        anim_list = kb.anim_list
+        anim_list_idx = kb.anim_list_idx
         num_anims = len(anim_list)
         if anim_list_idx < 0 or anim_list_idx >= num_anims:
             cls.poll_message_set(context, "Select an animation in the list")
@@ -51,13 +60,20 @@ class KB_OT_move_animation(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        mdl_root = context.object
-        anim_list = mdl_root.kb.anim_list
-        prev_idx = mdl_root.kb.anim_list_idx
+        mdl_root: bpy.types.Object | None = context.object
+        if mdl_root is None:
+            self.report({"ERROR"}, "No object selected")
+            return {"CANCELLED"}
+        kb = getattr(mdl_root, "kb", None)
+        if kb is None:
+            self.report({"ERROR"}, "Object.kb is None")
+            return {"CANCELLED"}
+        anim_list = kb.anim_list
+        prev_idx = kb.anim_list_idx
 
-        if self.direction == "DOWN":
+        if self.direction == Direction.DOWN:
             new_idx = min(len(anim_list) - 1, prev_idx + 1)
-        elif self.direction == "UP":
+        elif self.direction == Direction.UP:
             new_idx = max(0, prev_idx - 1)
         else:
             return {"CANCELLED"}
@@ -66,6 +82,6 @@ class KB_OT_move_animation(bpy.types.Operator):
             return {"CANCELLED"}
 
         anim_list.move(prev_idx, new_idx)
-        mdl_root.kb.anim_list_idx = new_idx
+        kb.anim_list_idx = new_idx
 
         return {"FINISHED"}

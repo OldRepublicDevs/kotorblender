@@ -16,28 +16,40 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
-from ...constants import DummyType, NodeType, NULL
+from __future__ import annotations
+
+import bpy
+
+from ...constants import DummyType, ExportOptions, ImportOptions, NULL, NodeType
 
 from .base import BaseNode
 
 
 class ReferenceNode(BaseNode):
-    def __init__(self, name="UNNAMED"):
+    def __init__(self, name: str = "UNNAMED") -> None:
         BaseNode.__init__(self, name)
-        self.nodetype = NodeType.REFERENCE
-        self.dummytype = DummyType.REFERENCE
-        self.refmodel = NULL
-        self.reattachable = 0
+        self.nodetype: str = NodeType.REFERENCE
+        self.dummytype: str = DummyType.REFERENCE
+        self.refmodel: str = NULL
+        self.reattachable: int = 0
 
-    def set_object_data(self, obj, options):
+    def set_object_data(self, obj: bpy.types.Object, options: ImportOptions) -> None:
         BaseNode.set_object_data(self, obj, options)
 
-        obj.kb.dummytype = DummyType.REFERENCE
-        obj.kb.refmodel = self.refmodel
-        obj.kb.reattachable = self.reattachable == 1
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object [{obj.name}] has no kb attribute")
+        kb.dummytype = DummyType.REFERENCE
+        kb.refmodel = self.refmodel
+        kb.reattachable = self.reattachable == 1
 
-    def load_object_data(self, obj, eval_obj, options):
+    def load_object_data(
+        self, obj: bpy.types.Object, eval_obj: bpy.types.Object, options: ExportOptions
+    ) -> None:
         BaseNode.load_object_data(self, obj, eval_obj, options)
 
-        self.refmodel = obj.kb.refmodel
-        self.reattachable = 1 if obj.kb.reattachable else 0
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object [{obj.name}] has no kb attribute")
+        self.refmodel = kb.refmodel
+        self.reattachable = 1 if kb.reattachable else 0

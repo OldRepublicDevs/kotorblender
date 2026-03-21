@@ -16,26 +16,104 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+"""
+MDL load/save using io_scene_kotor's own readers and writers only.
+
+- ASCII: AsciiMdlReader / AsciiMdlWriter (format/mdl/ascii_reader.py, ascii_writer.py).
+- Binary: MdlReader / MdlWriter (format/mdl/reader.py, writer.py).
+
+PyKotor is not used for MDL IO; get_use_pykotor_readers() does not affect this module.
+"""
+
+from __future__ import annotations
+
 import os
 
 import bpy
 
-from ..constants import ANIM_FPS
+from ..constants import ANIM_FPS, ExportOptions, ImportOptions
 from ..format.bwm.reader import BwmReader
 from ..format.bwm.writer import BwmWriter
+from ..format.mdl.ascii_reader import AsciiMdlReader
+from ..format.mdl.ascii_writer import AsciiMdlWriter
 from ..format.mdl.reader import MdlReader
 from ..format.mdl.writer import MdlWriter
-from .mdl_validate import validate_mdl_export
-from ..scene.modelnode.aabb import AabbNode
 from ..scene.model import Model
+from ..scene.modelnode.aabb import AabbNode
 from ..scene.walkmesh import Walkmesh
-from ..utils import is_mdl_root, is_pwk_root, is_dwk_root, find_objects
+from ..utils import (
+    find_objects,
+    is_dwk_root,
+    is_mdl_root,
+    is_pwk_root,
+    kotor_addon_preferences,
+    semicolon_separated_to_absolute_paths,
+)
+
+from .mdl_validate import validate_mdl_export
 
 
-def load_mdl(operator, filepath, options, position=(0.0, 0.0, 0.0)):
-    operator.report({"INFO"}, "Loading model from '{}'".format(filepath))
-    mdl = MdlReader(filepath)
-    model = mdl.load()
+def _is_ascii_mdl(filepath: str) -> bool:
+    """Detect if a file is ASCII MDL format."""
+    # Check extension
+    if filepath.endswith(".mdl.ascii") or filepath.endswith(".ascii"):
+        return True
+
+    # Check file content - ASCII MDL files start with text keywords
+    try:
+        with open(filepath, encoding="utf-8") as f:
+            first_line = f.readline().strip()
+            # ASCII MDL files typically start with comments or "newmodel"
+            if first_line.startswith("#") or first_line.startswith("newmodel"):
+                return True
+    except (OSError, UnicodeDecodeError):
+        # If we can't read as text, it's likely binary
+        pass
+
+    return False
+
+
+def load_mdl(
+    operator: bpy.types.Operator,
+    filepath: str,
+    options: ImportOptions,
+    position: tuple[float, float, float] = (0.0, 0.0, 0.0),
+) -> None:
+    operator.report({"INFO"}, f"Loading model from '{filepath}'")
+
+    # Build texture/lightmap search paths from addon preferences if not already set
+    if not options.texture_search_paths or not options.lightmap_search_paths:
+        try:
+            addon_preferences = kotor_addon_preferences()
+            if addon_preferences is not None:
+                working_dir = os.path.dirname(filepath)
+                # semicolon_separated_to_absolute_paths coerces prefs (e.g. _PropertyDeferred)
+                if not options.texture_search_paths:
+                    options.texture_search_paths = semicolon_separated_to_absolute_paths(
+                        addon_preferences.texture_search_paths,  # pyright: ignore[reportAttributeAccessIssue]
+                        working_dir,
+                    )
+                if not options.lightmap_search_paths:
+                    options.lightmap_search_paths = semicolon_separated_to_absolute_paths(
+                        addon_preferences.lightmap_search_paths,  # pyright: ignore[reportAttributeAccessIssue]
+                        working_dir,
+                    )
+        except Exception:
+            # If preferences are unavailable (e.g. in tests), use empty lists
+            if not options.texture_search_paths:
+                options.texture_search_paths = []
+            if not options.lightmap_search_paths:
+                options.lightmap_search_paths = []
+
+    # Detect format and use appropriate reader
+    if _is_ascii_mdl(filepath):
+        operator.report({"INFO"}, "Detected ASCII MDL format")
+        mdl = AsciiMdlReader(filepath)
+        model = mdl.load()
+    else:
+        # Binary MDL - use existing reader
+        mdl = MdlReader(filepath)
+        model = mdl.load()
 
     pwk_walkmesh = None
     dwk_walkmesh1 = None
@@ -55,23 +133,19 @@ def load_mdl(operator, filepath, options, position=(0.0, 0.0, 0.0)):
 
         pwk_path = filepath[:-4] + ".pwk"
         if os.path.exists(pwk_path):
-            operator.report({"INFO"}, "Loading walkmesh from '{}'".format(pwk_path))
+            operator.report({"INFO"}, f"Loading walkmesh from '{pwk_path}'")
             pwk = BwmReader(pwk_path, model.name)
             pwk_walkmesh = pwk.load()
 
         dwk0_path = filepath[:-4] + "0.dwk"
         dwk1_path = filepath[:-4] + "1.dwk"
         dwk2_path = filepath[:-4] + "2.dwk"
-        if (
-            os.path.exists(dwk0_path)
-            and os.path.exists(dwk1_path)
-            and os.path.exists(dwk2_path)
-        ):
-            operator.report({"INFO"}, "Loading walkmesh from '{}'".format(dwk0_path))
+        if os.path.exists(dwk0_path) and os.path.exists(dwk1_path) and os.path.exists(dwk2_path):
+            operator.report({"INFO"}, f"Loading walkmesh from '{dwk0_path}'")
             dwk1 = BwmReader(dwk0_path, model.name)
-            operator.report({"INFO"}, "Loading walkmesh from '{}'".format(dwk1_path))
+            operator.report({"INFO"}, f"Loading walkmesh from '{dwk1_path}'")
             dwk2 = BwmReader(dwk1_path, model.name)
-            operator.report({"INFO"}, "Loading walkmesh from '{}'".format(dwk2_path))
+            operator.report({"INFO"}, f"Loading walkmesh from '{dwk2_path}'")
             dwk3 = BwmReader(dwk2_path, model.name)
             dwk_walkmesh1 = dwk1.load()
             dwk_walkmesh2 = dwk2.load()
@@ -81,11 +155,11 @@ def load_mdl(operator, filepath, options, position=(0.0, 0.0, 0.0)):
     model_root = model.add_to_collection(collection, options, position)
 
     if pwk_walkmesh:
-        pwk_walkmesh.add_to_collection(model_root, collection, options)
+        pwk_walkmesh.attach_to_collection(model_root, collection, options)
     if dwk_walkmesh1 and dwk_walkmesh2 and dwk_walkmesh3:
-        dwk_walkmesh1.add_to_collection(model_root, collection, options)
-        dwk_walkmesh2.add_to_collection(model_root, collection, options)
-        dwk_walkmesh3.add_to_collection(model_root, collection, options)
+        dwk_walkmesh1.attach_to_collection(model_root, collection, options)
+        dwk_walkmesh2.attach_to_collection(model_root, collection, options)
+        dwk_walkmesh3.attach_to_collection(model_root, collection, options)
 
     bpy.context.scene.render.fps = ANIM_FPS
 
@@ -93,7 +167,11 @@ def load_mdl(operator, filepath, options, position=(0.0, 0.0, 0.0)):
     bpy.context.scene.frame_set(0)
 
 
-def save_mdl(operator, filepath, options):
+def save_mdl(
+    operator: bpy.types.Operator,
+    filepath: str,
+    options: ExportOptions,
+) -> None:
     # Reset pose
     bpy.context.scene.frame_set(0)
 
@@ -119,15 +197,23 @@ def save_mdl(operator, filepath, options):
 
     # Export MDL
     model = Model.from_mdl_root(mdl_root, options)
-    operator.report({"INFO"}, "Saving model to '{}'".format(filepath))
-    mdl = MdlWriter(
-        filepath,
-        model,
-        options.export_for_tsl,
-        options.export_for_xbox,
-        options.compress_quaternions,
-    )
-    mdl.save()
+    operator.report({"INFO"}, f"Saving model to '{filepath}'")
+
+    # Detect format and use appropriate writer
+    if _is_ascii_mdl(filepath):
+        operator.report({"INFO"}, "Detected ASCII MDL format")
+        mdl = AsciiMdlWriter(filepath, model)
+        mdl.save()
+    else:
+        # Binary MDL - use existing writer
+        mdl = MdlWriter(
+            filepath,
+            model,
+            options.export_for_tsl,
+            options.export_for_xbox,
+            options.compress_quaternions,
+        )
+        mdl.save()
 
     if options.export_walkmeshes:
         # Export WOK
@@ -136,14 +222,12 @@ def save_mdl(operator, filepath, options):
             base_path, _ = os.path.splitext(filepath)
             wok_path = base_path + ".wok"
             walkmesh = Walkmesh.from_aabb_node(aabb_node)
-            operator.report({"INFO"}, "Saving walkmesh to '{}'".format(wok_path))
+            operator.report({"INFO"}, f"Saving walkmesh to '{wok_path}'")
             bwm = BwmWriter(wok_path, walkmesh)
             bwm.save()
 
         # Export PWK or DWK
-        xwk_roots = find_objects(
-            mdl_root, lambda obj: is_pwk_root(obj) or is_dwk_root(obj)
-        )
+        xwk_roots = find_objects(mdl_root, lambda obj: is_pwk_root(obj) or is_dwk_root(obj))
         for xwk_root in xwk_roots:
             base_path, _ = os.path.splitext(filepath)
             if is_pwk_root(xwk_root):
@@ -155,8 +239,8 @@ def save_mdl(operator, filepath, options):
                     dwk_state = 2
                 elif xwk_root.name.endswith("closed"):
                     dwk_state = 0
-                xwk_path = "{}{}.dwk".format(base_path, dwk_state)
+                xwk_path = f"{base_path}{dwk_state}.dwk"
             walkmesh = Walkmesh.from_root_object(xwk_root, options)
-            operator.report({"INFO"}, "Saving walkmesh to '{}'".format(xwk_path))
+            operator.report({"INFO"}, f"Saving walkmesh to '{xwk_path}'")
             bwm = BwmWriter(xwk_path, walkmesh)
             bwm.save()

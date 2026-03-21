@@ -16,23 +16,30 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+from __future__ import annotations
+
 import os
 
 import bpy
 
-from ..constants import DummyType
+from ..constants import DummyType, ImportOptions
 from ..utils import find_mdl_root_of
+
 from . import mdl
 
 
-def load_lyt(operator, filepath, options):
-    operator.report({"INFO"}, "Loading area layout from '{}'".format(filepath))
+def load_lyt(
+    operator: bpy.types.Operator,
+    filepath: str,
+    options: ImportOptions,
+) -> None:
+    operator.report({"INFO"}, f"Loading area layout from '{filepath}'")
 
     MAX_ROOMS = 10000
 
     # Read lines
     fp = os.fsencode(filepath)
-    with open(fp, "r") as f:
+    with open(fp) as f:
         lines = [line.strip() for line in f.read().splitlines()]
 
     # Parse room models
@@ -46,7 +53,7 @@ def load_lyt(operator, filepath, options):
             if len(tokens) < 4:
                 operator.report(
                     {"WARNING"},
-                    "Skipping malformed room entry in LYT: '{}'".format(line),
+                    f"Skipping malformed room entry in LYT: '{line}'",
                 )
                 rooms_to_read -= 1
                 if rooms_to_read == 0:
@@ -71,23 +78,26 @@ def load_lyt(operator, filepath, options):
     for room in rooms:
         mdl_path = os.path.join(path, room[0] + ".mdl")
         if not os.path.exists(mdl_path):
-            operator.report({"WARNING"}, "Room model '{}' not found".format(mdl_path))
+            operator.report({"WARNING"}, f"Room model '{mdl_path}' not found")
             continue
         mdl.load_mdl(operator, mdl_path, options, room[1:])
 
 
-def save_lyt(operator, filepath):
-    def describe_object(obj):
+def save_lyt(
+    operator: bpy.types.Operator,
+    filepath: str,
+) -> None:
+    def describe_object(obj: bpy.types.Object) -> str:
         parent = find_mdl_root_of(obj)
         orientation = obj.rotation_euler.to_quaternion()
         return "{} {} {:.7g} {:.7g} {:.7g} {:.7g} {:.7g} {:.7g} {:.7g}".format(
             parent.name if parent else "NULL",
             obj.name,
             *obj.matrix_world.translation,
-            *orientation
+            *orientation,
         )
 
-    operator.report({"INFO"}, "Saving area layout to '{}'".format(filepath))
+    operator.report({"INFO"}, f"Saving area layout to '{filepath}'")
 
     with open(filepath, "w") as f:
         rooms = []
@@ -109,15 +119,14 @@ def save_lyt(operator, filepath):
                     others.append(obj)
 
         f.write("beginlayout\n")
-        f.write("  roomcount {}\n".format(len(rooms)))
-        for room in rooms:
-            f.write("    {} {:.7g} {:.7g} {:.7g}\n".format(room.name, *room.location))
+        f.write(f"  roomcount {len(rooms)}\n")
+        f.writelines(
+            "    {} {:.7g} {:.7g} {:.7g}\n".format(room.name, *room.location) for room in rooms
+        )
         f.write("  trackcount 0\n")
         f.write("  obstaclecount 0\n")
-        f.write("  doorhookcount {}\n".format(len(doors)))
-        for door in doors:
-            f.write("    {}\n".format(describe_object(door)))
-        f.write("  othercount {}\n".format(len(others)))
-        for other in others:
-            f.write("    {}\n".format(describe_object(other)))
+        f.write(f"  doorhookcount {len(doors)}\n")
+        f.writelines(f"    {describe_object(door)}\n" for door in doors)
+        f.write(f"  othercount {len(others)}\n")
+        f.writelines(f"    {describe_object(other)}\n" for other in others)
         f.write("donelayout\n")

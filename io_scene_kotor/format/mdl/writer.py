@@ -15,16 +15,18 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import math
 import os
 
 from mathutils import Vector
 
-from ...constants import NodeType
-from ...utils import is_not_null
 from ...aabb import generate_tree
+from ...constants import NodeType, UpdateType
 from ..binwriter import BinaryWriter
+from ...utils import is_not_null
+
 from .types import *
 
 
@@ -319,9 +321,7 @@ class MdlWriter:
                     self.mdl_pos += 4
 
                 # Vertices
-                num_verts = (
-                    NUM_SABER_VERTS if type_flags & NODE_SABER else len(node.verts)
-                )
+                num_verts = NUM_SABER_VERTS if type_flags & NODE_SABER else len(node.verts)
                 if not self.xbox:
                     self.verts_offsets[node_idx] = self.mdl_pos
                     self.mdl_pos += 4 * 3 * num_verts
@@ -495,17 +495,13 @@ class MdlWriter:
 
         # Base Controllers
 
-        out_keys.append(
-            ControllerKey(CTRL_BASE_POSITION, 1, data_count, data_count + 1, 3)
-        )
+        out_keys.append(ControllerKey(CTRL_BASE_POSITION, 1, data_count, data_count + 1, 3))
         out_data.append(0.0)  # timekey
         for val in node.position:
             out_data.append(val)
         data_count += 4
 
-        out_keys.append(
-            ControllerKey(CTRL_BASE_ORIENTATION, 1, data_count, data_count + 1, 4)
-        )
+        out_keys.append(ControllerKey(CTRL_BASE_ORIENTATION, 1, data_count, data_count + 1, 4))
         out_data.append(0.0)  # timekey
         for val in node.orientation[1:4]:
             out_data.append(val)
@@ -515,24 +511,18 @@ class MdlWriter:
         # Mesh Controllers
 
         if type_flags & NODE_MESH:
-            out_keys.append(
-                ControllerKey(CTRL_MESH_ALPHA, 1, data_count, data_count + 1, 1)
-            )
+            out_keys.append(ControllerKey(CTRL_MESH_ALPHA, 1, data_count, data_count + 1, 1))
             out_data.append(0.0)  # timekey
             out_data.append(node.alpha)
             data_count += 2
 
-            out_keys.append(
-                ControllerKey(CTRL_MESH_SCALE, 1, data_count, data_count + 1, 1)
-            )
+            out_keys.append(ControllerKey(CTRL_MESH_SCALE, 1, data_count, data_count + 1, 1))
             out_data.append(0.0)  # timekey
             out_data.append(node.scale)
             data_count += 2
 
             out_keys.append(
-                ControllerKey(
-                    CTRL_MESH_SELFILLUMCOLOR, 1, data_count, data_count + 1, 3
-                )
+                ControllerKey(CTRL_MESH_SELFILLUMCOLOR, 1, data_count, data_count + 1, 3),
             )
             out_data.append(0.0)  # timekey
             for val in node.selfillumcolor:
@@ -542,17 +532,13 @@ class MdlWriter:
         # Light Controllers
 
         if type_flags & NODE_LIGHT:
-            out_keys.append(
-                ControllerKey(CTRL_LIGHT_RADIUS, 1, data_count, data_count + 1, 1)
-            )
+            out_keys.append(ControllerKey(CTRL_LIGHT_RADIUS, 1, data_count, data_count + 1, 1))
             out_data.append(0.0)  # timekey
             out_data.append(node.radius)
             data_count += 2
 
             out_keys.append(
-                ControllerKey(
-                    CTRL_LIGHT_SHADOWRADIUS, 1, data_count, data_count + 1, 1
-                )
+                ControllerKey(CTRL_LIGHT_SHADOWRADIUS, 1, data_count, data_count + 1, 1),
             )
             out_data.append(0.0)  # timekey
             out_data.append(node.shadowradius)
@@ -565,22 +551,18 @@ class MdlWriter:
                     data_count,
                     data_count + 1,
                     1,
-                )
+                ),
             )
             out_data.append(0.0)  # timekey
             out_data.append(node.verticaldisplacement)
             data_count += 2
 
-            out_keys.append(
-                ControllerKey(CTRL_LIGHT_MULTIPLIER, 1, data_count, data_count + 1, 1)
-            )
+            out_keys.append(ControllerKey(CTRL_LIGHT_MULTIPLIER, 1, data_count, data_count + 1, 1))
             out_data.append(0.0)  # timekey
             out_data.append(node.multiplier)
             data_count += 2
 
-            out_keys.append(
-                ControllerKey(CTRL_LIGHT_COLOR, 1, data_count, data_count + 1, 3)
-            )
+            out_keys.append(ControllerKey(CTRL_LIGHT_COLOR, 1, data_count, data_count + 1, 3))
             out_data.append(0.0)  # timekey
             for val in node.color:
                 out_data.append(val)
@@ -590,14 +572,12 @@ class MdlWriter:
 
         if type_flags & NODE_EMITTER:
             for ctrl_val, key, dim in EMITTER_CONTROLLER_KEYS:
-                if key == "detonate" and node.update != "Explosion":
+                if key == "detonate" and node.update != UpdateType.EXPLOSION:
                     continue
                 value = getattr(node, key, None)
                 if value is None:
                     continue
-                out_keys.append(
-                    ControllerKey(ctrl_val, 1, data_count, data_count + 1, dim)
-                )
+                out_keys.append(ControllerKey(ctrl_val, 1, data_count, data_count + 1, dim))
                 out_data.append(0.0)  # timekey
                 if dim == 1:
                     out_data.append(value)
@@ -608,7 +588,7 @@ class MdlWriter:
 
     def peek_anim_controllers(self, node, type_flags, out_keys, out_data):
         def append_keyframes(key, ctrl_type, dim, data_count):
-            if not key in node.keyframes:
+            if key not in node.keyframes:
                 return data_count
             keyframes = node.keyframes[key]
             if not keyframes:
@@ -617,17 +597,13 @@ class MdlWriter:
             row_lengths = {len(row) for row in keyframes}
             if len(row_lengths) != 1:
                 raise ValueError(
-                    "Keyframe rows for '{}' have inconsistent sizes: {}".format(
-                        key, row_lengths
-                    )
+                    f"Keyframe rows for '{key}' have inconsistent sizes: {row_lengths}",
                 )
             num_values = len(keyframes[0]) - 1
             bezier = num_values == 3 * dim
             if num_values != dim and not bezier:
                 raise ValueError(
-                    "Keyframe '{}': expected {} or {} values per row, got {}".format(
-                        key, dim, 3 * dim, num_values
-                    )
+                    f"Keyframe '{key}': expected {dim} or {3 * dim} values per row, got {num_values}",
                 )
             out_keys.append(
                 ControllerKey(
@@ -636,7 +612,7 @@ class MdlWriter:
                     data_count,
                     data_count + num_rows,
                     (dim | CTRL_FLAG_BEZIER) if bezier else dim,
-                )
+                ),
             )
             for i in range(num_rows):
                 out_data.append(keyframes[i][0])  # timekey
@@ -649,11 +625,9 @@ class MdlWriter:
 
         def append_orientation_keyframes(data_count):
             if not self.compress_quaternions:
-                return append_keyframes(
-                    "orientation", CTRL_BASE_ORIENTATION, 4, data_count
-                )
+                return append_keyframes("orientation", CTRL_BASE_ORIENTATION, 4, data_count)
 
-            if not "orientation" in node.keyframes:
+            if "orientation" not in node.keyframes:
                 return data_count
             keyframes = node.keyframes["orientation"]
             if not keyframes:
@@ -666,7 +640,7 @@ class MdlWriter:
                     data_count,
                     data_count + num_rows,
                     2,
-                )
+                ),
             )
             for i in range(num_rows):
                 out_data.append(keyframes[i][0])  # timekey
@@ -698,33 +672,27 @@ class MdlWriter:
         if type_flags & NODE_MESH:
             data_count = append_keyframes("alpha", CTRL_MESH_ALPHA, 1, data_count)
             data_count = append_keyframes("scale", CTRL_MESH_SCALE, 1, data_count)
-            data_count = append_keyframes(
-                "selfillumcolor", CTRL_MESH_SELFILLUMCOLOR, 3, data_count
-            )
+            data_count = append_keyframes("selfillumcolor", CTRL_MESH_SELFILLUMCOLOR, 3, data_count)
 
         # Light Controllers
 
         if type_flags & NODE_LIGHT:
             data_count = append_keyframes("radius", CTRL_LIGHT_RADIUS, 1, data_count)
-            data_count = append_keyframes(
-                "shadowradius", CTRL_LIGHT_SHADOWRADIUS, 1, data_count
-            )
+            data_count = append_keyframes("shadowradius", CTRL_LIGHT_SHADOWRADIUS, 1, data_count)
             data_count = append_keyframes(
                 "verticaldisplacement",
                 CTRL_LIGHT_VERTICALDISPLACEMENT,
                 1,
                 data_count,
             )
-            data_count = append_keyframes(
-                "multiplier", CTRL_LIGHT_MULTIPLIER, 1, data_count
-            )
+            data_count = append_keyframes("multiplier", CTRL_LIGHT_MULTIPLIER, 1, data_count)
             data_count = append_keyframes("color", CTRL_LIGHT_COLOR, 3, data_count)
 
         # Emitter Controllers
 
         if type_flags & NODE_EMITTER:
             for ctrl_type, key, dim in EMITTER_CONTROLLER_KEYS:
-                if key == "detonate" and node.update != "Explosion":
+                if key == "detonate" and node.update != UpdateType.EXPLOSION:
                     continue
                 data_count = append_keyframes(key, ctrl_type, dim, data_count)
 
@@ -782,13 +750,12 @@ class MdlWriter:
             else:
                 fn_ptr1 = MODEL_FN_PTR_1_K2_PC
                 fn_ptr2 = MODEL_FN_PTR_2_K2_PC
+        elif self.xbox:
+            fn_ptr1 = MODEL_FN_PTR_1_K1_XBOX
+            fn_ptr2 = MODEL_FN_PTR_2_K1_XBOX
         else:
-            if self.xbox:
-                fn_ptr1 = MODEL_FN_PTR_1_K1_XBOX
-                fn_ptr2 = MODEL_FN_PTR_2_K1_XBOX
-            else:
-                fn_ptr1 = MODEL_FN_PTR_1_K1_PC
-                fn_ptr2 = MODEL_FN_PTR_2_K1_PC
+            fn_ptr1 = MODEL_FN_PTR_1_K1_PC
+            fn_ptr2 = MODEL_FN_PTR_2_K1_PC
 
         model_name = self.model.name.ljust(32, "\0")
         off_root_node = self.node_offsets[0]
@@ -811,10 +778,8 @@ class MdlWriter:
     def save_model_header(self):
         classification = next(
             iter(
-                key
-                for key, value in CLASS_BY_VALUE.items()
-                if value == self.model.classification
-            )
+                key for key, value in CLASS_BY_VALUE.items() if value == self.model.classification
+            ),
         )
         subclassification = self.model.subclassification
         classification_unk1 = self.model.classification_unk1
@@ -825,13 +790,8 @@ class MdlWriter:
         scale = self.model.animscale
         supermodel_name = self.model.supermodel.ljust(32, "\0")
 
-        if (
-            is_not_null(self.model.animroot)
-            and self.node_names.count(self.model.animroot) > 0
-        ):
-            off_anim_root = self.node_offsets[
-                self.node_names.index(self.model.animroot)
-            ]
+        if is_not_null(self.model.animroot) and self.node_names.count(self.model.animroot) > 0:
+            off_anim_root = self.node_offsets[self.node_names.index(self.model.animroot)]
         else:
             off_anim_root = self.node_offsets[0]
 
@@ -843,9 +803,7 @@ class MdlWriter:
         self.mdl.write_uint8(classification_unk1)
         self.mdl.write_uint8(affected_by_fog)
         self.mdl.write_uint32(num_child_models)
-        self.put_array_def(
-            self.off_anim_offsets, len(self.model.animations)
-        )  # animation offsets
+        self.put_array_def(self.off_anim_offsets, len(self.model.animations))  # animation offsets
         self.mdl.write_uint32(supermodel_ref)
         for val in bounding_box:
             self.mdl.write_float(val)
@@ -876,13 +834,12 @@ class MdlWriter:
                 else:
                     fn_ptr1 = ANIM_FN_PTR_1_K2_PC
                     fn_ptr2 = ANIM_FN_PTR_2_K2_PC
+            elif self.xbox:
+                fn_ptr1 = ANIM_FN_PTR_1_K1_XBOX
+                fn_ptr2 = ANIM_FN_PTR_2_K1_XBOX
             else:
-                if self.xbox:
-                    fn_ptr1 = ANIM_FN_PTR_1_K1_XBOX
-                    fn_ptr2 = ANIM_FN_PTR_2_K1_XBOX
-                else:
-                    fn_ptr1 = ANIM_FN_PTR_1_K1_PC
-                    fn_ptr2 = ANIM_FN_PTR_2_K1_PC
+                fn_ptr1 = ANIM_FN_PTR_1_K1_PC
+                fn_ptr2 = ANIM_FN_PTR_2_K1_PC
 
             name = anim.name.ljust(32, "\0")
             off_root_node = self.anim_node_offsets[anim_idx][0]
@@ -923,9 +880,7 @@ class MdlWriter:
             off_root = self.anim_offsets[anim_idx]
             parent_idx = self.anim_parent_indices[anim_idx][node_idx]
             off_parent = (
-                self.anim_node_offsets[anim_idx][parent_idx]
-                if parent_idx is not None
-                else 0
+                self.anim_node_offsets[anim_idx][parent_idx] if parent_idx is not None else 0
             )
             position = [0.0] * 3
             orientation = [1.0, 0.0, 0.0, 0.0]
@@ -941,9 +896,7 @@ class MdlWriter:
                 self.mdl.write_float(val)
             for val in orientation:
                 self.mdl.write_float(val)
-            self.put_array_def(
-                self.anim_children_offsets[anim_idx][node_idx], len(child_indices)
-            )
+            self.put_array_def(self.anim_children_offsets[anim_idx][node_idx], len(child_indices))
             self.put_array_def(
                 self.anim_controller_offsets[anim_idx][node_idx],
                 self.anim_controller_counts[anim_idx][node_idx],
@@ -1011,9 +964,7 @@ class MdlWriter:
             for val in orientation:
                 self.mdl.write_float(val)
             self.put_array_def(self.children_offsets[node_idx], len(child_indices))
-            self.put_array_def(
-                self.controller_offsets[node_idx], self.controller_counts[node_idx]
-            )
+            self.put_array_def(self.controller_offsets[node_idx], self.controller_counts[node_idx])
             self.put_array_def(
                 self.controller_data_offsets[node_idx],
                 self.controller_data_counts[node_idx],
@@ -1046,11 +997,7 @@ class MdlWriter:
                     len(node.flare_list.colorshifts),
                 )
                 self.put_array_def(
-                    (
-                        self.flare_texture_offset_offsets[node_idx]
-                        if node.lensflares
-                        else 0
-                    ),
+                    (self.flare_texture_offset_offsets[node_idx] if node.lensflares else 0),
                     len(node.flare_list.textures),
                 )
                 self.mdl.write_int32(light_priority)
@@ -1277,25 +1224,13 @@ class MdlWriter:
                 self.mdl.write_string(bitmap4)
 
                 if type_flags & NODE_SABER:
-                    self.put_array_def(
-                        self.index_count_offsets[node_idx], 0
-                    )  # indices count
-                    self.put_array_def(
-                        self.index_offset_offsets[node_idx], 0
-                    )  # indices offset
-                    self.put_array_def(
-                        self.inv_count_offsets[node_idx], 0
-                    )  # inverted counter
+                    self.put_array_def(self.index_count_offsets[node_idx], 0)  # indices count
+                    self.put_array_def(self.index_offset_offsets[node_idx], 0)  # indices offset
+                    self.put_array_def(self.inv_count_offsets[node_idx], 0)  # inverted counter
                 else:
-                    self.put_array_def(
-                        self.index_count_offsets[node_idx], 1
-                    )  # indices count
-                    self.put_array_def(
-                        self.index_offset_offsets[node_idx], 1
-                    )  # indices offset
-                    self.put_array_def(
-                        self.inv_count_offsets[node_idx], 1
-                    )  # inverted counter
+                    self.put_array_def(self.index_count_offsets[node_idx], 1)  # indices count
+                    self.put_array_def(self.index_offset_offsets[node_idx], 1)  # indices offset
+                    self.put_array_def(self.inv_count_offsets[node_idx], 1)  # inverted counter
 
                 self.mdl.write_uint32(0xFFFFFFFF)  # unknown
                 self.mdl.write_uint32(0xFFFFFFFF)  # unknown
@@ -1375,9 +1310,7 @@ class MdlWriter:
                 self.mdl.write_uint32(num_bones)
                 self.put_array_def(self.qbone_offsets[node_idx], num_bones)  # QBones
                 self.put_array_def(self.tbone_offsets[node_idx], num_bones)  # TBones
-                self.put_array_def(
-                    self.skin_garbage_offsets[node_idx], num_bones
-                )  # garbage
+                self.put_array_def(self.skin_garbage_offsets[node_idx], num_bones)  # garbage
                 for i in range(16):
                     if i < len(bone_indices):
                         self.mdl.write_uint16(bone_indices[i])
@@ -1393,9 +1326,7 @@ class MdlWriter:
                 period = node.period
                 off_vert_data = self.dangly_verts_offsets[node_idx]
 
-                self.put_array_def(
-                    self.constraints_offsets[node_idx], len(node.constraints)
-                )
+                self.put_array_def(self.constraints_offsets[node_idx], len(node.constraints))
                 self.mdl.write_float(displacement)
                 self.mdl.write_float(tightness)
                 self.mdl.write_float(period)
@@ -1495,9 +1426,7 @@ class MdlWriter:
                     num_meshes += 1
                     mesh_inv_count = self.get_inverted_counter(num_meshes)
 
-                    self.mdl.write_uint32(
-                        3 * len(node.facelist.vertices)
-                    )  # vertex index count
+                    self.mdl.write_uint32(3 * len(node.facelist.vertices))  # vertex index count
                     self.mdl.write_uint32(mesh_inv_count)  # inverted mesh counter
 
                     # Vertex Indices
@@ -1524,17 +1453,11 @@ class MdlWriter:
                                 self.mdx.write_float(val)
                         if node.tangentspace:
                             if self.xbox:
-                                comp = self.compress_vector_xbox(
-                                    node.bitangents[vert_idx]
-                                )
+                                comp = self.compress_vector_xbox(node.bitangents[vert_idx])
                                 self.mdx.write_uint32(comp)
-                                comp = self.compress_vector_xbox(
-                                    node.tangents[vert_idx]
-                                )
+                                comp = self.compress_vector_xbox(node.tangents[vert_idx])
                                 self.mdx.write_uint32(comp)
-                                comp = self.compress_vector_xbox(
-                                    node.tangentspacenormals[vert_idx]
-                                )
+                                comp = self.compress_vector_xbox(node.tangentspacenormals[vert_idx])
                                 self.mdx.write_uint32(comp)
                             else:
                                 for val in node.bitangents[vert_idx]:
@@ -1739,13 +1662,12 @@ class MdlWriter:
                 else:
                     fn_ptr1 = SKIN_FN_PTR_1_K2_PC
                     fn_ptr2 = SKIN_FN_PTR_2_K2_PC
+            elif self.xbox:
+                fn_ptr1 = SKIN_FN_PTR_1_K1_XBOX
+                fn_ptr2 = SKIN_FN_PTR_2_K1_XBOX
             else:
-                if self.xbox:
-                    fn_ptr1 = SKIN_FN_PTR_1_K1_XBOX
-                    fn_ptr2 = SKIN_FN_PTR_2_K1_XBOX
-                else:
-                    fn_ptr1 = SKIN_FN_PTR_1_K1_PC
-                    fn_ptr2 = SKIN_FN_PTR_2_K1_PC
+                fn_ptr1 = SKIN_FN_PTR_1_K1_PC
+                fn_ptr2 = SKIN_FN_PTR_2_K1_PC
 
         elif type_flags & NODE_DANGLY:
             if self.tsl:
@@ -1755,29 +1677,26 @@ class MdlWriter:
                 else:
                     fn_ptr1 = DANGLY_FN_PTR_1_K2_PC
                     fn_ptr2 = DANGLY_FN_PTR_2_K2_PC
+            elif self.xbox:
+                fn_ptr1 = DANGLY_FN_PTR_1_K1_XBOX
+                fn_ptr2 = DANGLY_FN_PTR_2_K1_XBOX
             else:
-                if self.xbox:
-                    fn_ptr1 = DANGLY_FN_PTR_1_K1_XBOX
-                    fn_ptr2 = DANGLY_FN_PTR_2_K1_XBOX
-                else:
-                    fn_ptr1 = DANGLY_FN_PTR_1_K1_PC
-                    fn_ptr2 = DANGLY_FN_PTR_2_K1_PC
+                fn_ptr1 = DANGLY_FN_PTR_1_K1_PC
+                fn_ptr2 = DANGLY_FN_PTR_2_K1_PC
 
-        else:
-            if self.tsl:
-                if self.xbox:
-                    fn_ptr1 = MESH_FN_PTR_1_K2_XBOX
-                    fn_ptr2 = MESH_FN_PTR_2_K2_XBOX
-                else:
-                    fn_ptr1 = MESH_FN_PTR_1_K2_PC
-                    fn_ptr2 = MESH_FN_PTR_2_K2_PC
+        elif self.tsl:
+            if self.xbox:
+                fn_ptr1 = MESH_FN_PTR_1_K2_XBOX
+                fn_ptr2 = MESH_FN_PTR_2_K2_XBOX
             else:
-                if self.xbox:
-                    fn_ptr1 = MESH_FN_PTR_1_K1_XBOX
-                    fn_ptr2 = MESH_FN_PTR_2_K1_XBOX
-                else:
-                    fn_ptr1 = MESH_FN_PTR_1_K1_PC
-                    fn_ptr2 = MESH_FN_PTR_2_K1_PC
+                fn_ptr1 = MESH_FN_PTR_1_K2_PC
+                fn_ptr2 = MESH_FN_PTR_2_K2_PC
+        elif self.xbox:
+            fn_ptr1 = MESH_FN_PTR_1_K1_XBOX
+            fn_ptr2 = MESH_FN_PTR_2_K1_XBOX
+        else:
+            fn_ptr1 = MESH_FN_PTR_1_K1_PC
+            fn_ptr2 = MESH_FN_PTR_2_K1_PC
 
         return (fn_ptr1, fn_ptr2)
 
@@ -1813,9 +1732,7 @@ class MdlWriter:
     def get_inverted_counter(self, count):
         quo = count // 100
         mod = count % 100
-        return int(
-            pow(2, quo) * 100 - count + (100 * quo if mod else 0) + (0 if quo else -1)
-        )
+        return int(pow(2, quo) * 100 - count + (100 * quo if mod else 0) + (0 if quo else -1))
 
     def put_array_def(self, offset, count):
         self.mdl.write_uint32(offset)

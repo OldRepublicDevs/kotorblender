@@ -29,22 +29,31 @@ from ..scene import material
 class KB_OT_rebuild_material(bpy.types.Operator):
     bl_idname: ClassVar[str] = "kb.rebuild_material"
     bl_label: ClassVar[str] = "Rebuild Material"
-    bl_description: ClassVar[str] = "Rebuild the material for the selected mesh (textures, lightmap, shader graph)"
+    bl_description: ClassVar[str] = (
+        "Rebuild the material for the selected mesh (textures, lightmap, shader graph)"
+    )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        obj = context.object
-        if not obj:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
             cls.poll_message_set(context, "Select an object")
             return False
         if obj.type != "MESH":
             cls.poll_message_set(context, "Select a mesh object")
             return False
-        if obj.kb.meshtype == MeshType.EMITTER:
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
+        if kb.meshtype == MeshType.EMITTER:
             cls.poll_message_set(context, "Cannot rebuild material on emitter mesh")
             return False
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        material.rebuild_object_materials(context.object)
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            self.report({"ERROR"}, "No object selected")
+            return {"CANCELLED"}
+        material.rebuild_object_materials(obj)
         return {"FINISHED"}

@@ -43,7 +43,7 @@ class BinaryReader:
     def seek(self, offset: int, origin: int = SeekOrigin.BEGIN):
         self.file.seek(offset, origin)
 
-    def skip(self, offset: int):
+    def skip(self, offset: int) -> None:
         self.file.seek(offset, SeekOrigin.CURRENT)
 
     def tell(self) -> int:

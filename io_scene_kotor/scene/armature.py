@@ -16,21 +16,23 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+from __future__ import annotations
+
 import sys
 
 import bpy
 from bpy_extras import anim_utils
-
 from mathutils import Quaternion, Vector
 
 from ..constants import Classification
-from ..utils import find_objects, is_skin_mesh, is_char_bone, is_char_dummy
+from ..utils import find_objects, is_char_bone, is_char_dummy, is_skin_mesh
 
 from .animnode import AnimationNode
 
 
-def rebuild_armature(mdl_root):
-    if mdl_root.kb.classification != Classification.CHARACTER:
+def rebuild_armature(mdl_root: bpy.types.Object) -> bpy.types.Object | None:
+    kb = getattr(mdl_root, "kb", None)
+    if kb is None or kb.classification != Classification.CHARACTER:
         return None
 
     # MDL root must have at least one skinmesh
@@ -77,7 +79,11 @@ def rebuild_armature(mdl_root):
     return armature_obj
 
 
-def create_armature_bones(armature, obj, parent_bone=None):
+def create_armature_bones(
+    armature: bpy.types.Armature,
+    obj: bpy.types.Object,
+    parent_bone: bpy.types.EditBone | None = None,
+) -> None:
     if not is_char_dummy(obj) and not is_char_bone(obj):
         for child in obj.children:
             create_armature_bones(armature, child, parent_bone)
@@ -90,7 +96,10 @@ def create_armature_bones(armature, obj, parent_bone=None):
         create_armature_bones(armature, child, bone)
 
 
-def apply_object_keyframes(mdl_root, armature):
+def apply_object_keyframes(
+    mdl_root: bpy.types.Object,
+    armature: bpy.types.Object,
+) -> None:
     bpy.context.scene.frame_set(0)
     bpy.context.view_layer.objects.active = armature
     bpy.ops.object.mode_set(mode="POSE")
@@ -101,16 +110,12 @@ def apply_object_keyframes(mdl_root, armature):
         anim_data.action = action
     action_slot = None
     if bpy.app.version >= (4, 4):
-        action_slot = AnimationNode.get_or_create_action_slot(
-            action, "OBJECT", armature.name
-        )
+        action_slot = AnimationNode.get_or_create_action_slot(action, "OBJECT", armature.name)
         if not anim_data.action_slot:
             anim_data.action_slot = action_slot
 
     if bpy.app.version >= (5, 0) and action_slot:
-        channelbag = anim_utils.action_ensure_channelbag_for_slot(
-            action, action_slot
-        )
+        channelbag = anim_utils.action_ensure_channelbag_for_slot(action, action_slot)
         channelbag.fcurves.clear()
     else:
         action.fcurves.clear()
@@ -119,7 +124,10 @@ def apply_object_keyframes(mdl_root, armature):
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
-def unapply_object_keyframes(mdl_root, armature_obj):
+def unapply_object_keyframes(
+    mdl_root: bpy.types.Object,
+    armature_obj: bpy.types.Object,
+) -> None:
     bpy.context.scene.frame_set(0)
     bpy.context.view_layer.objects.active = mdl_root
     bpy.ops.object.mode_set(mode="OBJECT")
@@ -127,19 +135,16 @@ def unapply_object_keyframes(mdl_root, armature_obj):
 
 
 def apply_object_keyframes_to_armature(
-    obj, armature_obj, armature_action, armature_action_slot=None
-):
-    if (
-        obj.name in armature_obj.pose.bones
-        and obj.animation_data
-        and obj.animation_data.action
-    ):
+    obj: bpy.types.Object,
+    armature_obj: bpy.types.Object,
+    armature_action: bpy.types.Action,
+    armature_action_slot: bpy.types.ActionSlot | None = None,
+) -> None:
+    if obj.name in armature_obj.pose.bones and obj.animation_data and obj.animation_data.action:
         action = obj.animation_data.action
 
         if bpy.context.scene.frame_current != 0:
-            raise RuntimeError(
-                "Armature keyframe application requires the scene to be at frame 0"
-            )
+            raise RuntimeError("Armature keyframe application requires the scene to be at frame 0")
         rest_location = obj.location
         rest_rotation = obj.rotation_quaternion
 
@@ -161,7 +166,7 @@ def apply_object_keyframes_to_armature(
             fcurves = [
                 AnimationNode.get_or_create_fcurve(
                     armature_action,
-                    'pose.bones["{}"].location'.format(obj.name),
+                    f'pose.bones["{obj.name}"].location',
                     i,
                     armature_action_slot,
                 )
@@ -173,9 +178,7 @@ def apply_object_keyframes_to_armature(
                 dim = 3
                 bezier = len(location) == 3 * dim
                 for i in range(3):
-                    keyframe = keyframe_points[i].insert(
-                        frame, location_delta[i], options={"FAST"}
-                    )
+                    keyframe = keyframe_points[i].insert(frame, location_delta[i], options={"FAST"})
                     if bezier:
                         keyframe.interpolation = "BEZIER"
                         keyframe.handle_left_type = "FREE"
@@ -196,7 +199,7 @@ def apply_object_keyframes_to_armature(
             fcurves = [
                 AnimationNode.get_or_create_fcurve(
                     armature_action,
-                    'pose.bones["{}"].rotation_quaternion'.format(obj.name),
+                    f'pose.bones["{obj.name}"].rotation_quaternion',
                     i,
                     armature_action_slot,
                 )
@@ -206,20 +209,25 @@ def apply_object_keyframes_to_armature(
             for frame, rotation in rotations:
                 rotation_delta = rest_rotation.inverted() @ Quaternion(rotation[:4])
                 for i in range(4):
-                    keyframe = keyframe_points[i].insert(
-                        frame, rotation_delta[i], options={"FAST"}
-                    )
+                    keyframe = keyframe_points[i].insert(frame, rotation_delta[i], options={"FAST"})
                     keyframe.interpolation = "LINEAR"
             for kfp in keyframe_points:
                 kfp.update()
 
     for child in obj.children:
         apply_object_keyframes_to_armature(
-            child, armature_obj, armature_action, armature_action_slot
+            child,
+            armature_obj,
+            armature_action,
+            armature_action_slot,
         )
 
 
-def unapply_object_keyframes_from_armature(obj, root_name, armature):
+def unapply_object_keyframes_from_armature(
+    obj: bpy.types.Object,
+    root_name: str,
+    armature: bpy.types.Object,
+) -> None:
     if not armature.animation_data:
         return
     armature_action = armature.animation_data.action
@@ -228,28 +236,24 @@ def unapply_object_keyframes_from_armature(obj, root_name, armature):
 
     if obj.name in armature.pose.bones:
         anim_data = AnimationNode.get_or_create_animation_data(obj)
-        action = AnimationNode.get_or_create_action("{}.{}".format(root_name, obj.name))
+        action = AnimationNode.get_or_create_action(f"{root_name}.{obj.name}")
         if not anim_data.action:
             anim_data.action = action
         action_slot = None
         if bpy.app.version >= (4, 4):
-            action_slot = AnimationNode.get_or_create_action_slot(
-                action, "OBJECT", obj.name
-            )
+            action_slot = AnimationNode.get_or_create_action_slot(action, "OBJECT", obj.name)
             if not anim_data.action_slot:
                 anim_data.action_slot = action_slot
 
         if bpy.app.version >= (5, 0) and action_slot:
-            channelbag = anim_utils.action_ensure_channelbag_for_slot(
-                action, action_slot
-            )
+            channelbag = anim_utils.action_ensure_channelbag_for_slot(action, action_slot)
             channelbag.fcurves.clear()
         else:
             action.fcurves.clear()
 
         if bpy.context.scene.frame_current != 0:
             raise RuntimeError(
-                "Armature keyframe unapplication requires the scene to be at frame 0"
+                "Armature keyframe unapplication requires the scene to be at frame 0",
             )
         rest_location = obj.location.copy()
         rest_rotation = obj.rotation_quaternion.copy()
@@ -262,7 +266,7 @@ def unapply_object_keyframes_from_armature(obj, root_name, armature):
             armature_action,
             0,
             sys.maxsize,
-            'pose.bones["{}"].'.format(obj.name),
+            f'pose.bones["{obj.name}"].',
             action_slot=armature_action_slot,
         )
         nested_keyframes = AnimationNode.nest_keyframes(keyframes)
@@ -275,9 +279,7 @@ def unapply_object_keyframes_from_armature(obj, root_name, armature):
                 rotations = [(values[0], values[1]) for values in dp_keyframes]
         if locations:
             fcurves = [
-                AnimationNode.get_or_create_fcurve(
-                    action, "location", i, action_slot=action_slot
-                )
+                AnimationNode.get_or_create_fcurve(action, "location", i, action_slot=action_slot)
                 for i in range(3)
             ]
             keyframe_points = [fcurve.keyframe_points for fcurve in fcurves]
@@ -286,9 +288,7 @@ def unapply_object_keyframes_from_armature(obj, root_name, armature):
                 dim = 3
                 bezier = len(location) == 3 * dim
                 for i in range(3):
-                    keyframe = keyframe_points[i].insert(
-                        frame, abs_location[i], options={"FAST"}
-                    )
+                    keyframe = keyframe_points[i].insert(frame, abs_location[i], options={"FAST"})
                     if bezier:
                         keyframe.interpolation = "BEZIER"
                         keyframe.handle_left_type = "FREE"
@@ -308,7 +308,10 @@ def unapply_object_keyframes_from_armature(obj, root_name, armature):
         if rotations:
             fcurves = [
                 AnimationNode.get_or_create_fcurve(
-                    action, "rotation_quaternion", i, action_slot=action_slot
+                    action,
+                    "rotation_quaternion",
+                    i,
+                    action_slot=action_slot,
                 )
                 for i in range(4)
             ]
@@ -316,9 +319,7 @@ def unapply_object_keyframes_from_armature(obj, root_name, armature):
             for frame, rotation in rotations:
                 abs_rotation = rest_rotation @ Quaternion(rotation[:4])
                 for i in range(4):
-                    keyframe = keyframe_points[i].insert(
-                        frame, abs_rotation[i], options={"FAST"}
-                    )
+                    keyframe = keyframe_points[i].insert(frame, abs_rotation[i], options={"FAST"})
                     keyframe.interpolation = "LINEAR"
             for kfp in keyframe_points:
                 kfp.update()

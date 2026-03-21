@@ -15,10 +15,12 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
-from ...utils import is_mdl_root, is_skin_mesh, find_objects
+from ...constants import Direction
+from ...utils import find_objects, is_mdl_root, is_skin_mesh
 
 
 class KB_PT_animations(bpy.types.Panel):
@@ -28,21 +30,29 @@ class KB_PT_animations(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, context: bpy.types.Context) -> bool:
         return is_mdl_root(context.object)
 
-    def draw(self, context):
-        obj = context.object
+    def draw(self, context: bpy.types.Context) -> None:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            raise ValueError("Object is None")
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
         layout.use_property_split = True
+
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("Object.kb is None")
 
         row = layout.row()
         row.template_list(
             "UI_UL_list",
             "animations",
-            obj.kb,
+            kb,
             "anim_list",
-            obj.kb,
+            kb,
             "anim_list_idx",
             rows=7,
         )
@@ -50,13 +60,13 @@ class KB_PT_animations(bpy.types.Panel):
         col.operator("kb.add_animation", icon="ADD", text="")
         col.operator("kb.delete_animation", icon="REMOVE", text="")
         col.separator()
-        col.operator("kb.move_animation", icon="TRIA_UP", text="").direction = "UP"
-        col.operator("kb.move_animation", icon="TRIA_DOWN", text="").direction = "DOWN"
+        col.operator("kb.move_animation", icon="TRIA_UP", text="").direction = Direction.UP
+        col.operator("kb.move_animation", icon="TRIA_DOWN", text="").direction = Direction.DOWN
         col.separator()
         col.operator("kb.play_animation", icon="PLAY", text="")
 
-        anim_list = obj.kb.anim_list
-        anim_list_idx = obj.kb.anim_list_idx
+        anim_list = kb.anim_list
+        anim_list_idx = kb.anim_list_idx
         if anim_list_idx >= 0 and anim_list_idx < len(anim_list):
             anim = anim_list[anim_list_idx]
             row = layout.row()
@@ -77,32 +87,39 @@ class KB_PT_animations_events(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
-        obj = context.object
-        anim_list_idx = obj.kb.anim_list_idx
-        return (
-            is_mdl_root(obj)
-            and anim_list_idx >= 0
-            and anim_list_idx < len(obj.kb.anim_list)
-        )
+    def poll(cls, context: bpy.types.Context) -> bool:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            return False
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
+        anim_list_idx = kb.anim_list_idx
+        return is_mdl_root(obj) and anim_list_idx >= 0 and anim_list_idx < len(kb.anim_list)
 
-    def draw(self, context):
-        obj = context.object
+    def draw(self, context: bpy.types.Context) -> None:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            raise ValueError("Object is None")
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
         layout.use_property_split = True
 
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError("Object.kb is None")
+
         # Event List
-        anim = obj.kb.anim_list[obj.kb.anim_list_idx]
+        anim = kb.anim_list[kb.anim_list_idx]
         row = layout.row()
-        row.template_list(
-            "UI_UL_list", "anim_events", anim, "event_list", anim, "event_list_idx"
-        )
+        row.template_list("UI_UL_list", "anim_events", anim, "event_list", anim, "event_list_idx")
         col = row.column(align=True)
         col.operator("kb.add_anim_event", text="", icon="ADD")
         col.operator("kb.delete_anim_event", text="", icon="REMOVE")
         col.separator()
-        col.operator("kb.move_anim_event", icon="TRIA_UP", text="").direction = "UP"
-        col.operator("kb.move_anim_event", icon="TRIA_DOWN", text="").direction = "DOWN"
+        col.operator("kb.move_anim_event", icon="TRIA_UP", text="").direction = Direction.UP
+        col.operator("kb.move_anim_event", icon="TRIA_DOWN", text="").direction = Direction.DOWN
 
         # Selected Event
         event_list = anim.event_list
@@ -121,14 +138,16 @@ class KB_PT_animations_armature(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(cls, context):
-        mdl_root = context.object
-        return is_mdl_root(mdl_root) and find_objects(
-            mdl_root, lambda obj: is_skin_mesh(obj)
-        )
+    def poll(cls, context: bpy.types.Context) -> bool:
+        mdl_root: bpy.types.Object | None = context.object
+        if mdl_root is None:
+            return False
+        return is_mdl_root(mdl_root) and find_objects(mdl_root, lambda obj: is_skin_mesh(obj))
 
-    def draw(self, context):
+    def draw(self, context: bpy.types.Context) -> None:
         layout = self.layout
+        if layout is None:
+            raise ValueError("Layout is None")
 
         row = layout.row()
         row.operator("kb.rebuild_armature")

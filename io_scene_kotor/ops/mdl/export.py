@@ -15,9 +15,9 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
-
 from bpy_extras.io_utils import ExportHelper
 
 from ...constants import ExportOptions
@@ -35,11 +35,13 @@ class KB_OT_export_mdl(bpy.types.Operator, ExportHelper):
     filter_glob: bpy.props.StringProperty(default="*.mdl", options={"HIDDEN"})
 
     export_for_tsl: bpy.props.BoolProperty(
-        name="Export for TSL", description="Use The Sith Lords MDL format"
+        name="Export for TSL",
+        description="Use The Sith Lords MDL format",
     )
 
     export_for_xbox: bpy.props.BoolProperty(
-        name="Export for Xbox", description="Use Xbox MDL format"
+        name="Export for Xbox",
+        description="Use Xbox MDL format",
     )
 
     export_animations: bpy.props.BoolProperty(name="Export Animations", default=True)
@@ -50,11 +52,9 @@ class KB_OT_export_mdl(bpy.types.Operator, ExportHelper):
         default=True,
     )
 
-    compress_quaternions: bpy.props.BoolProperty(
-        name="Compress Quaternions", default=False
-    )
+    compress_quaternions: bpy.props.BoolProperty(name="Compress Quaternions", default=False)
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         options = ExportOptions()
         options.export_for_tsl = self.export_for_tsl
         options.export_for_xbox = self.export_for_xbox

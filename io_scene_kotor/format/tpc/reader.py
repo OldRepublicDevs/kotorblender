@@ -15,11 +15,12 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 from enum import Enum
 from struct import unpack
 
-from ..binreader import BinaryReader, SeekOrigin
+from ...format.binreader import BinaryReader, SeekOrigin
 
 
 class TpcEncoding(Enum):
@@ -60,7 +61,7 @@ class TpcReader:
         cubemap = image_h // image_w == 6
         if cubemap:
             sides = []
-            for _ in range(0, 6):
+            for _ in range(6):
                 mips = self.read_mips(image_w, image_w)
                 top_decomp = self.decompress_mip_if_compressed(mips[0])
                 sides.append(top_decomp)
@@ -83,7 +84,7 @@ class TpcReader:
 
     def read_mips(self, image_w, image_h):
         mips = []
-        for mip_level in range(0, self.num_mips):
+        for mip_level in range(self.num_mips):
             mip_w, mip_h = self.mip_size(image_w, image_h, mip_level)
             mip = self.read_mip(mip_w, mip_h, mip_level)
             mips.append(mip)
@@ -92,12 +93,12 @@ class TpcReader:
     def mip_size(self, image_w, image_h, level):
         return (max(1, image_w >> level), max(1, image_h >> level))
 
-    def read_mip(self, mip_w, mip_h, level):
+    def read_mip(self, mip_w: int, mip_h: int, level: int) -> TpcMip:
         pixels_size = self.mip_pixels_size(level, mip_w, mip_h)
         pixels = self.reader.read_bytes(pixels_size)
         return TpcMip(mip_w, mip_h, pixels)
 
-    def mip_pixels_size(self, mip_level, mip_w, mip_h):
+    def mip_pixels_size(self, mip_level: int, mip_w: int, mip_h: int) -> int:
         if self.compressed:
             if mip_level == 0:
                 return self.compressed_size
@@ -114,16 +115,16 @@ class TpcReader:
                 return 4 * mip_w * mip_h
         raise RuntimeError("Unable to calculate size of pixel buffer")
 
-    def merge_cubemap(self, w, h, sides):
-        pixels = []
+    def merge_cubemap(self, w: int, h: int, sides: list[TpcMip]) -> TpcMip:
+        pixels: list[float] = []
         for side in sides:
             pixels.extend(side.pixels)
         return TpcMip(w, h, pixels)
 
-    def mip_to_image(self, mip):
+    def mip_to_image(self, mip: TpcMip) -> TpcImage:
         if self.encoding == TpcEncoding.GRAYSCALE:
             pixels = []
-            for i in range(0, mip.w * mip.h):
+            for i in range(mip.w * mip.h):
                 val = mip.pixels[i]
                 pixels.append(val / 255)
                 pixels.append(val / 255)
@@ -131,7 +132,7 @@ class TpcReader:
                 pixels.append(1.0)
         elif self.encoding == TpcEncoding.RGB:
             pixels = []
-            for i in range(0, mip.w * mip.h):
+            for i in range(mip.w * mip.h):
                 r, g, b = mip.pixels[(3 * i) : (3 * i + 3)]
                 pixels.append(r / 255)
                 pixels.append(g / 255)
@@ -157,8 +158,8 @@ class TpcReader:
         pixels_idx = 0
         out_pixels_size = mip.w * mip.h * (4 if has_alpha else 3)
         out_pixels = [None] * out_pixels_size
-        for block_y in range(0, num_blocks_y):
-            for block_x in range(0, num_blocks_x):
+        for block_y in range(num_blocks_y):
+            for block_x in range(num_blocks_x):
                 self.decompress_dxt15_block(
                     mip.w,
                     mip.pixels,
@@ -172,7 +173,14 @@ class TpcReader:
         return out_pixels
 
     def decompress_dxt15_block(
-        self, mip_w, pixels, pixels_idx, has_alpha, pixel_x, pixel_y, out_pixels
+        self,
+        mip_w,
+        pixels,
+        pixels_idx,
+        has_alpha,
+        pixel_x,
+        pixel_y,
+        out_pixels,
     ):
         if has_alpha:
             alphas = pixels[pixels_idx : pixels_idx + 2]
@@ -185,34 +193,30 @@ class TpcReader:
         r = []
         g = []
         b = []
-        for i in range(0, 2):
+        for i in range(2):
             tmp = (colors[i] >> 11) * 255 + 16
             r.append((tmp // 32 + tmp) // 32)
             tmp = ((colors[i] & 0x07E0) >> 5) * 255 + 32
             g.append((tmp // 64 + tmp) // 64)
             tmp = (colors[i] & 0x001F) * 255 + 16
             b.append((tmp // 32 + tmp) // 32)
-        for block_pixel_y in range(0, 4):
-            for block_pixel_x in range(0, 4):
+        for block_pixel_y in range(4):
+            for block_pixel_x in range(4):
                 if has_alpha:
                     alpha_code_idx = 3 * (4 * block_pixel_y + block_pixel_x)
-                    alpha_code = (alpha_codes >> alpha_code_idx) & 0x07
+                    alpha_code = (alpha_codes >> alpha_code_idx) & 0x07  # pyright: ignore[reportPossiblyUnboundVariable]
                     if alpha_code == 0:
-                        alpha = alphas[0]
+                        alpha = alphas[0]  # pyright: ignore[reportPossiblyUnboundVariable]
                     elif alpha_code == 1:
-                        alpha = alphas[1]
-                    elif alphas[0] > alphas[1]:
-                        alpha = (
-                            (8 - alpha_code) * alphas[0] + (alpha_code - 1) * alphas[1]
-                        ) // 7
+                        alpha = alphas[1]  # pyright: ignore[reportPossiblyUnboundVariable]
+                    elif alphas[0] > alphas[1]:  # pyright: ignore[reportPossiblyUnboundVariable]
+                        alpha = ((8 - alpha_code) * alphas[0] + (alpha_code - 1) * alphas[1]) // 7  # pyright: ignore[reportPossiblyUnboundVariable]
                     elif alpha_code == 6:
                         alpha = 0
                     elif alpha_code == 7:
                         alpha = 255
                     else:
-                        alpha = (
-                            (6 - alpha_code) * alphas[0] + (alpha_code - 1) * alphas[1]
-                        ) // 5
+                        alpha = ((6 - alpha_code) * alphas[0] + (alpha_code - 1) * alphas[1]) // 5  # pyright: ignore[reportPossiblyUnboundVariable]
                 else:
                     alpha = 255
                 color_code_idx = 2 * (4 * block_pixel_y + block_pixel_x)
@@ -234,25 +238,24 @@ class TpcReader:
                             (g[0] + 2 * g[1]) // 3,
                             (b[0] + 2 * b[1]) // 3,
                         )
-                else:
-                    if color_code == 0:
-                        rgb = (r[0], g[0], b[0])
-                    elif color_code == 1:
-                        rgb = (r[1], g[1], b[1])
-                    elif color_code == 2:
-                        rgb = (
-                            (r[0] + r[1]) // 2,
-                            (g[0] + g[1]) // 2,
-                            (b[0] + b[1]) // 2,
-                        )
-                    elif color_code == 3:
-                        rgb = (0, 0, 0)
+                elif color_code == 0:
+                    rgb = (r[0], g[0], b[0])
+                elif color_code == 1:
+                    rgb = (r[1], g[1], b[1])
+                elif color_code == 2:
+                    rgb = (
+                        (r[0] + r[1]) // 2,
+                        (g[0] + g[1]) // 2,
+                        (b[0] + b[1]) // 2,
+                    )
+                elif color_code == 3:
+                    rgb = (0, 0, 0)
                 if pixel_x + block_pixel_x < mip_w:
                     out_pixels_idx = (pixel_y + block_pixel_y) * mip_w
                     out_pixels_idx += pixel_x + block_pixel_x
                     out_pixels_idx *= 4 if has_alpha else 3
-                    out_pixels[out_pixels_idx + 0] = rgb[0]
-                    out_pixels[out_pixels_idx + 1] = rgb[1]
-                    out_pixels[out_pixels_idx + 2] = rgb[2]
+                    out_pixels[out_pixels_idx + 0] = rgb[0]  # pyright: ignore[reportPossiblyUnboundVariable]
+                    out_pixels[out_pixels_idx + 1] = rgb[1]  # pyright: ignore[reportPossiblyUnboundVariable]
+                    out_pixels[out_pixels_idx + 2] = rgb[2]  # pyright: ignore[reportPossiblyUnboundVariable]
                     if has_alpha:
                         out_pixels[out_pixels_idx + 3] = alpha

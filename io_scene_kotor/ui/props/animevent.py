@@ -15,12 +15,15 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
 
 class AnimEventPropertyGroup(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name")
-    frame: bpy.props.IntProperty(name="Frame",
-                                 description="Frame at which this event should fire",
-                                 default=1)
+    frame: bpy.props.IntProperty(
+        name="Frame",
+        description="Frame at which this event should fire",
+        default=1,
+    )

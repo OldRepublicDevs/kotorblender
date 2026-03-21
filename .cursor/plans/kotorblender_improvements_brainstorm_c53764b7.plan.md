@@ -76,7 +76,7 @@ No new features are in scope unless they are small, high-impact fixes (e.g. oper
 
 - Structure: `format/` → `io/` → `scene/` → `ops/` + `ui/`; 52 classes in [io_scene_kotor/**init**.py](io_scene_kotor/__init__.py). No CLAUDE.md, CONTRIBUTING, or ARCHITECTURE.
 - Hotspots: MDL/MDX and [scene/material.py](io_scene_kotor/scene/material.py); WOK/AABB and [modelnode/base.py](io_scene_kotor/scene/modelnode/base.py). Ops report via `self.report({"ERROR"}, str(ex))`; no shared reporting helper.
-- UI: Menus in [ui/menu/kotor.py](io_scene_kotor/ui/menu/kotor.py) (typo **"Mininmap"** at **line 32** → "Minimap"). No keymaps. Many operators lack `bl_description`; **no `poll_message`** anywhere—disabled ops give no reason.
+- UI: Menus in [ui/menu/kotor.py](io_scene_kotor/ui/menu/kotor.py) (typo **"Mininmap"** at **line 32** → "Minimap"). No keymaps. Many operators lack `bl_description`; **no `poll_message_set()`** before the P0 pass—disabled ops gave no reason (since addressed in todos).
 - Maintainability: [test/blender/](test/blender/) + Makefile + [test/run_blender_tests.py](test/run_blender_tests.py); CI lint (E9,F821,F823) and test-and-build; 400+ F401/F403 accepted.
 - Gaps: TPC/TXI read-only; E2E needs `DATA_DIR` (not in CI).
 
@@ -265,6 +265,8 @@ No new features are in scope unless they are small, high-impact fixes (e.g. oper
 - **Document**: Create [docs/brainstorms/2026-03-19-kotorblender-improvements-brainstorm.md](docs/brainstorms/2026-03-19-kotorblender-improvements-brainstorm.md) with the content above (and expand the dimension-by-dimension action lists when implementing the plan).
 - **Directory**: Create `docs/brainstorms/` if it does not exist (repo currently has no `docs/`).
 
+**Completed:** `docs/brainstorms/` and `docs/brainstorms/2026-03-19-kotorblender-improvements-brainstorm.md` created with roadmap summary, phases, acceptance criteria, and backlog.
+
 ---
 
 ## Implementation phases (execution order)
@@ -283,4 +285,307 @@ No new features are in scope unless they are small, high-impact fixes (e.g. oper
 1. Execute the todo steps above in phase order (see Implementation phases).
 2. Optionally create [docs/brainstorms/2026-03-19-kotorblender-improvements-brainstorm.md](docs/brainstorms/2026-03-19-kotorblender-improvements-brainstorm.md) from this plan for sharing.
 3. Use this plan as the implementation roadmap or run `/workflows:plan` to produce a phase-by-phase implementation plan.
+4. **Further menu integration** (context menus, header menus, NSS in Text Editor, optional keymaps) is captured and deepened in [pykotor_integration_and_ui_expansion_91971bed.plan.md](pykotor_integration_and_ui_expansion_91971bed.plan.md) Part 3.10 and Part 9.
 
+---
+
+## Enhancement summary (deepened 2026-03-21)
+
+**Note:** `/deepen-plan` requested plan path `#/compound`; no `compound` plan file exists in-repo. This pass deepens **this** brainstorm plan using a fresh repo-research-analyst pass and Blender extension best practices (no parallel skill/agent fan-out in this environment).
+
+**Sections enhanced:** Coverage roadmap, operator/testing discipline, institutional memory link.
+
+**Research inputs:** `repo-research-analyst` (2026-03-21) — prioritized remaining gaps: module/game PyKotor workflows, `new_*` / `edit_*` resource ops, tools (`file_search`, designers), save-game ops, extended show/hide matrix, texture batch/extract ops, ASCII MDL reader/writer pytest corpora, UV/emitter export depth, `open_addon_preferences` behavior.
+
+### Key improvements to fold into future work
+
+1. **Coverage matrix caveat:** `test/scripts/coverage_inventory.py` marks “covered” on import heuristics; prioritize `bpy.ops` smoke and assertions over import-only “yes” cells.
+2. **PyKotor-gated ops:** Use temp dirs + `skip`/clean `CANCELLED` when PyKotor or module roots are missing so CI stays asset-free.
+3. **Operator construction:** Avoid custom `Operator.__init_`_ without proper `super()`; use `invoke` + `getattr` defaults in `execute` (see [docs/solutions/test-failures/blender-bpy-ops-operator-init.md](../../docs/solutions/test-failures/blender-bpy-ops-operator-init.md)).
+4. **Show/hide family:** Extend smoke tests beyond walkmesh/lights — untextured trimeshes, emitters, blockers, classification-filtered pairs (characters/placeables/doors) as synthetic scenes allow.
+5. **Format tests:** ASCII MDL malformed inputs and `AsciiMdlWriter`↔`AsciiMdlReader` roundtrip are strong **pytest** candidates (no `bpy` in `conftest` pipeline once imports verified).
+
+### New considerations
+
+- **Extension sync:** Local failures where `bpy.ops` runs old code — ensure `test/run_blender_tests.py` sync runs (or manually mirror `io_scene_kotor` into Blender’s `extensions/user_default/io_scene_kotor`).
+- `**open_addon_preferences`:** May return `CANCELLED` in background or when module id mismatches; test should allow `FINISHED` or `CANCELLED` but not exceptions.
+
+### Research insights (testing & quality)
+
+**Best practices**
+
+- Prefer one focused smoke file per operator cluster (show/hide, bake/minimap, new resource) with clear `CANCELLED` vs `FINISHED` expectations.
+- Keep `ExportHelper` ops testable with `filepath=` and a temp path deleted after assert.
+
+**Edge cases**
+
+- Operators that configure render/bake may need early exit paths tested first (no targets) before full integration tests with materials and Cycles.
+
+**References**
+
+- [Blender Extensions — packaging & testing](https://docs.blender.org/manual/en/latest/advanced/extensions/index.html) (official docs; verify current URL in-browser).
+- In-repo: `AGENTS.md`, `test/run_blender_tests.py`, `docs/solutions/test-failures/blender-bpy-ops-operator-init.md`.
+
+---
+
+## Enhancement summary (deepened 2026-03-21 — pass 2)
+
+**Plan path note:** `#/compound` still has no dedicated plan file; this pass continues on **this** brainstorm and records a second `repo-research-analyst` cycle plus `/compound` output.
+
+**Analyst focus (pass 2):** Prioritize behavioral tests over import-only coverage — **ASCII/binary MDL roundtrips** (pytest where `bpy`-free), **mdlexport** with SKIN/DANGLY/emitter/light variants, **game/module PyKotor ops** with temp dirs and skips, **texture batch/extract**, **`edit_*` / save-game** smoke, **file_search** with fake install tree.
+
+**Compound documentation**
+
+- [docs/solutions/test-failures/blender-bpy-ops-operator-init.md](../../docs/solutions/test-failures/blender-bpy-ops-operator-init.md) — Operator `__init__` / `bpy.ops` instantiation.
+- [docs/solutions/integration-issues/open-addon-preferences-background.md](../../docs/solutions/integration-issues/open-addon-preferences-background.md) — Preferences op tracebacks in background tests.
+
+**Tests implemented in-repo after pass 2 (examples):** show/hide **blockers**; **mdlexport** with **danglymesh** child (orthogonal to anim+wok case).
+
+**Research insights**
+
+- `format/mdl/ascii_reader.py` is not pytest-trivial today: it imports `scene/*` and `mathutils`; full ASCII corpus tests belong in **Blender** unless the reader is refactored to a `bpy`-free layer.
+- **file_search** requires **PyKotor + resolved install path**; smoke tests should expect **CANCELLED** with a clear report when either is missing (CI-friendly).
+
+---
+
+## Enhancement summary (deepened 2026-03-21 — pass 3)
+
+**`#/compound`:** Still no standalone compound plan; this entry deepens the same brainstorm from **repo-research-analyst (97b8ab34)** and new `/compound` doc for stub operators.
+
+**Analyst highlights:** **pack/unpack/validate_module**, **batch_convert_textures**, **open_module** edge cases, **save extract/open_editor**, **file_search** with temp tree, **ascii_reader** pytest (still blocked by `scene/*` imports in practice).
+
+**Tests added (pass 3):** **open_module** with empty **module_list** → **CANCELLED**; **batch_convert_textures** / **extract_save** → **CANCELLED** without PyKotor or **FINISHED** stub with PyKotor; **ASCII MDL** export with **animations+walkmeshes** and AABB child; fixed **test_ops_ascii_mdl_smoke** mesh **`kb`** assignment bug on trimesh child.
+
+**Compound**
+
+- [docs/solutions/logic-errors/pykotor-stub-operators-finished-without-work.md](../../docs/solutions/logic-errors/pykotor-stub-operators-finished-without-work.md)
+- [docs/solutions/integration-issues/operator-error-report-runtimeerror.md](../../docs/solutions/integration-issues/operator-error-report-runtimeerror.md)
+
+**Research insight**
+
+- Stub operators that return **{"FINISHED"}** with “not yet implemented” **INFO** reports should be covered explicitly so **CANCELLED**-only tests do not regress the stub contract when PyKotor is present in CI or local wheels.
+
+---
+
+## Enhancement summary (deepened 2026-03-21 — pass 4)
+
+**`#/compound`:** No standalone compound plan file; this pass deepens **this** brainstorm from **repo-research-analyst** (coverage round 4) and one new `/compound` solution note.
+
+**Analyst ideas used:** Extended show/hide (classification matrix, unlightmapped, items-global behavior); tools ops stub smoke (`module_designer`, `indoor_map_builder`, `clone_module`, `tslpatchdata_editor`). Deferred for later: pytest `MdlWriter`↔`MdlReader` (both sides pull in **mathutils** / **scene** — keep in Blender or refactor format layer).
+
+**Tests added (pass 4):** **test_ops_showhide_extended_categories_smoke.py**; **test_ops_tools_stub_smoke.py**.
+
+**Compound**
+
+- [docs/solutions/test-failures/ascii-mdl-smoke-trimesh-kb-on-mesh-object.md](../../docs/solutions/test-failures/ascii-mdl-smoke-trimesh-kb-on-mesh-object.md) — trimesh **`kb`** must be on the **mesh** object, not the MDL root.
+
+**Research insight**
+
+- **hide_items** / **hide_triggers** / **hide_waypoints** currently affect **all** scene objects until resource binding exists; a dedicated test documents that contract and guards accidental “fix” without UTI/UTT/UTW filtering.
+
+---
+
+## Enhancement summary (deepened 2026-03-21 — pass 5)
+
+**Plan path note:** `/deepen-plan` was invoked with tool names, not a file path; this pass deepens **this** brainstorm using **best-practices-researcher** and **repo-research-analyst** outputs plus `/compound` update (single learning file amended, not a second doc).
+
+### Best practices (Blender tests, 2024–2026)
+
+- Prefer **`blender --background --python`** (and optionally **`--factory-startup`**) for CI parity; see [Blender Python tests handbook](https://developer.blender.org/docs/handbook/testing/python/) and [command-line arguments](https://docs.blender.org/manual/en/latest/advanced/command_line/arguments.html).
+- Temp files: **`tempfile`** + **`finally`** cleanup; assert file/scene outcomes, not only “operator ran.”
+- Avoid no-op **`try`** bodies and bare catches that hide failures.
+
+### Analyst backlog (highest value)
+
+1. PyKotor **module** workflow ops (**pack/unpack/validate/open_resource/…**) — almost no `bpy.ops` smoke beyond gates.
+2. **GFF/resource** `new_*` / `edit_*` — mostly untested except **new_gff**.
+3. **Show/hide** — **triggers/waypoints** pairs not yet in show/hide smoke files.
+4. **Bake/minimap** — **manual vs auto** variant coverage uneven.
+5. **Save game** editor op — no dedicated smoke.
+6. **Registration test** — operator count / list drift vs real **`kb.*`** surface.
+7. **CONTRIBUTING** vs **Makefile** — aligned in-repo (see pass 5 doc edit).
+
+### Compound (amended)
+
+- [ascii-mdl-smoke-trimesh-kb-on-mesh-object.md](../../docs/solutions/test-failures/ascii-mdl-smoke-trimesh-kb-on-mesh-object.md) — extended with **do not assign mesh props on `bpy.ops.kb`**.
+
+### `/resolve_todo_parallel`
+
+No `todos/*.md` (or equivalent) tree present in the repo — nothing to batch-resolve this round.
+
+---
+
+## Enhancement summary (deepened 2026-03-21 — pass 6)
+
+**Plan path note:** `/deepen-plan` again had no file path (tool names only); this pass uses **`best-practices-researcher`** and **`repo-research-analyst`**, plus **`/compound`** (one new solution file under `docs/solutions/debugging-patterns/`).
+
+### Best practices (CONTRIBUTING / Makefile DRY)
+
+- **Executable truth:** Keep **Makefile** + **CI** aligned; **CONTRIBUTING** = curated commands + **link** to **AGENTS.md** for the full matrix ([GitHub contributing guidelines](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/setting-guidelines-for-repository-contributors)).
+- **Scale:** Prefer **`make help`** long-term over duplicating every `test-*` in prose ([self-documenting Makefile](https://victoria.dev/blog/how-to-create-a-self-documenting-makefile/)).
+
+### Analyst — next concrete tests
+
+1. **`test_ops_file_search_smoke.py`** — `kb.file_search`: short query / PyKotor-off **`CANCELLED`** without dialog.
+2. **`test_ops_kotor_diff_smoke.py`** — `kb.kotor_diff` **`execute`** with **`filepath`** + **`other_path`** (identical temp files).
+3. **`test_ops_refresh_modules_smoke.py`** — `kb.refresh_modules` invalid install + PyKotor gate.
+4. **`test_ops_validate_module_smoke.py`** — `kb.validate_module` **`CANCELLED`** + **`last_validation_report`** when install/PyKotor missing.
+5. **Extend `test_ops_bake_minimap_smoke.py`** — **`bake_lightmaps_manual`**, **`render_minimap_auto`** early exits (alt: **`test_ops_select_game_installation_smoke.py`**).
+
+### Compound (new)
+
+- [contributing-makefile-test-target-drift.md](../../docs/solutions/debugging-patterns/contributing-makefile-test-target-drift.md)
+
+### `/resolve_todo_parallel`
+
+Still no **`todos/*.md`** tree in-repo — nothing to resolve in batch.
+
+---
+
+## Enhancement summary (deepened 2026-03-21 — pass 7)
+
+**Plan path note:** `/deepen-plan` invoked with tool names only; this pass uses **best-practices-researcher** and **repo-research-analyst**, **`/compound`** (one new doc), and **`/resolve_todo_parallel`** (still N/A).
+
+### Cleanup in this pass
+
+- Normalized **garbled Markdown** in enhancement summaries **passes 2–5** (invalid `` `**…`** `` nesting and similar) so previews match intent.
+
+### Best practices (Markdown maintenance)
+
+- Follow **CommonMark** rules for emphasis vs inline code; add blank lines around headings/lists; consider **markdownlint** + link checking in CI ([CommonMark spec](https://spec.commonmark.org/current/), [markdownlint](https://github.com/DavidAnson/markdownlint)).
+
+### Analyst — quick wins (≲30 min each; excludes pass 6 test backlog)
+
+1. **Docs:** `.github/ISSUE_TEMPLATE/` (bug + `config.yml`) — Blender version, OS, repro, sample path.
+2. **Tests:** `test_ops_open_save_editor_smoke.py` — `kb.open_save_editor` invalid path → clean **CANCELLED** / no traceback.
+3. **Tests:** Extra **pytest** cases in `test/unit/` for a pure helper (`game_install_detect`, `log_config`, …).
+4. **Docs:** Short **Troubleshooting** pointer in **CONTRIBUTING** or **TESTING** → `docs/solutions/`.
+
+### Compound (new)
+
+- [markdown-nested-emphasis-corruption-in-plans.md](../../docs/solutions/debugging-patterns/markdown-nested-emphasis-corruption-in-plans.md)
+
+### `/resolve_todo_parallel`
+
+No `todos/*.md` directory — no parallel resolution.
+
+---
+
+## Enhancement summary (deepened 2026-03-20 — pass 8)
+
+**Plan path:** `#/brainstorm` → this file (`.cursor/plans/kotorblender_improvements_brainstorm_c53764b7.plan.md`). Companion brainstorm snapshot: [docs/brainstorms/2026-03-20-kotorblender-post-completion-backlog.md](../../docs/brainstorms/2026-03-20-kotorblender-post-completion-backlog.md).
+
+### Section manifest (for future deep research)
+
+| Section | Research focus |
+| -------- | ---------------- |
+| Architecture & data flow | Evolve `format → io → scene → ops/ui` boundaries; brittle coupling spots |
+| Implementation backlog vs risk | Blast radius per module; tie to tests / `docs/solutions` |
+| UX & intuitivity | One coherent import → edit → export + game tooling narrative |
+| Accessibility & discoverability | Menus, Quick access, keyboard paths vs real user flows |
+| Maintainability & extension hygiene | Wheels, manifest, prefs, Windows/Linux CI parity |
+| Test strategy & backlog burn-down | `test/blender` smoke vs `test/unit`; operator = GUI parity |
+| Contributor experience | CONTRIBUTING + `docs/solutions` as runbook |
+
+### External references (CI / headless testing)
+
+- [Blender StackExchange — CI for add-ons](https://blender.stackexchange.com/questions/67274/how-to-do-continuous-integration-with-gitlab-when-developing-blender-addons) — context overrides, cleanup, headless pitfalls.
+- [pytest-blender](https://github.com/mondeja/pytest-blender) — optional pattern: pytest driving Blender’s Python; compare to this repo’s `blender --background --python test/blender/...` approach.
+- [Blender Extensions — moderation guidelines](https://wiki.blender.org/features/extensions/moderation/guidelines/) — packaging expectations for extensions ecosystem.
+
+### Institutional memory (apply when executing backlog)
+
+- [docs/solutions/test-failures/blender-bpy-ops-operator-init.md](../../docs/solutions/test-failures/blender-bpy-ops-operator-init.md)
+- [docs/solutions/test-failures/ascii-mdl-smoke-trimesh-kb-on-mesh-object.md](../../docs/solutions/test-failures/ascii-mdl-smoke-trimesh-kb-on-mesh-object.md)
+- [docs/solutions/debugging-patterns/markdown-nested-emphasis-corruption-in-plans.md](../../docs/solutions/debugging-patterns/markdown-nested-emphasis-corruption-in-plans.md)
+
+### Analyst — top 3 “what to build next”
+
+1. **Burn down operator-level test backlog** (`bpy.ops.kb.*` smokes for module/game, file_search, kotor_diff, validate_module, etc.).
+2. **Harden ASCII MDL / scene-property edges** where Blender smokes already mirror modder workflows.
+3. **Grow `docs/solutions` + CONTRIBUTING troubleshooting** so CI/local failures are searchable.
+
+### Research insight (pass 8)
+
+Original brainstorm **P0 phases are complete** (see [2026-03-19 brainstorm](../../docs/brainstorms/2026-03-19-kotorblender-improvements-brainstorm.md)); remaining value is **regression harness + PyKotor workflow coverage + contributor runbook**, not reopening closed UX/doc todos unless new scope is agreed.
+
+---
+
+## Enhancement summary (deepened 2026-03-20 — pass 9)
+
+**Prompt:** Intuitivity & accessibility; Blender extension / API surface not yet used; learn from other extensions.
+
+### Current KotorBlender strengths (baseline)
+
+- **`blender_manifest.toml`:** `tagline`, version, bundled **wheels** (PyKotor path).
+- **`bpy.types.FileHandler`:** drag/drop for `.mdl`, `.mdl.ascii`, `.lyt`, `.pth` ([`ops/file_handler_drop.py`](../../io_scene_kotor/ops/file_handler_drop.py)).
+- **Optional keymaps** (GUI only): Open Module, show/hide walkmeshes ([`__init__.py`](../../io_scene_kotor/__init__.py) ~527+).
+- **Menus + sidebar panels**; **Quick access** / prefs operator; broad **`bl_description`** + **`poll_message_set()`** on gated operators (P0 wave).
+
+### Gaps vs “typical” polished 4.x extensions (prioritized ideas)
+
+| Idea | Rationale |
+|------|-----------|
+| **Unified drag/drop story** | Peer extensions (e.g. [Drag and Drop Support](https://extensions.blender.org/add-ons/drag-and-drop-support/)) centralize many formats; KotorBlender could add **FileHandlers** for **.wok/.pwk/.dwk**, **.tpc/.tga** (where import exists) so behavior matches user mental model. |
+| **First-run / prefs onboarding** | Surface **game path**, **PyKotor/wheels health**, and **keymap** hints inside **addon preferences** (status row + link to docs); many extensions expose “ready / not ready” without opening logs. |
+| **Export `poll()` + `poll_message_set()`** | Original plan noted MDL/LYT/PTH import/export often have no `poll()`; greyed exports without a **why** hurt intuitivity. |
+| **Keymap discoverability** | Document conflicts; optional **prefs toggles** for shipped shortcuts (pattern used by add-ons that ship defaults). |
+| **Manifest / platform extras** | When targeting **extensions.blender.org**, review platform schema for **permissions**, **online access**, **documentation URL** fields beyond minimal `blender_manifest.toml` ([moderation guidelines](https://wiki.blender.org/features/extensions/moderation/guidelines/)). |
+
+### Accessibility & HIG (official direction)
+
+- Blender **Human Interface Guidelines** — [accessibility](https://developer.blender.org/docs/features/interface/human_interface_guidelines/accessibility/), [best practices](https://developer.blender.org/docs/features/interface/human_interface_guidelines/best_practices/) (clear labels, action-oriented copy, calm UI).
+- Operators: keep **`bl_label` / `bl_description`** accurate; treat **F3 search** and **menu greyout** as primary discovery paths for keyboard-only users (already called out in **AGENTS.md**).
+
+### Extension / API references (underused or future)
+
+- **`FileHandler`** API reference: [bpy.types.FileHandler](https://docs.blender.org/api/main/bpy.types.FileHandler.html) — extend `bl_file_extensions`, `drop` → existing import ops.
+- **Asset pipeline / `bpy.types.AssetHandle`** — larger feature; defer unless KotOR assets as Blender assets is a product goal.
+- **Viewport gizmos / draw handlers** — only if “area edit” or walkmesh editing needs on-canvas affordances (high cost).
+
+### Peer extension pattern (for comparison)
+
+- **[Drag and Drop Support](https://extensions.blender.org/add-ons/drag-and-drop-support/)** — many formats, migrated to native **FileHandler** (see also [mika-f/blender-drag-and-drop](https://github.com/mika-f/blender-drag-and-drop) issue #90 on replacing workarounds). Takeaway: **one obvious drop surface** + **conflict awareness** when multiple handlers exist.
+
+### Brainstorm capture
+
+- [docs/brainstorms/2026-03-20-intuitive-accessible-extensions-brainstorm.md](../../docs/brainstorms/2026-03-20-intuitive-accessible-extensions-brainstorm.md)
+
+### Research insight (pass 9)
+
+Biggest **low-regret** UX wins are **more FileHandlers** aligned with already-supported formats, **prefs “health” panel** for paths/PyKotor, and **export poll messages**—not new subsystems (assets, gizmos) unless scope explicitly expands.
+
+---
+
+## Enhancement summary (deepened 2026-03-20 — pass 10)
+
+**Same prompt** (intuitivity / extension API / peer extensions) — **second pass** to avoid underselling what the add-on already implements.
+
+### Corrections vs pass 9
+
+- **Top bar:** KotorBlender already appends **File → Import** and **File → Export** (`TOPBAR_MT_file_import` / `TOPBAR_MT_file_export`) plus **`TOPBAR_MT_editor_menus`** for the KotOR menu ([`io_scene_kotor/__init__.py`](../../io_scene_kotor/__init__.py) ~505–516). Pass 9 implied “deep menus only”; **standard Blender discovery paths are already wired**.
+- **UIList:** Used for **path points, modules, lens flares, resources** under `ui/list/` — not an unused API.
+
+### Additional gaps (API / UX)
+
+| Idea | Notes |
+|------|--------|
+| **Progress / status for long I/O** | No `wm.progress_begin` / `progress_update` / `progress_end` (or equivalent) in `io_scene_kotor` today; large MDL/module ops could surface **header progress** per [WindowManager](https://docs.blender.org/api/current/bpy.types.WindowManager.html#bpy.types.WindowManager.progress_begin) (main-thread only; avoid naive worker-thread UI updates — see [Blender StackExchange discussion](https://blender.stackexchange.com/questions/7712/how-to-display-progress-notifications-from-an-operator)). |
+| **File → Import submenu density** | Many KotOR entries next to built-in importers; optional **submenu** (`layout.menu`) could reduce scan cost (a11y + novice UX). |
+| **Walkmesh / texture in top bar** | If **FileHandler** adds `.wok` / `.tpc`, consider matching **top-bar import** entries for parity with MDL/LYT/PTH. |
+
+### Another peer pattern (non–drag-drop)
+
+- Extensions that do **network or heavy batch work** often pair **clear prefs status** + **bounded progress**; KotOR is mostly **local disk** — progress matters most for **big MDL/module** paths, not every operator.
+
+### Institutional memory (UI / tests)
+
+- [open-addon-preferences-background.md](../../docs/solutions/integration-issues/open-addon-preferences-background.md) — prefs operators in **background** tests.
+
+### Brainstorm (updated)
+
+- [2026-03-20-intuitive-accessible-extensions-brainstorm.md](../../docs/brainstorms/2026-03-20-intuitive-accessible-extensions-brainstorm.md) — includes **Round 2**.
+
+### Research insight (pass 10)
+
+After pass 10, the **highest-ROI “missing” Blender UX API** is **progress feedback** for slow operators, plus **FileHandler/top-bar parity** for remaining formats—not re-adding top-bar import/export from scratch.

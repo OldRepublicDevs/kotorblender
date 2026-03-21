@@ -15,9 +15,9 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
-
 from bpy_extras.io_utils import ExportHelper
 
 from ...io import lyt
@@ -33,7 +33,7 @@ class KB_OT_export_lyt(bpy.types.Operator, ExportHelper):
 
     filter_glob: bpy.props.StringProperty(default="*.lyt", options={"HIDDEN"})
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         try:
             lyt.save_lyt(self, self.filepath)
         except Exception as ex:

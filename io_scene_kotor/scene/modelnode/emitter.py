@@ -16,11 +16,12 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
-import bpy
+from __future__ import annotations
 
+import bpy
 from bpy_extras.io_utils import unpack_list
 
-from ...constants import MeshType, NodeType, NULL
+from ...constants import BlendType, EmitterRenderType, ExportOptions, ImportOptions, MeshType, NodeType, NULL, P2PType, SpawnType, UpdateType
 
 from .base import BaseNode
 
@@ -107,95 +108,97 @@ class EmitterNode(BaseNode):
         "colorend",
     ]
 
-    def __init__(self, name="UNNAMED"):
+    def __init__(self, name: str = "UNNAMED") -> None:
         BaseNode.__init__(self, name)
-        self.nodetype = NodeType.EMITTER
-        self.meshtype = MeshType.EMITTER
+        self.nodetype: str = NodeType.EMITTER
+        self.meshtype: str = MeshType.EMITTER
         # object data
-        self.deadspace = 0.0
-        self.blastradius = 0.0
-        self.blastlength = 0.0
-        self.num_branches = 0
-        self.controlptsmoothing = 0
-        self.xgrid = 0
-        self.ygrid = 0
-        self.spawntype = 0
-        self.update = ""
-        self.emitter_render = ""
-        self.blend = ""
-        self.texture = ""
-        self.chunk_name = ""
-        self.twosidedtex = False
-        self.loop = False
-        self.renderorder = 0
-        self.frame_blending = False
-        self.depth_texture_name = NULL
+        self.deadspace: float = 0.0
+        self.blastradius: float = 0.0
+        self.blastlength: float = 0.0
+        self.num_branches: int = 0
+        self.controlptsmoothing: int = 0
+        self.xgrid: int = 0
+        self.ygrid: int = 0
+        self.spawntype: int = 0
+        self.update: str = ""
+        self.emitter_render: str = ""
+        self.blend: str = ""
+        self.texture: str = ""
+        self.chunk_name: str = ""
+        self.twosidedtex: bool = False
+        self.loop: bool = False
+        self.renderorder: int = 0
+        self.frame_blending: bool = False
+        self.depth_texture_name: str = NULL
         # flags
-        self.p2p = False
-        self.p2p_sel = False
-        self.affected_by_wind = False
-        self.tinted = False
-        self.bounce = False
-        self.random = False
-        self.inherit = False
-        self.inheritvel = False
-        self.inherit_local = False
-        self.splat = False
-        self.inherit_part = False
-        self.depth_texture = False
-        self.flag13 = False
-        self.extra_flags = 0
+        self.p2p: bool = False
+        self.p2p_sel: bool = False
+        self.affected_by_wind: bool = False
+        self.tinted: bool = False
+        self.bounce: bool = False
+        self.random: bool = False
+        self.inherit: bool = False
+        self.inheritvel: bool = False
+        self.inherit_local: bool = False
+        self.splat: bool = False
+        self.inherit_part: bool = False
+        self.depth_texture: bool = False
+        self.flag13: bool = False
+        self.extra_flags: int = 0
         # controllers
-        self.alphastart = 0.0
-        self.alphamid = 0.0
-        self.alphaend = 0.0
-        self.birthrate = 0.0
-        self.randombirthrate = 0.0
-        self.bounce_co = 0.0
-        self.combinetime = 0.0
-        self.drag = 0.0
-        self.fps = 0.0
-        self.frameend = 0.0
-        self.framestart = 0.0
-        self.grav = 0.0
-        self.lifeexp = 0.0
-        self.mass = 0.0
-        self.p2p_bezier2 = 0.0
-        self.p2p_bezier3 = 0.0
-        self.particlerot = 0.0
-        self.randvel = 0.0
-        self.sizestart = 0.0
-        self.sizemid = 0.0
-        self.sizeend = 0.0
-        self.sizestart_y = 0.0
-        self.sizemid_y = 0.0
-        self.sizeend_y = 0.0
-        self.spread = 0.0
-        self.threshold = 0.0
-        self.velocity = 0.0
-        self.xsize = 2.0
-        self.ysize = 2.0
-        self.blurlength = 0.0
-        self.lightningdelay = 0.0
-        self.lightningradius = 0.0
-        self.lightningsubdiv = 0.0
-        self.lightningscale = 0.0
-        self.lightningzigzag = 0.0
-        self.percentstart = 0.0
-        self.percentmid = 0.0
-        self.percentend = 0.0
-        self.targetsize = 0.0
-        self.numcontrolpts = 0.0
-        self.controlptradius = 0.0
-        self.controlptdelay = 0.0
-        self.tangentspread = 0.0
-        self.tangentlength = 0.0
-        self.detonate = 0.0
-        self.colorstart = (1.0, 1.0, 1.0)
-        self.colormid = (1.0, 1.0, 1.0)
-        self.colorend = (1.0, 1.0, 1.0)
+        self.alphastart: float = 0.0
+        self.alphamid: float = 0.0
+        self.alphaend: float = 0.0
+        self.birthrate: float = 0.0
+        self.randombirthrate: float = 0.0
+        self.bounce_co: float = 0.0
+        self.combinetime: float = 0.0
+        self.drag: float = 0.0
+        self.fps: float = 0.0
+        self.frameend: float = 0.0
+        self.framestart: float = 0.0
+        self.grav: float = 0.0
+        self.lifeexp: float = 0.0
+        self.mass: float = 0.0
+        self.p2p_bezier2: float = 0.0
+        self.p2p_bezier3: float = 0.0
+        self.particlerot: float = 0.0
+        self.randvel: float = 0.0
+        self.sizestart: float = 0.0
+        self.sizemid: float = 0.0
+        self.sizeend: float = 0.0
+        self.sizestart_y: float = 0.0
+        self.sizemid_y: float = 0.0
+        self.sizeend_y: float = 0.0
+        self.spread: float = 0.0
+        self.threshold: float = 0.0
+        self.velocity: float = 0.0
+        self.xsize: float = 2.0
+        self.ysize: float = 2.0
+        self.blurlength: float = 0.0
+        self.lightningdelay: float = 0.0
+        self.lightningradius: float = 0.0
+        self.lightningsubdiv: float = 0.0
+        self.lightningscale: float = 0.0
+        self.lightningzigzag: float = 0.0
+        self.percentstart: float = 0.0
+        self.percentmid: float = 0.0
+        self.percentend: float = 0.0
+        self.targetsize: float = 0.0
+        self.numcontrolpts: float = 0.0
+        self.controlptradius: float = 0.0
+        self.controlptdelay: float = 0.0
+        self.tangentspread: float = 0.0
+        self.tangentlength: float = 0.0
+        self.detonate: float = 0.0
+        self.colorstart: tuple[float, float, float] = (1.0, 1.0, 1.0)
+        self.colormid: tuple[float, float, float] = (1.0, 1.0, 1.0)
+        self.colorend: tuple[float, float, float] = (1.0, 1.0, 1.0)
 
-    def add_to_collection(self, collection, options):
+    def add_to_collection(
+        self, collection: bpy.types.Collection, options: ImportOptions
+    ) -> bpy.types.Object:
         mesh = self.create_mesh(self.name)
         obj = bpy.data.objects.new(self.name, mesh)
 
@@ -203,7 +206,7 @@ class EmitterNode(BaseNode):
         collection.objects.link(obj)
         return obj
 
-    def create_mesh(self, name):
+    def create_mesh(self, name: str) -> bpy.types.Mesh:
         verts = [
             ((self.xsize / 2) / 100.0, (self.ysize / 2) / 100.0, 0.0),
             ((self.xsize / 2) / 100.0, (-self.ysize / 2) / 100.0, 0.0),
@@ -224,90 +227,112 @@ class EmitterNode(BaseNode):
         mesh.update()
         return mesh
 
-    def set_object_data(self, obj, options):
+    def set_object_data(self, obj: bpy.types.Object, options: ImportOptions) -> None:
         BaseNode.set_object_data(self, obj, options)
 
-        obj.kb.meshtype = self.meshtype
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object [{obj.name}] has no kb attribute")
+        kb.meshtype = self.meshtype
 
         for attrname in self.EMITTER_ATTRS:
             value = getattr(self, attrname)
             if attrname == "spawntype":
                 if value == 0:
-                    value = "Normal"
+                    value = SpawnType.NORMAL
                 elif value == 1:
-                    value = "Trail"
+                    value = SpawnType.TRAIL
             elif attrname == "update":
-                if value.title() not in [
-                    "Fountain",
-                    "Single",
-                    "Explosion",
-                    "Lightning",
+                normalized = value.title() if isinstance(value, str) else str(value)
+                if normalized not in [
+                    UpdateType.FOUNTAIN,
+                    UpdateType.SINGLE,
+                    UpdateType.EXPLOSION,
+                    UpdateType.LIGHTNING,
                 ]:
-                    value = "NONE"
+                    value = UpdateType.NONE
                 else:
-                    value = value.title()
+                    value = normalized
             elif attrname == "emitter_render":
                 if value not in [
-                    "Normal",
-                    "Linked",
-                    "Billboard_to_Local_Z",
-                    "Billboard_to_World_Z",
-                    "Aligned_to_World_Z",
-                    "Aligned_to_Particle_Dir",
-                    "Motion_Blur",
+                    EmitterRenderType.NORMAL,
+                    EmitterRenderType.LINKED,
+                    EmitterRenderType.BILLBOARD_TO_LOCAL_Z,
+                    EmitterRenderType.BILLBOARD_TO_WORLD_Z,
+                    EmitterRenderType.ALIGNED_TO_WORLD_Z,
+                    EmitterRenderType.ALIGNED_TO_PARTICLE_DIR,
+                    EmitterRenderType.MOTION_BLUR,
                 ]:
-                    value = "NONE"
+                    value = EmitterRenderType.NONE
             elif attrname == "blend":
-                if value.lower() == "punchthrough":
-                    value = "Punch-Through"
-                elif value.title() not in ["Lighten", "Normal", "Punch-Through"]:
-                    value = "NONE"
+                if isinstance(value, str) and value.lower() == "punchthrough":
+                    value = BlendType.PUNCH_THROUGH
+                else:
+                    normalized = value.title() if isinstance(value, str) else str(value)
+                    if normalized not in [
+                        BlendType.LIGHTEN,
+                        BlendType.NORMAL,
+                        BlendType.PUNCH_THROUGH,
+                    ]:
+                        value = BlendType.NONE
+                    else:
+                        value = normalized
             elif attrname == "p2p_sel":
                 if self.p2p_sel:
-                    obj.kb.p2p_type = "Bezier"
+                    kb.p2p_type = P2PType.BEZIER
                 else:
-                    obj.kb.p2p_type = "Gravity"
+                    kb.p2p_type = P2PType.GRAVITY
                 continue
-            setattr(obj.kb, attrname, value)
-        obj.kb.flag13 = self.flag13
-        obj.kb.emitter_unknown_flags = self.extra_flags
+            setattr(kb, attrname, value)
+        kb.flag13 = self.flag13
+        kb.emitter_unknown_flags = self.extra_flags
 
-    def load_object_data(self, obj, eval_obj, options):
+    def load_object_data(
+        self, obj: bpy.types.Object, eval_obj: bpy.types.Object, options: ExportOptions
+    ) -> None:
         BaseNode.load_object_data(self, obj, eval_obj, options)
 
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            raise ValueError(f"Object [{obj.name}] has no kb attribute")
         for attrname in self.EMITTER_ATTRS:
-            value = getattr(obj.kb, attrname, None)
+            value = getattr(kb, attrname, None)
 
             if attrname == "spawntype":
-                if value == "Normal":
+                if value == SpawnType.NORMAL:
                     value = 0
-                elif value == "Trail":
+                elif value == SpawnType.TRAIL:
                     value = 1
                 else:
                     continue
             elif attrname == "update":
-                if value not in ["Fountain", "Single", "Explosion", "Lightning"]:
+                if value not in [
+                    UpdateType.FOUNTAIN,
+                    UpdateType.SINGLE,
+                    UpdateType.EXPLOSION,
+                    UpdateType.LIGHTNING,
+                ]:
                     continue
             elif attrname == "emitter_render":
                 if value not in [
-                    "Normal",
-                    "Linked",
-                    "Billboard_to_Local_Z",
-                    "Billboard_to_World_Z",
-                    "Aligned_to_World_Z",
-                    "Aligned_to_Particle_Dir",
-                    "Motion_Blur",
+                    EmitterRenderType.NORMAL,
+                    EmitterRenderType.LINKED,
+                    EmitterRenderType.BILLBOARD_TO_LOCAL_Z,
+                    EmitterRenderType.BILLBOARD_TO_WORLD_Z,
+                    EmitterRenderType.ALIGNED_TO_WORLD_Z,
+                    EmitterRenderType.ALIGNED_TO_PARTICLE_DIR,
+                    EmitterRenderType.MOTION_BLUR,
                 ]:
                     continue
             elif attrname == "blend":
-                if value == "Punch-Through":
+                if value == BlendType.PUNCH_THROUGH:
                     value = "PunchThrough"
-                elif value not in ["Lighten", "Normal"]:
+                elif value not in [BlendType.LIGHTEN, BlendType.NORMAL]:
                     continue
             elif attrname == "p2p_sel":
-                self.p2p_sel = obj.kb.p2p_type == "Bezier"
+                self.p2p_sel = kb.p2p_type == P2PType.BEZIER
                 continue
 
             setattr(self, attrname, value)
-        self.flag13 = obj.kb.flag13
-        self.extra_flags = obj.kb.emitter_unknown_flags
+        self.flag13 = kb.flag13
+        self.extra_flags = kb.emitter_unknown_flags

@@ -15,34 +15,40 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 from struct import pack, unpack
 
-from ..binreader import BinaryReader
+from ...format.binreader import BinaryReader
 
-from .types import *
+from .types import (
+    FILE_VERSION,
+    FIELD_TYPE_DWORD,
+    FIELD_TYPE_FLOAT,
+    FIELD_TYPE_LIST,
+    FIELD_TYPE_STRUCT,
+    GffField,
+    GffStruct,
+    KeyValue,
+)
 
 
 class GffReader:
-    def __init__(self, path, file_type):
-        self.reader = BinaryReader(path, "little")
-        self.file_type = file_type.ljust(4)
+    def __init__(self, path: str, file_type: str) -> None:
+        self.reader: BinaryReader = BinaryReader(path, "little")
+        self.file_type: str = file_type.ljust(4)
 
-    def load(self):
+    def load(self) -> dict[str, object]:
         file_type = self.reader.read_string(4)
         file_version = self.reader.read_string(4)
 
         if file_type != self.file_type:
             raise RuntimeError(
-                "GFF file type is invalid: expected='{}', actual='{}'".format(
-                    self.file_type, file_type
-                )
+                f"GFF file type is invalid: expected='{self.file_type}', actual='{file_type}'",
             )
         if file_version != FILE_VERSION:
             raise RuntimeError(
-                "GFF file version is invalid: expected='{}', actual='{}'".format(
-                    FILE_VERSION, file_version
-                )
+                f"GFF file version is invalid: expected='{FILE_VERSION}', actual='{file_version}'",
             )
 
         self.off_structs = self.reader.read_uint32()
@@ -66,7 +72,7 @@ class GffReader:
 
         return self.new_tree_struct(0)
 
-    def load_structs(self):
+    def load_structs(self) -> None:
         self.structs = []
         self.reader.seek(self.off_structs)
         for _ in range(self.num_structs):
@@ -77,7 +83,7 @@ class GffReader:
             )
             self.structs.append(struct)
 
-    def load_fields(self):
+    def load_fields(self) -> None:
         self.fields = []
         self.reader.seek(self.off_fields)
         for _ in range(self.num_fields):
@@ -90,28 +96,22 @@ class GffReader:
 
     def load_labels(self):
         self.reader.seek(self.off_labels)
-        self.labels = [
-            self.reader.read_string(16).rstrip("\0") for _ in range(self.num_labels)
-        ]
+        self.labels = [self.reader.read_string(16).rstrip("\0") for _ in range(self.num_labels)]
 
-    def load_field_data(self):
+    def load_field_data(self) -> None:
         self.reader.seek(self.off_field_data)
         self.field_data = self.reader.read_bytes(self.num_field_data)
 
-    def load_field_indices(self):
+    def load_field_indices(self) -> None:
         self.reader.seek(self.off_field_indices)
-        self.field_indices = [
-            self.reader.read_uint32() for _ in range(self.num_field_indices // 4)
-        ]
+        self.field_indices = [self.reader.read_uint32() for _ in range(self.num_field_indices // 4)]
 
-    def load_list_indices(self):
+    def load_list_indices(self) -> None:
         self.reader.seek(self.off_list_indices)
-        self.list_indices = [
-            self.reader.read_uint32() for _ in range(self.num_list_indices // 4)
-        ]
+        self.list_indices = [self.reader.read_uint32() for _ in range(self.num_list_indices // 4)]
 
-    def new_tree_struct(self, structIdx):
-        tree = dict()
+    def new_tree_struct(self, structIdx: int) -> dict[str, object]:
+        tree: dict[str, object] = {}
         struct = self.structs[structIdx]
         nodes = []
         if struct.num_fields == 1:
@@ -125,8 +125,8 @@ class GffReader:
             tree[node.key] = node.value
         return tree
 
-    def new_tree_field(self, field_idx):
-        field = self.fields[field_idx]
+    def new_tree_field(self, field_idx: int) -> KeyValue:
+        field: GffField = self.fields[field_idx]
         label = self.labels[field.label_idx]
 
         if field.type == FIELD_TYPE_DWORD:
@@ -139,28 +139,22 @@ class GffReader:
             list_idx = field.data_or_data_offset // 4
             if list_idx >= len(self.list_indices):
                 raise RuntimeError(
-                    "GFF list index out of range: index={}, count={}".format(
-                        list_idx, len(self.list_indices)
-                    )
+                    f"GFF list index out of range: index={list_idx}, count={len(self.list_indices)}",
                 )
             size = self.list_indices[list_idx]
             start = list_idx + 1
             stop = start + size
             if stop > len(self.list_indices):
                 raise RuntimeError(
-                    "GFF list entries out of range: start={}, stop={}, count={}".format(
-                        start, stop, len(self.list_indices)
-                    )
+                    f"GFF list entries out of range: start={start}, stop={stop}, count={len(self.list_indices)}",
                 )
             indices = self.list_indices[start:stop]
             data = [self.new_tree_struct(idx) for idx in indices]
         else:
-            raise NotImplementedError(
-                "Field type {} is not supported".format(field.type)
-            )
+            raise NotImplementedError(f"Field type {field.type} is not supported")
 
         return KeyValue(label, data)
 
-    def repack_int_to_float(self, val):
+    def repack_int_to_float(self, val: int) -> float:
         packed = pack("I", val)
         return unpack("f", packed)[0]

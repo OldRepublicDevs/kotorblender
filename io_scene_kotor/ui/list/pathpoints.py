@@ -15,15 +15,25 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
 
 class KB_UL_path_points(bpy.types.UIList):
-
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+    def draw_item(
+        self,
+        context: bpy.types.Context,
+        layout: bpy.types.UILayout,
+        data: object,
+        item: object,
+        icon: int,
+        active_data: object,
+        active_propname: str,
+        index: int = 0,
+    ) -> None:
+        if self.layout_type in {"DEFAULT", "COMPACT"}:
             layout.prop_search(item, "point", context.collection, "objects")
-        elif self.layout_type in {'GRID'}:
-            layout.alignment = 'CENTER'
+        elif self.layout_type in {"GRID"}:
+            layout.alignment = "CENTER"
             layout.label(text="", icon_value=icon)

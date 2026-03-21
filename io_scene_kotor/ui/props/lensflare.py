@@ -15,6 +15,7 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
@@ -26,5 +27,8 @@ class LensFlarePropertyGroup(bpy.types.PropertyGroup):
     size: bpy.props.FloatProperty(name="Size", default=1)
     position: bpy.props.FloatProperty(name="Position", default=1)
     colorshift: bpy.props.FloatVectorProperty(
-        name="Colorshift", min=0.0, max=1.0, subtype="COLOR_GAMMA"
+        name="Colorshift",
+        min=0.0,
+        max=1.0,
+        subtype="COLOR_GAMMA",
     )

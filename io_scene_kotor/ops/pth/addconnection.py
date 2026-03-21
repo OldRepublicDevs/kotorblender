@@ -15,6 +15,7 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
@@ -27,12 +28,20 @@ class KB_OT_add_path_connection(bpy.types.Operator):
     bl_description = "Add a new connection from this path point to another in the path graph"
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, context: bpy.types.Context) -> bool:
         if not is_path_point(context.object):
             cls.poll_message_set(context, "Select a KotOR path point object")
             return False
         return True
 
-    def execute(self, context):
-        context.object.kb.path_connection_list.add()
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        obj: bpy.types.Object | None = context.object
+        if obj is None:
+            self.report({"ERROR"}, "No object selected")
+            return {"CANCELLED"}
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            self.report({"ERROR"}, "Object.kb is None")
+            return {"CANCELLED"}
+        kb.path_connection_list.add()
         return {"FINISHED"}

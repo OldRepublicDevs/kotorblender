@@ -16,13 +16,16 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+from __future__ import annotations
+
 from ...constants import MeshType, NodeType
+
 from .trimesh import Compression, TrimeshNode
 
 
 class LightsaberNode(TrimeshNode):
-    def __init__(self, name="UNNAMED"):
+    def __init__(self, name: str = "UNNAMED") -> None:
         TrimeshNode.__init__(self, name)
-        self.nodetype = NodeType.LIGHTSABER
-        self.meshtype = MeshType.LIGHTSABER
-        self.compression = Compression.DISABLED
+        self.nodetype: str = NodeType.LIGHTSABER
+        self.meshtype: str = MeshType.LIGHTSABER
+        self.compression: str = Compression.DISABLED

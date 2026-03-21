@@ -15,19 +15,12 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
+from __future__ import annotations
 
 import bpy
 
-from ..constants import MeshType
-from ..utils import (
-    is_null,
-    is_not_null,
-    is_char_dummy,
-    is_char_bone,
-    is_mesh_type,
-    is_aabb_mesh,
-    is_skin_mesh,
-)
+from ..constants import Classification, MeshType
+from ..utils import find_mdl_root_of, is_aabb_mesh, is_char_bone, is_char_dummy, is_mdl_root, is_mesh_type, is_null, is_skin_mesh
 
 
 class KB_OT_hide_walkmeshes(bpy.types.Operator):
@@ -35,10 +28,10 @@ class KB_OT_hide_walkmeshes(bpy.types.Operator):
     bl_label = "Hide Walkmeshes"
     bl_description = "Hides all walkmeshes in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if is_aabb_mesh(obj):
                 obj.hide_viewport = True
                 obj.hide_render = True
@@ -51,15 +44,11 @@ class KB_OT_hide_untextured(bpy.types.Operator):
     bl_label = "Hide Untextured"
     bl_description = "Hides all untextured trimeshes in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
-            if (
-                is_mesh_type(obj, MeshType.TRIMESH)
-                and is_null(obj.kb.bitmap)
-                and is_null(obj.kb.bitmap2)
-            ):
+        for obj in context.scene.objects:
+            if is_mesh_type(obj, MeshType.TRIMESH) and is_null(obj.kb.bitmap) and is_null(obj.kb.bitmap2):
                 obj.hide_viewport = True
                 obj.hide_render = True
 
@@ -71,13 +60,11 @@ class KB_OT_hide_unlightmapped(bpy.types.Operator):
     bl_label = "Hide Unlightmapped"
     bl_description = "Hides all unlightmapped meshes in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
-            if obj.type == "MESH" and (
-                not obj.kb.lightmapped or is_null(obj.kb.bitmap2)
-            ):
+        for obj in context.scene.objects:
+            if obj.type == "MESH" and (not obj.kb.lightmapped or is_null(obj.kb.bitmap2)):
                 obj.hide_viewport = True
                 obj.hide_render = True
 
@@ -89,10 +76,10 @@ class KB_OT_hide_lights(bpy.types.Operator):
     bl_label = "Hide Lights"
     bl_description = "Hides all lights in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if obj.type == "LIGHT":
                 obj.hide_viewport = True
                 obj.hide_render = True
@@ -105,10 +92,10 @@ class KB_OT_hide_emitters(bpy.types.Operator):
     bl_label = "Hide Emitters"
     bl_description = "Hides all emitters in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if is_mesh_type(obj, MeshType.EMITTER):
                 obj.hide_viewport = True
                 obj.hide_render = True
@@ -121,17 +108,11 @@ class KB_OT_hide_blockers(bpy.types.Operator):
     bl_label = "Hide Blockers"
     bl_description = "Hides all untextured blocker trimeshes in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
-            if (
-                is_mesh_type(obj, MeshType.TRIMESH)
-                and not is_skin_mesh(obj)
-                and obj.kb.render == 1
-                and is_null(obj.kb.bitmap)
-                and is_null(obj.kb.bitmap2)
-            ):
+        for obj in context.scene.objects:
+            if is_mesh_type(obj, MeshType.TRIMESH) and not is_skin_mesh(obj) and obj.kb.render == 1 and is_null(obj.kb.bitmap) and is_null(obj.kb.bitmap2):
                 obj.hide_viewport = True
                 obj.hide_render = True
 
@@ -143,10 +124,10 @@ class KB_OT_hide_char_bones(bpy.types.Operator):
     bl_label = "Hide Character Bones"
     bl_description = "Hides all humanoid rig bones in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if is_char_bone(obj):
                 obj.hide_viewport = True
                 obj.hide_render = True
@@ -159,10 +140,10 @@ class KB_OT_hide_char_dummies(bpy.types.Operator):
     bl_label = "Hide Character Dummies"
     bl_description = "Hides all humanoid rig dummy/null objects in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if is_char_dummy(obj):
                 obj.hide_viewport = True
                 obj.hide_render = True
@@ -175,10 +156,10 @@ class KB_OT_show_walkmeshes(bpy.types.Operator):
     bl_label = "Show Walkmeshes"
     bl_description = "Reveals all walkmeshes in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if is_aabb_mesh(obj):
                 obj.hide_viewport = False
                 obj.hide_render = False
@@ -191,15 +172,11 @@ class KB_OT_show_untextured(bpy.types.Operator):
     bl_label = "Show Untextured"
     bl_description = "Reveals all untextured trimeshes in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
-            if (
-                is_mesh_type(obj, MeshType.TRIMESH)
-                and is_null(obj.kb.bitmap)
-                and is_null(obj.kb.bitmap2)
-            ):
+        for obj in context.scene.objects:
+            if is_mesh_type(obj, MeshType.TRIMESH) and is_null(obj.kb.bitmap) and is_null(obj.kb.bitmap2):
                 obj.hide_viewport = False
                 obj.hide_render = False
 
@@ -211,13 +188,11 @@ class KB_OT_show_unlightmapped(bpy.types.Operator):
     bl_label = "Show Unlightmapped"
     bl_description = "Reveals all unlightmapped meshes in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
-            if obj.type == "MESH" and (
-                not obj.kb.lightmapped or is_null(obj.kb.bitmap2)
-            ):
+        for obj in context.scene.objects:
+            if obj.type == "MESH" and (not obj.kb.lightmapped or is_null(obj.kb.bitmap2)):
                 obj.hide_viewport = False
                 obj.hide_render = False
 
@@ -229,10 +204,10 @@ class KB_OT_show_lights(bpy.types.Operator):
     bl_label = "Show Lights"
     bl_description = "Reveals all lights in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if obj.type == "LIGHT":
                 obj.hide_viewport = False
                 obj.hide_render = False
@@ -245,10 +220,10 @@ class KB_OT_show_emitters(bpy.types.Operator):
     bl_label = "Show Emitters"
     bl_description = "Reveals all emitters in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if is_mesh_type(obj, MeshType.EMITTER):
                 obj.hide_viewport = False
                 obj.hide_render = False
@@ -261,17 +236,11 @@ class KB_OT_show_blockers(bpy.types.Operator):
     bl_label = "Show Blockers"
     bl_description = "Reveals all untextured blocker trimeshes in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
-            if (
-                is_mesh_type(obj, MeshType.TRIMESH)
-                and not is_skin_mesh(obj)
-                and obj.kb.render == 1
-                and is_null(obj.kb.bitmap)
-                and is_null(obj.kb.bitmap2)
-            ):
+        for obj in context.scene.objects:
+            if is_mesh_type(obj, MeshType.TRIMESH) and not is_skin_mesh(obj) and obj.kb.render == 1 and is_null(obj.kb.bitmap) and is_null(obj.kb.bitmap2):
                 obj.hide_viewport = False
                 obj.hide_render = False
 
@@ -283,10 +252,10 @@ class KB_OT_show_char_bones(bpy.types.Operator):
     bl_label = "Show Character Bones"
     bl_description = "Reveals all humanoid rig bones in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if is_char_bone(obj):
                 obj.hide_viewport = False
                 obj.hide_render = False
@@ -299,12 +268,210 @@ class KB_OT_show_char_dummies(bpy.types.Operator):
     bl_label = "Show Character Dummies"
     bl_description = "Reveals all humanoid rig dummy/null objects in the scene"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context) -> set[str]:
         bpy.ops.object.select_all(action="DESELECT")
 
-        for obj in bpy.context.scene.objects:
+        for obj in context.scene.objects:
             if is_char_dummy(obj):
                 obj.hide_viewport = False
                 obj.hide_render = False
 
+        return {"FINISHED"}
+
+
+class KB_OT_show_characters(bpy.types.Operator):
+    bl_idname = "kb.show_characters"
+    bl_label = "Show Characters"
+    bl_description = "Reveals all character (UTC) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # Filter by MDL root classification (CHARACTER = creature)
+        for obj in context.scene.objects:
+            root = find_mdl_root_of(obj)
+            if root is not None and is_mdl_root(root) and root.kb.classification == Classification.CHARACTER:
+                obj.hide_viewport = False
+                obj.hide_render = False
+        return {"FINISHED"}
+
+
+class KB_OT_hide_characters(bpy.types.Operator):
+    bl_idname = "kb.hide_characters"
+    bl_label = "Hide Characters"
+    bl_description = "Hides all character (UTC) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # Filter by MDL root classification (CHARACTER = creature)
+        for obj in context.scene.objects:
+            root = find_mdl_root_of(obj)
+            if root is not None and is_mdl_root(root) and root.kb.classification == Classification.CHARACTER:
+                obj.hide_viewport = True
+                obj.hide_render = True
+        return {"FINISHED"}
+
+
+class KB_OT_show_placeables(bpy.types.Operator):
+    bl_idname = "kb.show_placeables"
+    bl_label = "Show Placeables"
+    bl_description = "Reveals all placeable (UTP) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # Filter by MDL root classification (PLACEABLE)
+        for obj in context.scene.objects:
+            root = find_mdl_root_of(obj)
+            if root is not None and is_mdl_root(root) and root.kb.classification == Classification.PLACEABLE:
+                obj.hide_viewport = False
+                obj.hide_render = False
+        return {"FINISHED"}
+
+
+class KB_OT_hide_placeables(bpy.types.Operator):
+    bl_idname = "kb.hide_placeables"
+    bl_label = "Hide Placeables"
+    bl_description = "Hides all placeable (UTP) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # Filter by MDL root classification (PLACEABLE)
+        for obj in context.scene.objects:
+            root = find_mdl_root_of(obj)
+            if root is not None and is_mdl_root(root) and root.kb.classification == Classification.PLACEABLE:
+                obj.hide_viewport = True
+                obj.hide_render = True
+        return {"FINISHED"}
+
+
+class KB_OT_show_doors(bpy.types.Operator):
+    bl_idname = "kb.show_doors"
+    bl_label = "Show Doors"
+    bl_description = "Reveals all door (UTD) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # Filter by MDL root classification (DOOR)
+        for obj in context.scene.objects:
+            root = find_mdl_root_of(obj)
+            if root is not None and is_mdl_root(root) and root.kb.classification == Classification.DOOR:
+                obj.hide_viewport = False
+                obj.hide_render = False
+        return {"FINISHED"}
+
+
+class KB_OT_hide_doors(bpy.types.Operator):
+    bl_idname = "kb.hide_doors"
+    bl_label = "Hide Doors"
+    bl_description = "Hides all door (UTD) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # Filter by MDL root classification (DOOR)
+        for obj in context.scene.objects:
+            root = find_mdl_root_of(obj)
+            if root is not None and is_mdl_root(root) and root.kb.classification == Classification.DOOR:
+                obj.hide_viewport = True
+                obj.hide_render = True
+        return {"FINISHED"}
+
+
+class KB_OT_show_items(bpy.types.Operator):
+    bl_idname = "kb.show_items"
+    bl_label = "Show Items"
+    bl_description = "Reveals all item (UTI) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # NOTE: Items (UTI) do not have MDL classifications. This operator requires
+        # resource binding to identify UTI objects. Until resource binding is implemented,
+        # this will show all objects. To filter properly, check obj.kb.resource_type == "UTI"
+        # or similar when resource binding is available.
+        for obj in context.scene.objects:
+            obj.hide_viewport = False
+            obj.hide_render = False
+        return {"FINISHED"}
+
+
+class KB_OT_hide_items(bpy.types.Operator):
+    bl_idname = "kb.hide_items"
+    bl_label = "Hide Items"
+    bl_description = "Hides all item (UTI) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # NOTE: Items (UTI) do not have MDL classifications. This operator requires
+        # resource binding to identify UTI objects. Until resource binding is implemented,
+        # this will hide all objects. To filter properly, check obj.kb.resource_type == "UTI"
+        # or similar when resource binding is available.
+        for obj in context.scene.objects:
+            obj.hide_viewport = True
+            obj.hide_render = True
+        return {"FINISHED"}
+
+
+class KB_OT_show_triggers(bpy.types.Operator):
+    bl_idname = "kb.show_triggers"
+    bl_label = "Show Triggers"
+    bl_description = "Reveals all trigger (UTT) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # NOTE: Triggers (UTT) do not have MDL classifications. This operator requires
+        # resource binding to identify UTT objects. Until resource binding is implemented,
+        # this will show all objects. To filter properly, check obj.kb.resource_type == "UTT"
+        # or similar when resource binding is available.
+        for obj in context.scene.objects:
+            obj.hide_viewport = False
+            obj.hide_render = False
+        return {"FINISHED"}
+
+
+class KB_OT_hide_triggers(bpy.types.Operator):
+    bl_idname = "kb.hide_triggers"
+    bl_label = "Hide Triggers"
+    bl_description = "Hides all trigger (UTT) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # NOTE: Triggers (UTT) do not have MDL classifications. This operator requires
+        # resource binding to identify UTT objects. Until resource binding is implemented,
+        # this will hide all objects. To filter properly, check obj.kb.resource_type == "UTT"
+        # or similar when resource binding is available.
+        for obj in context.scene.objects:
+            obj.hide_viewport = True
+            obj.hide_render = True
+        return {"FINISHED"}
+
+
+class KB_OT_show_waypoints(bpy.types.Operator):
+    bl_idname = "kb.show_waypoints"
+    bl_label = "Show Waypoints"
+    bl_description = "Reveals all waypoint (UTW) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # NOTE: Waypoints (UTW) do not have MDL classifications. This operator requires
+        # resource binding to identify UTW objects. Until resource binding is implemented,
+        # this will show all objects. To filter properly, check obj.kb.resource_type == "UTW"
+        # or similar when resource binding is available.
+        for obj in context.scene.objects:
+            obj.hide_viewport = False
+            obj.hide_render = False
+        return {"FINISHED"}
+
+
+class KB_OT_hide_waypoints(bpy.types.Operator):
+    bl_idname = "kb.hide_waypoints"
+    bl_label = "Hide Waypoints"
+    bl_description = "Hides all waypoint (UTW) objects in the scene"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        bpy.ops.object.select_all(action="DESELECT")
+        # NOTE: Waypoints (UTW) do not have MDL classifications. This operator requires
+        # resource binding to identify UTW objects. Until resource binding is implemented,
+        # this will hide all objects. To filter properly, check obj.kb.resource_type == "UTW"
+        # or similar when resource binding is available.
+        for obj in context.scene.objects:
+            obj.hide_viewport = True
+            obj.hide_render = True
         return {"FINISHED"}

@@ -16,6 +16,8 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+from __future__ import annotations
+
 from mathutils import Vector
 
 from .utils import is_close
@@ -31,15 +33,14 @@ class BoundingBox:
         size = self.max - self.min
         if size.y > size.x and size.y > size.z:
             return 1  # Y
-        elif size.z > size.x and size.z > size.y:
+        if size.z > size.x and size.z > size.y:
             return 2  # Z
-        else:
-            return 0  # X
+        return 0  # X
 
 
 def generate_tree(aabb_tree, faces, depth=0):
     if depth > 128:
-        raise ValueError("depth must not exceed 128, but is equal to {}".format(depth))
+        raise ValueError(f"depth must not exceed 128, but is equal to {depth}")
     if not faces:
         raise ValueError("faces must not be empty")
 
@@ -52,9 +53,7 @@ def generate_tree(aabb_tree, faces, depth=0):
         return
 
     split_axis = find_split_axis(bounding_box, faces)
-    left_faces, right_faces, actual_split_axis = split_faces(
-        bounding_box, faces, split_axis
-    )
+    left_faces, right_faces, actual_split_axis = split_faces(bounding_box, faces, split_axis)
 
     node = new_aabb_node(bounding_box, 0, 0, -1, 1 + actual_split_axis)
     aabb_tree.append(node)
@@ -126,9 +125,7 @@ def split_faces(bounding_box, faces, split_axis):
     return (left_faces, right_faces, split_axis)
 
 
-def new_aabb_node(
-    bounding_box, left_child_idx, right_child_idx, face_idx, most_significant_plane
-):
+def new_aabb_node(bounding_box, left_child_idx, right_child_idx, face_idx, most_significant_plane):
     return [
         *bounding_box.min[:3],
         *bounding_box.max[:3],

@@ -22,7 +22,7 @@ import bpy
 
 from ..constants import Classification
 from ..scene import armature
-from ..utils import is_mdl_root, is_skin_mesh, find_objects
+from ..utils import find_objects, is_mdl_root, is_skin_mesh
 
 
 class KB_OT_armature_unapply_keyframes(bpy.types.Operator):
@@ -32,33 +32,46 @@ class KB_OT_armature_unapply_keyframes(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        if not context.object or not is_mdl_root(context.object):
+        obj: bpy.types.Object | None = context.object
+        if obj is None or not is_mdl_root(obj):
             cls.poll_message_set(context, "Select a KotOR model object")
             return False
-        if context.object.kb.classification != Classification.CHARACTER:
+        kb = getattr(obj, "kb", None)
+        if kb is None:
+            return False
+        if kb.classification != Classification.CHARACTER:
             cls.poll_message_set(context, "Select a KotOR character model")
             return False
         if not find_objects(
-            context.object,
-            lambda obj: is_skin_mesh(obj)
-            and any(mod.type == "ARMATURE" for mod in obj.modifiers),
+            obj,
+            lambda obj: is_skin_mesh(obj) and any(mod.type == "ARMATURE" for mod in obj.modifiers),
         ):
-            cls.poll_message_set(context, "Model must have a skinned mesh with an armature modifier")
+            cls.poll_message_set(
+                context,
+                "Model must have a skinned mesh with an armature modifier",
+            )
             return False
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        stack = [context.object]
+        root: bpy.types.Object | None = context.object
+        if root is None:
+            self.report({"ERROR"}, "No object selected")
+            return {"CANCELLED"}
+        stack: list[bpy.types.Object] = [root]
         while stack:
             obj = stack.pop()
             if is_skin_mesh(obj):
                 armature_mod = next(
-                    iter(mod for mod in obj.modifiers if mod.type == "ARMATURE")
+                    iter(mod for mod in obj.modifiers if mod.type == "ARMATURE"),
+                    None,
                 )
-                armature_obj = armature_mod.object
-                if not armature_obj:
+                if armature_mod is None:
                     return {"CANCELLED"}
-                armature.unapply_object_keyframes(context.object, armature_obj)
+                armature_obj: bpy.types.Object | None = armature_mod.object
+                if armature_obj is None:
+                    return {"CANCELLED"}
+                armature.unapply_object_keyframes(root, armature_obj)
                 break
             for child in obj.children:
                 stack.insert(0, child)

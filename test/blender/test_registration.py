@@ -23,12 +23,22 @@ WORKSPACE_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 if WORKSPACE_ROOT not in sys.path:
     sys.path.insert(0, WORKSPACE_ROOT)
 
-MODULE = "bl_ext.user_default.io_scene_kotor"
+# Version-aware addon loading: try both module names for compatibility
+MODULE_4_2 = "bl_ext.user_default.io_scene_kotor"
+MODULE_3_6 = "io_scene_kotor"
+
+# Try 4.2+ name first, fall back to 3.6 name
+MODULE = MODULE_4_2
 if MODULE not in bpy.context.preferences.addons:
     result = bpy.ops.preferences.addon_enable(module=MODULE)
     if "FINISHED" not in result:
-        print(f"FATAL: Could not enable extension '{MODULE}': {result}")
-        sys.exit(1)
+        # Fallback to 3.6 module name
+        MODULE = MODULE_3_6
+        if MODULE not in bpy.context.preferences.addons:
+            result = bpy.ops.preferences.addon_enable(module=MODULE)
+            if "FINISHED" not in result:
+                print(f"FATAL: Could not enable addon (tried both '{MODULE_4_2}' and '{MODULE_3_6}'): {result}")
+                sys.exit(1)
 
 # ---------------------------------------------------------------------------
 # Expected registrations
@@ -40,6 +50,7 @@ EXPECTED_OPERATORS = [
     "kb.lytimport",
     "kb.lytexport",
     "kb.pthimport",
+    "kb.bwmimport",
     "kb.pthexport",
     "kb.add_path_connection",
     "kb.delete_path_connection",
@@ -139,7 +150,7 @@ def test_property_groups():
 
 
 def test_operators_registered():
-    """All 43 kb.* operators are accessible via bpy.ops."""
+    """All expected kb.* operators are accessible via bpy.ops."""
     failed: list[str] = []
     for op_id in EXPECTED_OPERATORS:
         cat, name = op_id.split(".", 1)
