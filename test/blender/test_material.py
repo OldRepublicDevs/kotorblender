@@ -2525,22 +2525,22 @@ def test_rebuild_material_textured_node_type_safety_value():
     """Type safety: value node must be ShaderNodeValue."""
     _clear_scene()
 
-    obj = _make_mesh_object("test_obj")
+    obj: bpy.types.Object = _make_mesh_object("test_obj")
     kb: ObjectPropertyGroup | None = getattr(obj, "kb", None)
     if kb is None:
         print("  FAIL test_rebuild_material_textured_add_shader_node: no kb")
         return False
     kb.bitmap = "diffuse_tex"
     kb.alpha = 0.5
-    mat = get_or_create_material("textured_mat")
+    mat: bpy.types.Material = get_or_create_material("textured_mat")
     with tempfile.TemporaryDirectory() as tmpdir:
-        img = _make_image_with_kb("diffuse_tex")
+        img: bpy.types.Image = _make_image_with_kb("diffuse_tex")
         rebuild_material_textured(mat, obj, [tmpdir], [])
         if not mat.node_tree:
             return False
-        nodes = {n.name: n for n in mat.node_tree.nodes}
-        object_alpha = nodes.get(NodeName.OBJECT_ALPHA)
-        ok = isinstance(object_alpha, bpy.types.ShaderNodeValue)
+        nodes: dict[str, bpy.types.Node] = {n.name: n for n in mat.node_tree.nodes}
+        object_alpha: bpy.types.Node | None = nodes.get(NodeName.OBJECT_ALPHA)
+        ok: bool = isinstance(object_alpha, bpy.types.ShaderNodeValue)
     print(f"  {'PASS' if ok else 'FAIL'} test_rebuild_material_textured_node_type_safety_value")
     return ok
 
@@ -2549,21 +2549,21 @@ def test_rebuild_material_textured_node_type_safety_math():
     """Type safety: math node must be ShaderNodeMath."""
     _clear_scene()
 
-    obj = _make_mesh_object("test_obj")
+    obj: bpy.types.Object = _make_mesh_object("test_obj")
     kb: ObjectPropertyGroup | None = getattr(obj, "kb", None)
     if kb is None:
         print("  FAIL test_rebuild_material_textured_add_shader_node: no kb")
         return False
     kb.bitmap = "diffuse_tex"
-    mat = get_or_create_material("textured_mat")
+    mat: bpy.types.Material = get_or_create_material("textured_mat")
     with tempfile.TemporaryDirectory() as tmpdir:
-        img = _make_image_with_kb("diffuse_tex")
+        img: bpy.types.Image = _make_image_with_kb("diffuse_tex")
         rebuild_material_textured(mat, obj, [tmpdir], [])
         if not mat.node_tree:
             return False
-        nodes = {n.name: n for n in mat.node_tree.nodes}
-        mul_diff_obj_alpha = nodes.get(NodeName.MUL_DIFFUSE_OBJECT_ALPHA)
-        ok = isinstance(mul_diff_obj_alpha, bpy.types.ShaderNodeMath)
+        nodes: dict[str, bpy.types.Node] = {n.name: n for n in mat.node_tree.nodes}
+        mul_diff_obj_alpha: bpy.types.Node | None = nodes.get(NodeName.MUL_DIFFUSE_OBJECT_ALPHA)
+        ok: bool = isinstance(mul_diff_obj_alpha, bpy.types.ShaderNodeMath)
     print(f"  {'PASS' if ok else 'FAIL'} test_rebuild_material_textured_node_type_safety_math")
     return ok
 
@@ -2728,24 +2728,24 @@ def test_rebuild_material_textured_socket_type_safety_all_floats():
     """Socket type safety: all float sockets are NodeSocketFloat."""
     _clear_scene()
 
-    obj = _make_mesh_object("test_obj")
+    obj: bpy.types.Object = _make_mesh_object("test_obj")
     kb: ObjectPropertyGroup | None = getattr(obj, "kb", None)
     if kb is None:
         print("  FAIL test_rebuild_material_textured_add_shader_node: no kb")
         return False
     kb.bitmap = "diffuse_tex"
     kb.alpha = 0.5
-    mat = get_or_create_material("textured_mat")
+    mat: bpy.types.Material = get_or_create_material("textured_mat")
     with tempfile.TemporaryDirectory() as tmpdir:
-        img = _make_image_with_kb("diffuse_tex")
+        img: bpy.types.Image = _make_image_with_kb("diffuse_tex")
         rebuild_material_textured(mat, obj, [tmpdir], [])
         if not mat.node_tree:
             return False
-        nodes = {n.name: n for n in mat.node_tree.nodes}
-        object_alpha = nodes.get(NodeName.OBJECT_ALPHA)
+        nodes: dict[str, bpy.types.Node] = {n.name: n for n in mat.node_tree.nodes}
+        object_alpha: bpy.types.Node | None = nodes.get(NodeName.OBJECT_ALPHA)
         if object_alpha and isinstance(object_alpha, bpy.types.ShaderNodeValue):
-            output = object_alpha.outputs[0]
-            ok = isinstance(output, bpy.types.NodeSocketFloat)
+            output: bpy.types.NodeSocket = object_alpha.outputs[0]
+            ok: bool = isinstance(output, bpy.types.NodeSocketFloat)
         else:
             ok = False
     print(f"  {'PASS' if ok else 'FAIL'} test_rebuild_material_textured_socket_type_safety_all_floats")
@@ -2769,10 +2769,10 @@ def test_rebuild_material_textured_socket_type_safety_all_vectors():
         if not mat.node_tree:
             return False
         nodes: dict[str, bpy.types.Node] = {n.name: n for n in mat.node_tree.nodes}
-        mul_diffuse_lightmap = nodes.get(NodeName.MUL_DIFFUSE_LIGHTMAP)
+        mul_diffuse_lightmap: bpy.types.Node | None = nodes.get(NodeName.MUL_DIFFUSE_LIGHTMAP)
         if mul_diffuse_lightmap and isinstance(mul_diffuse_lightmap, bpy.types.ShaderNodeVectorMath):
-            input_socket = mul_diffuse_lightmap.inputs[1]
-            ok = isinstance(input_socket, bpy.types.NodeSocketVector)
+            input_socket: bpy.types.NodeSocket = mul_diffuse_lightmap.inputs[1]
+            ok: bool = isinstance(input_socket, bpy.types.NodeSocketVector)
         else:
             ok = False
     print(f"  {'PASS' if ok else 'FAIL'} test_rebuild_material_textured_socket_type_safety_all_vectors")
