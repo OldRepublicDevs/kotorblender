@@ -22,7 +22,7 @@ import bpy
 
 from ...constants import DummyType, ExportOptions, ImportOptions, NodeType
 
-from .base import BaseNode
+from .base import BaseNode, _log_modelnode
 
 
 class DummyNode(BaseNode):
@@ -39,6 +39,7 @@ class DummyNode(BaseNode):
         if kb is None:
             raise ValueError(f"Object [{obj.name}] has no kb attribute")
         kb.dummytype = self.dummytype
+        _log_modelnode("DummyNode.set_object_data", self)
 
     def load_object_data(
         self, obj: bpy.types.Object, eval_obj: bpy.types.Object, options: ExportOptions
@@ -49,3 +50,4 @@ class DummyNode(BaseNode):
         if kb is None:
             raise ValueError(f"Object [{obj.name}] has no kb attribute")
         self.dummytype = kb.dummytype
+        _log_modelnode("DummyNode.load_object_data", self)

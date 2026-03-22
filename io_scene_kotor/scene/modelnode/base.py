@@ -24,6 +24,20 @@ import bpy
 from mathutils import Matrix, Quaternion, Vector
 
 from ...constants import ExportOptions, ImportOptions, NodeType, RootType
+from ...diagnostic_log import sanitize_scene_context
+from ...log_config import get_kb_logger
+
+
+def _log_modelnode(fn: str, node: "BaseNode") -> None:
+    log = get_kb_logger("scene.modelnode")
+    nt = getattr(node.nodetype, "name", str(node.nodetype))
+    log.debug(
+        "event=scene_modelnode fn=%s nodetype=%s node=%s node_num=%s",
+        fn,
+        nt,
+        sanitize_scene_context(node.name),
+        node.node_number,
+    )
 
 
 class BaseNode:
@@ -50,6 +64,7 @@ class BaseNode:
         obj = bpy.data.objects.new(self.name, None)
         self.set_object_data(obj, options)
         collection.objects.link(obj)
+        _log_modelnode("BaseNode.add_to_collection", self)
         return obj
 
     def set_object_data(self, obj: bpy.types.Object, options: ImportOptions) -> None:
@@ -85,6 +100,7 @@ class BaseNode:
         self.from_root = eval_obj.matrix_local
         if self.parent is not None:
             self.from_root = self.parent.from_root @ self.from_root
+        _log_modelnode("BaseNode.load_object_data", self)
 
     def find_node(self, test: Callable[[BaseNode], bool]) -> BaseNode | None:
         if test(self):

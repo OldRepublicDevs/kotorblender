@@ -21,6 +21,8 @@ from __future__ import annotations
 import bpy
 
 from ..constants import ExportOptions, ImportOptions, WalkmeshType
+from ..diagnostic_log import begin_scene_work_span, end_scene_work_span
+from ..log_config import get_kb_logger
 from ..utils import is_dwk_root, is_pwk_root
 
 from .model import Model
@@ -45,32 +47,62 @@ class Walkmesh(Model):
         root when loaded with a model). Pass ``None`` for standalone BWM import so the root
         sits at world origin with no parent; child dummies and meshes still parent correctly.
         """
-        if not isinstance(self.root_node, DummyNode) or self.root_node.parent is not None:
-            raise RuntimeError("Root node has to be a dummy without a parent")
-        if self.root_node is None:
-            raise RuntimeError("Root node is None")
-        self.import_nodes_to_collection(self.root_node, parent_obj, collection, options)
+        log = get_kb_logger("scene.walkmesh")
+        ctx = f"{self.walkmesh_type} parent={getattr(parent_obj, 'name', '')}"
+        span = begin_scene_work_span(log, "scene.walkmesh.Walkmesh.attach_to_collection", ctx)
+        err = False
+        try:
+            if not isinstance(self.root_node, DummyNode) or self.root_node.parent is not None:
+                raise RuntimeError("Root node has to be a dummy without a parent")
+            if self.root_node is None:
+                raise RuntimeError("Root node is None")
+            self.import_nodes_to_collection(self.root_node, parent_obj, collection, options)
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)
 
     @classmethod
     def from_aabb_node(cls, aabb: AabbNode) -> Walkmesh:
-        root_node = DummyNode("wok")
-        root_node.children.append(aabb)
+        log = get_kb_logger("scene.walkmesh")
+        span = begin_scene_work_span(
+            log, "scene.walkmesh.Walkmesh.from_aabb_node", getattr(aabb, "name", "")
+        )
+        err = False
+        try:
+            root_node = DummyNode("wok")
+            root_node.children.append(aabb)
 
-        walkmesh = Walkmesh(WalkmeshType.WOK)
-        walkmesh.root_node = root_node
+            walkmesh = Walkmesh(WalkmeshType.WOK)
+            walkmesh.root_node = root_node
 
-        return walkmesh
+            return walkmesh
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)
 
     @classmethod
     def from_root_object(cls, obj: bpy.types.Object, options: ExportOptions) -> Walkmesh:
-        if is_pwk_root(obj):
-            walkmesh_type = WalkmeshType.PWK
-        elif is_dwk_root(obj):
-            walkmesh_type = WalkmeshType.DWK
-        else:
-            raise ValueError(f"Cannot create walkmesh from root object '{obj.name}'")
+        log = get_kb_logger("scene.walkmesh")
+        span = begin_scene_work_span(log, "scene.walkmesh.Walkmesh.from_root_object", obj.name)
+        err = False
+        try:
+            if is_pwk_root(obj):
+                walkmesh_type = WalkmeshType.PWK
+            elif is_dwk_root(obj):
+                walkmesh_type = WalkmeshType.DWK
+            else:
+                raise ValueError(f"Cannot create walkmesh from root object '{obj.name}'")
 
-        walkmesh = Walkmesh(walkmesh_type)
-        walkmesh.root_node = cls.model_node_from_object(obj, options, exclude_xwk=False)
+            walkmesh = Walkmesh(walkmesh_type)
+            walkmesh.root_node = cls.model_node_from_object(obj, options, exclude_xwk=False)
 
-        return walkmesh
+            return walkmesh
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)

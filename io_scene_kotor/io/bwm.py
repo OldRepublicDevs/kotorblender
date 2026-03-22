@@ -25,11 +25,29 @@ import os
 import bpy
 
 from ..constants import ImportOptions
+from ..diagnostic_log import begin_io_file_span, end_io_file_span
+from ..log_config import get_kb_logger
 from ..format.bwm.reader import BwmReader
 from ..utils import kotor_addon_preferences, semicolon_separated_to_absolute_paths
 
 
 def load_bwm(
+    operator: bpy.types.Operator,
+    filepath: str,
+    options: ImportOptions,
+) -> None:
+    span = begin_io_file_span(get_kb_logger("io.bwm"), "load_bwm", filepath)
+    err = False
+    try:
+        _load_bwm_body(operator, filepath, options)
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_io_file_span(span, error=err)
+
+
+def _load_bwm_body(
     operator: bpy.types.Operator,
     filepath: str,
     options: ImportOptions,

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from ...constants import MeshType, NodeType
 
+from .base import _log_modelnode
 from .trimesh import Compression, TrimeshNode
 
 
@@ -29,3 +30,4 @@ class LightsaberNode(TrimeshNode):
         self.nodetype: str = NodeType.LIGHTSABER
         self.meshtype: str = MeshType.LIGHTSABER
         self.compression: str = Compression.DISABLED
+        _log_modelnode("LightsaberNode.__init__", self)

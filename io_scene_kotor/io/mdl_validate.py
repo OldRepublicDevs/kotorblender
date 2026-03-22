@@ -24,6 +24,8 @@ from collections.abc import Generator
 import bpy
 
 from ..constants import MeshType
+from ..diagnostic_log import begin_scene_work_span, end_scene_work_span
+from ..log_config import get_kb_logger
 from ..utils import is_dwk_root, is_exported_to_mdl, is_null, is_pwk_root
 
 
@@ -55,6 +57,19 @@ def _iter_exportable_objects(root_obj: bpy.types.Object) -> Generator[bpy.types.
 
 
 def validate_mdl_export(operator: _Op, root_obj: bpy.types.Object) -> None:
+    log = get_kb_logger("io.mdl_validate")
+    span = begin_scene_work_span(log, "io.mdl_validate.validate_mdl_export", root_obj.name)
+    err = False
+    try:
+        _validate_mdl_export_body(operator, root_obj)
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_scene_work_span(span, error=err)
+
+
+def _validate_mdl_export_body(operator: _Op, root_obj: bpy.types.Object) -> None:
     export_objects = list(_iter_exportable_objects(root_obj))
     # Use actual Blender object names for duplicate check so MDLs with duplicate
     # node names (e.g. community models) roundtrip: Blender deduplicates to .001, .002.
@@ -153,3 +168,4 @@ def validate_mdl_export(operator: _Op, root_obj: bpy.types.Object) -> None:
             {"WARNING"},
             f"Skin weights exceed 4 influences on export; top 4 will be kept ({detail})",
         )
+

@@ -25,9 +25,11 @@ allowing gradual migration from custom format parsers to PyKotor equivalents.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from ..constants import NULL, USE_PYKOTOR_READERS, ExportOptions, GameType
+from ..diagnostic_log import begin_vendor_adapter_span, end_vendor_adapter_span
+from ..log_config import get_kb_logger
 from ..utils import logger
 
 try:
@@ -50,6 +52,27 @@ except ImportError:
         PyKotorTPC = type("PyKotorTPC", (), {})
         PyKotorGFF = type("PyKotorGFF", (), {})
         SearchLocation = type("SearchLocation", (), {})
+
+_ADAPTER_DIAG_LOG = get_kb_logger("vendor.pykotor_adapter")
+
+
+def _run_adapter_traced(
+    fn_id: str,
+    body: Callable[[], Any],
+    *,
+    filepath: str = "",
+    context: str = "",
+) -> Any:
+    span = begin_vendor_adapter_span(_ADAPTER_DIAG_LOG, fn_id, filepath=filepath, context=context)
+    err = False
+    try:
+        return body()
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_vendor_adapter_span(span, error=err)
+
 
 if TYPE_CHECKING:
     from ..format.tpc.reader import TpcImage
@@ -110,16 +133,24 @@ def load_mdl_via_pykotor(filepath: str) -> PyKotorMDL | None:
         PyKotor MDL object, or None if PyKotor is unavailable
 
     """
-    if not PYKOTOR_AVAILABLE:
-        return None
 
-    try:
-        # PyKotor's read_mdl automatically looks for and loads the corresponding .mdx file
-        # if it exists (same base name, different extension)
-        return pykotor_read_mdl(filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
-    except Exception as e:
-        logger().debug(f"PyKotor MDL read failed for {filepath}: {e}", exc_info=True)
-        return None
+    def _body() -> PyKotorMDL | None:
+        if not PYKOTOR_AVAILABLE:
+            return None
+
+        try:
+            # PyKotor's read_mdl automatically looks for and loads the corresponding .mdx file
+            # if it exists (same base name, different extension)
+            return pykotor_read_mdl(filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
+        except Exception as e:
+            logger().debug(f"PyKotor MDL read failed for {filepath}: {e}", exc_info=True)
+            return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.load_mdl_via_pykotor",
+        _body,
+        filepath=filepath,
+    )
 
 
 def save_mdl_via_pykotor(mdl: PyKotorMDL, filepath: str) -> bool:
@@ -136,15 +167,23 @@ def save_mdl_via_pykotor(mdl: PyKotorMDL, filepath: str) -> bool:
         True if successful, False otherwise
 
     """
-    if not PYKOTOR_AVAILABLE:
-        return False
 
-    try:
-        pykotor_write_mdl(mdl, filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
-        return True
-    except Exception as e:
-        logger().debug(f"PyKotor MDL write failed for {filepath}: {e}", exc_info=True)
-        return False
+    def _body() -> bool:
+        if not PYKOTOR_AVAILABLE:
+            return False
+
+        try:
+            pykotor_write_mdl(mdl, filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
+            return True
+        except Exception as e:
+            logger().debug(f"PyKotor MDL write failed for {filepath}: {e}", exc_info=True)
+            return False
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.save_mdl_via_pykotor",
+        _body,
+        filepath=filepath,
+    )
 
 
 def convert_pykotor_mdl_to_scene(pykotor_mdl: PyKotorMDL) -> Model | None:
@@ -166,90 +205,111 @@ def convert_pykotor_mdl_to_scene(pykotor_mdl: PyKotorMDL) -> Model | None:
         io_scene_kotor Model object, or None if conversion fails
 
     """
-    if not PYKOTOR_AVAILABLE or pykotor_mdl is None:
-        return None
+    ctx = ""
+    if pykotor_mdl is not None:
+        raw = getattr(pykotor_mdl, "name", getattr(pykotor_mdl, "model_name", "")) or ""
+        if isinstance(raw, bytes):
+            ctx = raw.decode("utf-8", errors="replace").rstrip("\0")
+        else:
+            ctx = str(raw)
 
-    try:
-        from ..constants import NULL, Classification
-        from ..scene.model import Model
+    def _body() -> Model | None:
+        if not PYKOTOR_AVAILABLE or pykotor_mdl is None:
+            return None
 
-        model = Model()
+        try:
+            from ..constants import NULL, Classification
+            from ..scene.model import Model
 
-        # Convert MDL header properties
-        model.name = (
-            getattr(pykotor_mdl, "name", getattr(pykotor_mdl, "model_name", "UNNAMED")) or "UNNAMED"
-        )
-        if isinstance(model.name, bytes):
-            model.name = model.name.decode("utf-8", errors="replace").rstrip("\0")
+            model = Model()
 
-        model.supermodel = (
-            getattr(pykotor_mdl, "supermodel", getattr(pykotor_mdl, "super_model", NULL)) or NULL
-        )
-        if isinstance(model.supermodel, bytes):
+            # Convert MDL header properties
+            model.name = (
+                getattr(pykotor_mdl, "name", getattr(pykotor_mdl, "model_name", "UNNAMED"))
+                or "UNNAMED"
+            )
+            if isinstance(model.name, bytes):
+                model.name = model.name.decode("utf-8", errors="replace").rstrip("\0")
+
             model.supermodel = (
-                model.supermodel.decode("utf-8", errors="replace").rstrip("\0") or NULL
+                getattr(pykotor_mdl, "supermodel", getattr(pykotor_mdl, "super_model", NULL)) or NULL
+            )
+            if isinstance(model.supermodel, bytes):
+                model.supermodel = (
+                    model.supermodel.decode("utf-8", errors="replace").rstrip("\0") or NULL
+                )
+
+            # Convert classification
+            classification_str = getattr(pykotor_mdl, "classification", None)
+            if classification_str:
+                if isinstance(classification_str, bytes):
+                    classification_str = classification_str.decode("utf-8", errors="replace")
+                try:
+                    model.classification = Classification(classification_str.upper())
+                except (ValueError, AttributeError):
+                    model.classification = Classification.OTHER
+
+            model.subclassification = (
+                getattr(pykotor_mdl, "subclassification", getattr(pykotor_mdl, "sub_classification", 0))
+                or 0
+            )
+            model.classification_unk1 = getattr(pykotor_mdl, "classification_unk1", 0) or 0
+            model.affected_by_fog = getattr(pykotor_mdl, "affected_by_fog", True)
+            model.animroot = (
+                getattr(pykotor_mdl, "animroot", getattr(pykotor_mdl, "anim_root", NULL)) or NULL
+            )
+            if isinstance(model.animroot, bytes):
+                model.animroot = model.animroot.decode("utf-8", errors="replace").rstrip("\0") or NULL
+            model.animscale = float(
+                getattr(pykotor_mdl, "animscale", getattr(pykotor_mdl, "anim_scale", 1.0)) or 1.0
             )
 
-        # Convert classification
-        classification_str = getattr(pykotor_mdl, "classification", None)
-        if classification_str:
-            if isinstance(classification_str, bytes):
-                classification_str = classification_str.decode("utf-8", errors="replace")
-            try:
-                model.classification = Classification(classification_str.upper())
-            except (ValueError, AttributeError):
-                model.classification = Classification.OTHER
+            # Convert bounding box
+            bbox_min = getattr(
+                pykotor_mdl, "bounding_box_min", getattr(pykotor_mdl, "bbox_min", None)
+            )
+            bbox_max = getattr(
+                pykotor_mdl, "bounding_box_max", getattr(pykotor_mdl, "bbox_max", None)
+            )
+            if bbox_min and len(bbox_min) >= 3:
+                model.bounding_box_min = (float(bbox_min[0]), float(bbox_min[1]), float(bbox_min[2]))
+            if bbox_max and len(bbox_max) >= 3:
+                model.bounding_box_max = (float(bbox_max[0]), float(bbox_max[1]), float(bbox_max[2]))
 
-        model.subclassification = (
-            getattr(pykotor_mdl, "subclassification", getattr(pykotor_mdl, "sub_classification", 0))
-            or 0
-        )
-        model.classification_unk1 = getattr(pykotor_mdl, "classification_unk1", 0) or 0
-        model.affected_by_fog = getattr(pykotor_mdl, "affected_by_fog", True)
-        model.animroot = (
-            getattr(pykotor_mdl, "animroot", getattr(pykotor_mdl, "anim_root", NULL)) or NULL
-        )
-        if isinstance(model.animroot, bytes):
-            model.animroot = model.animroot.decode("utf-8", errors="replace").rstrip("\0") or NULL
-        model.animscale = float(
-            getattr(pykotor_mdl, "animscale", getattr(pykotor_mdl, "anim_scale", 1.0)) or 1.0
-        )
+            model.model_radius = float(
+                getattr(pykotor_mdl, "model_radius", getattr(pykotor_mdl, "radius", 0.0)) or 0.0
+            )
 
-        # Convert bounding box
-        bbox_min = getattr(pykotor_mdl, "bounding_box_min", getattr(pykotor_mdl, "bbox_min", None))
-        bbox_max = getattr(pykotor_mdl, "bounding_box_max", getattr(pykotor_mdl, "bbox_max", None))
-        if bbox_min and len(bbox_min) >= 3:
-            model.bounding_box_min = (float(bbox_min[0]), float(bbox_min[1]), float(bbox_min[2]))
-        if bbox_max and len(bbox_max) >= 3:
-            model.bounding_box_max = (float(bbox_max[0]), float(bbox_max[1]), float(bbox_max[2]))
+            # Convert root node
+            root_node_pk = getattr(pykotor_mdl, "root", getattr(pykotor_mdl, "root_node", None))
+            if root_node_pk:
+                model.root_node = _convert_pykotor_node_to_scene_node(root_node_pk, None)
+            else:
+                # Create default root dummy node
+                from ..scene.modelnode.dummy import DummyNode
 
-        model.model_radius = float(
-            getattr(pykotor_mdl, "model_radius", getattr(pykotor_mdl, "radius", 0.0)) or 0.0
-        )
+                model.root_node = DummyNode("root")
 
-        # Convert root node
-        root_node_pk = getattr(pykotor_mdl, "root", getattr(pykotor_mdl, "root_node", None))
-        if root_node_pk:
-            model.root_node = _convert_pykotor_node_to_scene_node(root_node_pk, None)
-        else:
-            # Create default root dummy node
-            from ..scene.modelnode.dummy import DummyNode
+            # Convert animations
+            animations_pk = getattr(
+                pykotor_mdl, "animations", getattr(pykotor_mdl, "animation_list", None)
+            )
+            if animations_pk:
+                model.animations = _convert_pykotor_animations_to_scene(animations_pk, pykotor_mdl)
 
-            model.root_node = DummyNode("root")
+            return model
+        except Exception as e:
+            logger().debug(
+                f"PyKotor MDL to scene conversion failed: {e.__class__.__name__}: {e}",
+                exc_info=True,
+            )
+            return None
 
-        # Convert animations
-        animations_pk = getattr(
-            pykotor_mdl, "animations", getattr(pykotor_mdl, "animation_list", None)
-        )
-        if animations_pk:
-            model.animations = _convert_pykotor_animations_to_scene(animations_pk, pykotor_mdl)
-
-        return model
-    except Exception as e:
-        logger().debug(
-            f"PyKotor MDL to scene conversion failed: {e.__class__.__name__}: {e}", exc_info=True
-        )
-        return None
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.convert_pykotor_mdl_to_scene",
+        _body,
+        context=ctx,
+    )
 
 
 def _convert_pykotor_node_to_scene_node(pk_node, parent) -> "BaseNode | None":
@@ -885,75 +945,84 @@ def convert_scene_model_to_pykotor(model: Model, options: ExportOptions) -> PyKo
         PyKotor MDL object, or None if conversion fails
 
     """
-    if not PYKOTOR_AVAILABLE or model is None:
-        return None
+    ctx = model.name if model is not None else ""
 
-    try:
-        # Try to create PyKotor MDL object
-        # Note: PyKotor's MDL API may not support creating objects from scratch.
-        # If creation fails, this function returns None and the caller will
-        # fall back to the existing MdlWriter.
-        pykotor_mdl = None
+    def _body() -> PyKotorMDL | None:
+        if not PYKOTOR_AVAILABLE or model is None:
+            return None
+
         try:
-            # Try direct instantiation (may not be supported)
-            pykotor_mdl = PyKotorMDL()  # pyright: ignore[reportPossiblyUnboundVariable]
-        except (TypeError, AttributeError, Exception) as e:
-            logger().debug(f"PyKotor MDL direct instantiation failed: {e.__class__.__name__}")
-            # PyKotor may require reading from a file or using a different API
-            # For now, return None to trigger fallback to existing writer
+            # Try to create PyKotor MDL object
+            # Note: PyKotor's MDL API may not support creating objects from scratch.
+            # If creation fails, this function returns None and the caller will
+            # fall back to the existing MdlWriter.
+            pykotor_mdl = None
+            try:
+                # Try direct instantiation (may not be supported)
+                pykotor_mdl = PyKotorMDL()  # pyright: ignore[reportPossiblyUnboundVariable]
+            except (TypeError, AttributeError, Exception) as e:
+                logger().debug(f"PyKotor MDL direct instantiation failed: {e.__class__.__name__}")
+                # PyKotor may require reading from a file or using a different API
+                # For now, return None to trigger fallback to existing writer
+                return None
+
+            if pykotor_mdl is None:
+                return None
+
+            # Convert MDL header properties
+            _set_pykotor_attr(pykotor_mdl, "name", model.name)
+            _set_pykotor_attr(pykotor_mdl, "model_name", model.name)
+            _set_pykotor_attr(pykotor_mdl, "supermodel", model.supermodel)
+            _set_pykotor_attr(pykotor_mdl, "super_model", model.supermodel)
+            _set_pykotor_attr(
+                pykotor_mdl,
+                "classification",
+                model.classification.value
+                if hasattr(model.classification, "value")
+                else str(model.classification),
+            )
+            _set_pykotor_attr(pykotor_mdl, "subclassification", model.subclassification)
+            _set_pykotor_attr(pykotor_mdl, "classification_unk1", model.classification_unk1)
+            _set_pykotor_attr(pykotor_mdl, "affected_by_fog", model.affected_by_fog)
+            _set_pykotor_attr(pykotor_mdl, "animroot", model.animroot)
+            _set_pykotor_attr(pykotor_mdl, "anim_root", model.animroot)
+            _set_pykotor_attr(pykotor_mdl, "animscale", model.animscale)
+            _set_pykotor_attr(pykotor_mdl, "anim_scale", model.animscale)
+            _set_pykotor_attr(pykotor_mdl, "bounding_box_min", list(model.bounding_box_min))
+            _set_pykotor_attr(pykotor_mdl, "bbox_min", list(model.bounding_box_min))
+            _set_pykotor_attr(pykotor_mdl, "bounding_box_max", list(model.bounding_box_max))
+            _set_pykotor_attr(pykotor_mdl, "bbox_max", list(model.bounding_box_max))
+            _set_pykotor_attr(pykotor_mdl, "model_radius", model.model_radius)
+            _set_pykotor_attr(pykotor_mdl, "radius", model.model_radius)
+
+            # Convert root node
+            if model.root_node:
+                root_node_pk = _convert_scene_node_to_pykotor(model.root_node, None, options)
+                if root_node_pk:
+                    _set_pykotor_attr(pykotor_mdl, "root", root_node_pk)
+                    _set_pykotor_attr(pykotor_mdl, "root_node", root_node_pk)
+
+            # Convert animations
+            if model.animations:
+                animations_pk = []
+                for anim in model.animations:
+                    anim_pk = _convert_scene_animation_to_pykotor(anim, model, options)
+                    if anim_pk:
+                        animations_pk.append(anim_pk)
+                if animations_pk:
+                    _set_pykotor_attr(pykotor_mdl, "animations", animations_pk)
+                    _set_pykotor_attr(pykotor_mdl, "animation_list", animations_pk)
+
+            return pykotor_mdl
+        except Exception as e:
+            logger().debug(f"Scene model to PyKotor MDL conversion failed: {e}", exc_info=True)
             return None
 
-        if pykotor_mdl is None:
-            return None
-
-        # Convert MDL header properties
-        _set_pykotor_attr(pykotor_mdl, "name", model.name)
-        _set_pykotor_attr(pykotor_mdl, "model_name", model.name)
-        _set_pykotor_attr(pykotor_mdl, "supermodel", model.supermodel)
-        _set_pykotor_attr(pykotor_mdl, "super_model", model.supermodel)
-        _set_pykotor_attr(
-            pykotor_mdl,
-            "classification",
-            model.classification.value
-            if hasattr(model.classification, "value")
-            else str(model.classification),
-        )
-        _set_pykotor_attr(pykotor_mdl, "subclassification", model.subclassification)
-        _set_pykotor_attr(pykotor_mdl, "classification_unk1", model.classification_unk1)
-        _set_pykotor_attr(pykotor_mdl, "affected_by_fog", model.affected_by_fog)
-        _set_pykotor_attr(pykotor_mdl, "animroot", model.animroot)
-        _set_pykotor_attr(pykotor_mdl, "anim_root", model.animroot)
-        _set_pykotor_attr(pykotor_mdl, "animscale", model.animscale)
-        _set_pykotor_attr(pykotor_mdl, "anim_scale", model.animscale)
-        _set_pykotor_attr(pykotor_mdl, "bounding_box_min", list(model.bounding_box_min))
-        _set_pykotor_attr(pykotor_mdl, "bbox_min", list(model.bounding_box_min))
-        _set_pykotor_attr(pykotor_mdl, "bounding_box_max", list(model.bounding_box_max))
-        _set_pykotor_attr(pykotor_mdl, "bbox_max", list(model.bounding_box_max))
-        _set_pykotor_attr(pykotor_mdl, "model_radius", model.model_radius)
-        _set_pykotor_attr(pykotor_mdl, "radius", model.model_radius)
-
-        # Convert root node
-        if model.root_node:
-            root_node_pk = _convert_scene_node_to_pykotor(model.root_node, None, options)
-            if root_node_pk:
-                _set_pykotor_attr(pykotor_mdl, "root", root_node_pk)
-                _set_pykotor_attr(pykotor_mdl, "root_node", root_node_pk)
-
-        # Convert animations
-        if model.animations:
-            animations_pk = []
-            for anim in model.animations:
-                anim_pk = _convert_scene_animation_to_pykotor(anim, model, options)
-                if anim_pk:
-                    animations_pk.append(anim_pk)
-            if animations_pk:
-                _set_pykotor_attr(pykotor_mdl, "animations", animations_pk)
-                _set_pykotor_attr(pykotor_mdl, "animation_list", animations_pk)
-
-        return pykotor_mdl
-    except Exception as e:
-        logger().debug(f"Scene model to PyKotor MDL conversion failed: {e}", exc_info=True)
-        return None
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.convert_scene_model_to_pykotor",
+        _body,
+        context=ctx,
+    )
 
 
 def _set_pykotor_attr(obj, attr_name: str, value) -> None:
@@ -1238,14 +1307,22 @@ def load_tpc_via_pykotor(filepath: str) -> PyKotorTPC | None:
         PyKotor TPC object, or None if PyKotor is unavailable
 
     """
-    if not PYKOTOR_AVAILABLE:
-        return None
 
-    try:
-        return pykotor_read_tpc(filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
-    except Exception as e:
-        logger().debug(f"PyKotor TPC read failed for {filepath}: {e}", exc_info=True)
-        return None
+    def _body() -> PyKotorTPC | None:
+        if not PYKOTOR_AVAILABLE:
+            return None
+
+        try:
+            return pykotor_read_tpc(filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
+        except Exception as e:
+            logger().debug(f"PyKotor TPC read failed for {filepath}: {e}", exc_info=True)
+            return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.load_tpc_via_pykotor",
+        _body,
+        filepath=filepath,
+    )
 
 
 def convert_pykotor_tpc_to_tpcimage(pykotor_tpc: PyKotorTPC) -> TpcImage | None:
@@ -1261,134 +1338,142 @@ def convert_pykotor_tpc_to_tpcimage(pykotor_tpc: PyKotorTPC) -> TpcImage | None:
         TpcImage object matching current TpcReader.load() output, or None if conversion fails
 
     """
-    if not PYKOTOR_AVAILABLE or pykotor_tpc is None:
-        return None
 
-    try:
-        from ..format.tpc.reader import TpcImage
+    def _body() -> TpcImage | None:
+        if not PYKOTOR_AVAILABLE or pykotor_tpc is None:
+            return None
 
-        # Extract width and height (try multiple API patterns)
-        width = getattr(pykotor_tpc, "width", None)
-        height = getattr(pykotor_tpc, "height", None)
-        if width is None or height is None:
-            dims = getattr(pykotor_tpc, "dimensions", None)
-            if dims and len(dims) >= 2:
-                width, height = dims[0], dims[1]
+        try:
+            from ..format.tpc.reader import TpcImage
+
+            # Extract width and height (try multiple API patterns)
+            width = getattr(pykotor_tpc, "width", None)
+            height = getattr(pykotor_tpc, "height", None)
+            if width is None or height is None:
+                dims = getattr(pykotor_tpc, "dimensions", None)
+                if dims and len(dims) >= 2:
+                    width, height = dims[0], dims[1]
+                else:
+                    # Try mipmaps[0] if available
+                    mipmaps = getattr(pykotor_tpc, "mipmaps", None)
+                    if mipmaps and len(mipmaps) > 0:
+                        mip0 = mipmaps[0]
+                        width = getattr(mip0, "width", getattr(mip0, "w", None))
+                        height = getattr(mip0, "height", getattr(mip0, "h", None))
+
+            if width is None or height is None or width <= 0 or height <= 0:
+                logger().debug("PyKotor TPC conversion: unable to determine width/height")
+                return None
+
+            # Get top-level mipmap pixel data
+            pixels_raw = None
+            mipmaps = getattr(pykotor_tpc, "mipmaps", None)
+            if mipmaps and len(mipmaps) > 0:
+                mip0 = mipmaps[0]
+                pixels_raw = getattr(mip0, "pixels", getattr(mip0, "data", None))
+                if pixels_raw is None and hasattr(mip0, "get_pixels"):
+                    pixels_raw = mip0.get_pixels()
             else:
-                # Try mipmaps[0] if available
-                mipmaps = getattr(pykotor_tpc, "mipmaps", None)
-                if mipmaps and len(mipmaps) > 0:
-                    mip0 = mipmaps[0]
-                    width = getattr(mip0, "width", getattr(mip0, "w", None))
-                    height = getattr(mip0, "height", getattr(mip0, "h", None))
+                # Try direct pixel access on TPC object
+                pixels_raw = getattr(pykotor_tpc, "pixels", getattr(pykotor_tpc, "data", None))
+                if pixels_raw is None and hasattr(pykotor_tpc, "get_pixels"):
+                    pixels_raw = pykotor_tpc.get_pixels()  # type: ignore[attr-defined]
 
-        if width is None or height is None or width <= 0 or height <= 0:
-            logger().debug("PyKotor TPC conversion: unable to determine width/height")
+            if pixels_raw is None:
+                logger().debug("PyKotor TPC conversion: unable to extract pixel data")
+                return None
+
+            # Convert pixel data to normalized RGBA floats (0-1 range)
+            # PyKotor likely provides decompressed RGBA bytes or floats
+            pixels_normalized: list[float] = []
+            if isinstance(pixels_raw, (list, tuple)):
+                # Check if already normalized (0-1 range)
+                if len(pixels_raw) > 0:
+                    sample = pixels_raw[0]
+                    if isinstance(sample, float) and 0.0 <= sample <= 1.0:
+                        # Already normalized, ensure RGBA format
+                        pixel_count = width * height
+                        expected_len = pixel_count * 4
+                        if len(pixels_raw) == expected_len:
+                            pixels_normalized = list(pixels_raw)
+                        elif len(pixels_raw) == pixel_count * 3:
+                            # RGB -> RGBA
+                            for i in range(pixel_count):
+                                idx = i * 3
+                                pixels_normalized.extend(
+                                    [
+                                        pixels_raw[idx],
+                                        pixels_raw[idx + 1],
+                                        pixels_raw[idx + 2],
+                                        1.0,
+                                    ]
+                                )
+                        elif len(pixels_raw) == pixel_count:
+                            # GRAYSCALE -> RGBA
+                            for val in pixels_raw:
+                                pixels_normalized.extend([val, val, val, 1.0])
+                    else:
+                        # Byte data (0-255), normalize to 0-1
+                        pixel_count = width * height
+                        if len(pixels_raw) == pixel_count * 4:
+                            # RGBA bytes
+                            pixels_normalized = [p / 255.0 for p in pixels_raw]
+                        elif len(pixels_raw) == pixel_count * 3:
+                            # RGB bytes -> RGBA
+                            for i in range(pixel_count):
+                                idx = i * 3
+                                pixels_normalized.extend(
+                                    [
+                                        pixels_raw[idx] / 255.0,
+                                        pixels_raw[idx + 1] / 255.0,
+                                        pixels_raw[idx + 2] / 255.0,
+                                        1.0,
+                                    ]
+                                )
+                        elif len(pixels_raw) == pixel_count:
+                            # GRAYSCALE bytes -> RGBA
+                            for val in pixels_raw:
+                                norm = val / 255.0 if isinstance(val, (int, float)) else 0.0
+                                pixels_normalized.extend([norm, norm, norm, 1.0])
+            elif hasattr(pixels_raw, "__iter__"):
+                # Try to convert iterable
+                pixels_list = list(pixels_raw)
+                if len(pixels_list) > 0:
+                    sample = pixels_list[0]
+                    if isinstance(sample, float) and 0.0 <= sample <= 1.0:
+                        pixels_normalized = pixels_list
+                    else:
+                        pixels_normalized = [
+                            p / 255.0 if isinstance(p, (int, float)) else 0.0 for p in pixels_list
+                        ]
+
+            if not pixels_normalized:
+                logger().debug("PyKotor TPC conversion: unable to normalize pixel data")
+                return None
+
+            # Extract TXI lines if present
+            txi_lines: list[str] = []
+            txi_data = getattr(pykotor_tpc, "txi", getattr(pykotor_tpc, "txi_data", None))
+            if txi_data:
+                if isinstance(txi_data, str):
+                    txi_lines = txi_data.splitlines()
+                elif isinstance(txi_data, (list, tuple)):
+                    txi_lines = [str(line) for line in txi_data]
+                elif isinstance(txi_data, bytes):
+                    txi_lines = txi_data.decode("utf-8", errors="replace").splitlines()
+
+            tpc_image = TpcImage(width, height, pixels_normalized)
+            tpc_image.txi_lines = txi_lines
+            return tpc_image
+        except Exception as e:
+            logger().debug(f"PyKotor TPC conversion failed: {e}", exc_info=True)
             return None
 
-        # Get top-level mipmap pixel data
-        pixels_raw = None
-        mipmaps = getattr(pykotor_tpc, "mipmaps", None)
-        if mipmaps and len(mipmaps) > 0:
-            mip0 = mipmaps[0]
-            pixels_raw = getattr(mip0, "pixels", getattr(mip0, "data", None))
-            if pixels_raw is None and hasattr(mip0, "get_pixels"):
-                pixels_raw = mip0.get_pixels()
-        else:
-            # Try direct pixel access on TPC object
-            pixels_raw = getattr(pykotor_tpc, "pixels", getattr(pykotor_tpc, "data", None))
-            if pixels_raw is None and hasattr(pykotor_tpc, "get_pixels"):
-                pixels_raw = pykotor_tpc.get_pixels()  # type: ignore[attr-defined]
-
-        if pixels_raw is None:
-            logger().debug("PyKotor TPC conversion: unable to extract pixel data")
-            return None
-
-        # Convert pixel data to normalized RGBA floats (0-1 range)
-        # PyKotor likely provides decompressed RGBA bytes or floats
-        pixels_normalized: list[float] = []
-        if isinstance(pixels_raw, (list, tuple)):
-            # Check if already normalized (0-1 range)
-            if len(pixels_raw) > 0:
-                sample = pixels_raw[0]
-                if isinstance(sample, float) and 0.0 <= sample <= 1.0:
-                    # Already normalized, ensure RGBA format
-                    pixel_count = width * height
-                    expected_len = pixel_count * 4
-                    if len(pixels_raw) == expected_len:
-                        pixels_normalized = list(pixels_raw)
-                    elif len(pixels_raw) == pixel_count * 3:
-                        # RGB -> RGBA
-                        for i in range(pixel_count):
-                            idx = i * 3
-                            pixels_normalized.extend(
-                                [
-                                    pixels_raw[idx],
-                                    pixels_raw[idx + 1],
-                                    pixels_raw[idx + 2],
-                                    1.0,
-                                ]
-                            )
-                    elif len(pixels_raw) == pixel_count:
-                        # GRAYSCALE -> RGBA
-                        for val in pixels_raw:
-                            pixels_normalized.extend([val, val, val, 1.0])
-                else:
-                    # Byte data (0-255), normalize to 0-1
-                    pixel_count = width * height
-                    if len(pixels_raw) == pixel_count * 4:
-                        # RGBA bytes
-                        pixels_normalized = [p / 255.0 for p in pixels_raw]
-                    elif len(pixels_raw) == pixel_count * 3:
-                        # RGB bytes -> RGBA
-                        for i in range(pixel_count):
-                            idx = i * 3
-                            pixels_normalized.extend(
-                                [
-                                    pixels_raw[idx] / 255.0,
-                                    pixels_raw[idx + 1] / 255.0,
-                                    pixels_raw[idx + 2] / 255.0,
-                                    1.0,
-                                ]
-                            )
-                    elif len(pixels_raw) == pixel_count:
-                        # GRAYSCALE bytes -> RGBA
-                        for val in pixels_raw:
-                            norm = val / 255.0 if isinstance(val, (int, float)) else 0.0
-                            pixels_normalized.extend([norm, norm, norm, 1.0])
-        elif hasattr(pixels_raw, "__iter__"):
-            # Try to convert iterable
-            pixels_list = list(pixels_raw)
-            if len(pixels_list) > 0:
-                sample = pixels_list[0]
-                if isinstance(sample, float) and 0.0 <= sample <= 1.0:
-                    pixels_normalized = pixels_list
-                else:
-                    pixels_normalized = [
-                        p / 255.0 if isinstance(p, (int, float)) else 0.0 for p in pixels_list
-                    ]
-
-        if not pixels_normalized:
-            logger().debug("PyKotor TPC conversion: unable to normalize pixel data")
-            return None
-
-        # Extract TXI lines if present
-        txi_lines: list[str] = []
-        txi_data = getattr(pykotor_tpc, "txi", getattr(pykotor_tpc, "txi_data", None))
-        if txi_data:
-            if isinstance(txi_data, str):
-                txi_lines = txi_data.splitlines()
-            elif isinstance(txi_data, (list, tuple)):
-                txi_lines = [str(line) for line in txi_data]
-            elif isinstance(txi_data, bytes):
-                txi_lines = txi_data.decode("utf-8", errors="replace").splitlines()
-
-        tpc_image = TpcImage(width, height, pixels_normalized)
-        tpc_image.txi_lines = txi_lines
-        return tpc_image
-    except Exception as e:
-        logger().debug(f"PyKotor TPC conversion failed: {e}", exc_info=True)
-        return None
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.convert_pykotor_tpc_to_tpcimage",
+        _body,
+        context="tpc",
+    )
 
 
 def load_gff_via_pykotor(filepath: str) -> PyKotorGFF | None:
@@ -1401,14 +1486,22 @@ def load_gff_via_pykotor(filepath: str) -> PyKotorGFF | None:
         PyKotor GFF object, or None if PyKotor is unavailable
 
     """
-    if not PYKOTOR_AVAILABLE:
-        return None
 
-    try:
-        return pykotor_read_gff(filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
-    except Exception as e:
-        logger().debug(f"PyKotor GFF read failed for {filepath}: {e}", exc_info=True)
-        return None
+    def _body() -> PyKotorGFF | None:
+        if not PYKOTOR_AVAILABLE:
+            return None
+
+        try:
+            return pykotor_read_gff(filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
+        except Exception as e:
+            logger().debug(f"PyKotor GFF read failed for {filepath}: {e}", exc_info=True)
+            return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.load_gff_via_pykotor",
+        _body,
+        filepath=filepath,
+    )
 
 
 def save_gff_via_pykotor(gff: PyKotorGFF, filepath: str) -> bool:
@@ -1422,15 +1515,85 @@ def save_gff_via_pykotor(gff: PyKotorGFF, filepath: str) -> bool:
         True if successful, False otherwise
 
     """
-    if not PYKOTOR_AVAILABLE:
-        return False
 
-    try:
-        pykotor_write_gff(gff, filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
-        return True
-    except Exception as e:
-        logger().debug(f"PyKotor GFF write failed for {filepath}: {e}", exc_info=True)
-        return False
+    def _body() -> bool:
+        if not PYKOTOR_AVAILABLE:
+            return False
+
+        try:
+            pykotor_write_gff(gff, filepath)  # pyright: ignore[reportPossiblyUnboundVariable]
+            return True
+        except Exception as e:
+            logger().debug(f"PyKotor GFF write failed for {filepath}: {e}", exc_info=True)
+            return False
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.save_gff_via_pykotor",
+        _body,
+        filepath=filepath,
+    )
+
+
+def load_git_via_pykotor(filepath: str) -> object | None:
+    """Load a KotOR ``.git`` (game instance template) via PyKotor.
+
+    Returns:
+        A :class:`pykotor.resource.generics.git.GIT` instance, or ``None`` if unavailable
+        or read fails.
+
+    """
+
+    def _body() -> object | None:
+        if not PYKOTOR_AVAILABLE:
+            return None
+
+        try:
+            from pykotor.resource.generics.git import read_git
+
+            return read_git(filepath)
+        except Exception as e:
+            logger().debug(f"PyKotor GIT read failed for {filepath}: {e}", exc_info=True)
+            return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.load_git_via_pykotor",
+        _body,
+        filepath=filepath,
+    )
+
+
+def save_git_via_pykotor(git_obj: object, filepath: str, *, game_is_k2: bool) -> bool:
+    """Write a PyKotor ``GIT`` object to ``.git`` on disk.
+
+    Args:
+        git_obj: ``pykotor.resource.generics.git.GIT`` instance
+        filepath: Output path
+        game_is_k2: Use KotOR 2 serialization rules (e.g. tweak color fields) when ``True``.
+
+    """
+    ctx = f"k2={game_is_k2}"
+
+    def _body() -> bool:
+        if not PYKOTOR_AVAILABLE:
+            return False
+
+        try:
+            from pykotor.common.misc import Game
+            from pykotor.resource.generics.git import write_git
+
+            game = Game.K2 if game_is_k2 else Game.K1
+            write_git(git_obj, filepath, game=game)
+            return True
+        except Exception as e:
+            logger().debug(f"PyKotor GIT write failed for {filepath}: {e}", exc_info=True)
+            return False
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.save_git_via_pykotor",
+        _body,
+        filepath=filepath,
+        context=ctx,
+    )
 
 
 def convert_pykotor_gff_to_tree(pykotor_gff: PyKotorGFF) -> dict | None:
@@ -1449,6 +1612,14 @@ def convert_pykotor_gff_to_tree(pykotor_gff: PyKotorGFF) -> dict | None:
     Returns:
         Dict tree matching GffReader.load() output, or None if conversion fails
     """
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.convert_pykotor_gff_to_tree",
+        lambda: _convert_pykotor_gff_to_tree_impl(pykotor_gff),
+        context="gff",
+    )
+
+
+def _convert_pykotor_gff_to_tree_impl(pykotor_gff: PyKotorGFF) -> dict | None:
     if not PYKOTOR_AVAILABLE or pykotor_gff is None:
         return None
 
@@ -1576,25 +1747,29 @@ def convert_tree_to_pykotor_gff(tree: dict, file_type: str) -> PyKotorGFF | None
     Returns:
         PyKotor GFF object, or None to use native writer fallback
     """
-    if not PYKOTOR_AVAILABLE or tree is None:
-        return None
+    ctx = (str(file_type).strip()[:96]) if file_type else ""
 
-    try:
-        # PyKotor GFF build from dict would require: root struct creation,
-        # dict fields -> PyKotor field objects, nested structs/lists, file_type.
-        # Until then, return None so callers use the native format/gff writer.
-        return None
-    except Exception as e:
-        logger().debug(f"PyKotor GFF tree conversion failed: {e}", exc_info=True)
-        return None
+    def _body() -> PyKotorGFF | None:
+        if not PYKOTOR_AVAILABLE or tree is None:
+            return None
+
+        try:
+            # PyKotor GFF build from dict would require: root struct creation,
+            # dict fields -> PyKotor field objects, nested structs/lists, file_type.
+            # Until then, return None so callers use the native format/gff writer.
+            return None
+        except Exception as e:
+            logger().debug(f"PyKotor GFF tree conversion failed: {e}", exc_info=True)
+            return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.convert_tree_to_pykotor_gff",
+        _body,
+        context=ctx,
+    )
 
 
-def find_kotor_paths_from_default() -> dict[str, str]:
-    """Discover KotOR 1 and KotOR 2 install dirs: PyKotor APIs, then registry/Steam heuristics.
-
-    Logs extensively at INFO/DEBUG under logger ``io_scene_kotor.game_install`` — set
-    **Add-on Preferences → Logging verbosity** to **Debug** for full candidate traces.
-    """
+def _find_kotor_paths_from_default_core() -> dict[str, str]:
     from ..game_install_detect import (
         first_valid_k1,
         first_valid_k2,
@@ -1701,20 +1876,90 @@ def find_kotor_paths_from_default() -> dict[str, str]:
     return result
 
 
+def find_kotor_paths_from_default() -> dict[str, str]:
+    """Discover KotOR 1 and KotOR 2 install dirs: PyKotor APIs, then registry/Steam heuristics.
+
+    Logs extensively at INFO/DEBUG under logger ``io_scene_kotor.game_install`` — set
+    **Add-on Preferences → Logging verbosity** to **Debug** for full candidate traces.
+    """
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.find_kotor_paths_from_default",
+        _find_kotor_paths_from_default_core,
+        context="discovery",
+    )
+
+
 def resolve_game_install_path(kb: Any) -> str | None:
     """Resolve KotOR installation directory from scene ``kb`` (ScenePropertyGroup)."""
-    if kb is None:
+    ctx = str(getattr(kb, "game_type", "")) if kb is not None else ""
+
+    def _body() -> str | None:
+        if kb is None:
+            return None
+        if kb.game_type == GameType.CUSTOM:
+            install_path = kb.game_installation_path or ""
+        else:
+            install_path = kb.game_installation_path or ""
+            if not install_path or not os.path.exists(install_path):
+                paths = find_kotor_paths_from_default()
+                install_path = paths.get(kb.game_type, "") or ""
+        if install_path and os.path.isdir(install_path):
+            return os.path.normpath(install_path)
         return None
-    if kb.game_type == GameType.CUSTOM:
-        install_path = kb.game_installation_path or ""
-    else:
-        install_path = kb.game_installation_path or ""
-        if not install_path or not os.path.exists(install_path):
-            paths = find_kotor_paths_from_default()
-            install_path = paths.get(kb.game_type, "") or ""
-    if install_path and os.path.isdir(install_path):
-        return os.path.normpath(install_path)
-    return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.resolve_game_install_path",
+        _body,
+        context=ctx,
+    )
+
+
+def run_pykotor_clone_module(
+    game_install_dir: str,
+    source_module_list_name: str,
+    identifier: str,
+    prefix: str,
+    area_display_name: str,
+    *,
+    copy_textures: bool = False,
+    copy_lightmaps: bool = False,
+    keep_doors: bool = False,
+    keep_placeables: bool = False,
+    keep_sounds: bool = False,
+    keep_pathing: bool = False,
+) -> None:
+    """Run PyKotor's ``clone_module`` only — no clone logic duplicated in KotorBlender."""
+    ctx = f"src={source_module_list_name} id={identifier} prefix={prefix}"
+
+    def _body() -> None:
+        if not PYKOTOR_AVAILABLE:
+            raise RuntimeError("PyKotor is not available")
+        from pykotor.common.module import Module
+        from pykotor.extract.installation import Installation
+        from pykotor.tools.module import clone_module as pykotor_clone_module
+
+        root = Module.filepath_to_root(source_module_list_name)
+        installation = Installation(game_install_dir)
+        pykotor_clone_module(
+            root,
+            identifier,
+            prefix,
+            area_display_name,
+            installation,
+            copy_textures=copy_textures,
+            copy_lightmaps=copy_lightmaps,
+            keep_doors=keep_doors,
+            keep_placeables=keep_placeables,
+            keep_sounds=keep_sounds,
+            keep_pathing=keep_pathing,
+        )
+
+    _run_adapter_traced(
+        "vendor.pykotor_adapter.run_pykotor_clone_module",
+        _body,
+        filepath=game_install_dir,
+        context=ctx,
+    )
 
 
 def _restype_extension(restype: Any) -> str:
@@ -1732,180 +1977,272 @@ def _restype_extension(restype: Any) -> str:
 
 def list_erf_mod_resources(mod_path: str) -> list[tuple[str, str, bytes]]:
     """List resources inside a .mod/.erf file: (resref, extension, data)."""
-    if not PYKOTOR_AVAILABLE:
-        return []
-    try:
-        from pykotor.resource.formats.erf import read_erf
 
-        erf = read_erf(mod_path)
-        out: list[tuple[str, str, bytes]] = []
-        for res in erf:
-            rr = str(res.resref)
-            ext = _restype_extension(res.restype)
-            out.append((rr, ext, bytes(res.data)))
-        return out
-    except Exception as e:
-        logger().debug(f"list_erf_mod_resources failed: {e}", exc_info=True)
-        return []
+    def _body() -> list[tuple[str, str, bytes]]:
+        if not PYKOTOR_AVAILABLE:
+            return []
+        try:
+            from pykotor.resource.formats.erf import read_erf
+
+            erf = read_erf(mod_path)
+            out: list[tuple[str, str, bytes]] = []
+            for res in erf:
+                rr = str(res.resref)
+                ext = _restype_extension(res.restype)
+                out.append((rr, ext, bytes(res.data)))
+            return out
+        except Exception as e:
+            logger().debug(f"list_erf_mod_resources failed: {e}", exc_info=True)
+            return []
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.list_erf_mod_resources",
+        _body,
+        filepath=mod_path,
+    )
 
 
 def get_erf_resource_bytes(erf_path: str, resref: str, restype_ext: str) -> bytes | None:
     """Read one resource from an ERF/MOD by resref and extension (e.g. ``mdl``)."""
-    if not PYKOTOR_AVAILABLE:
-        return None
-    try:
-        from pykotor.resource.formats.erf import read_erf
-        from pykotor.resource.type import ResourceType
+    ctx = f"{resref}.{restype_ext.strip().lower().lstrip('.')}"
 
-        erf = read_erf(erf_path)
-        ext = restype_ext.strip().lower().lstrip(".")
-        dot = "." + ext if ext else ".mdl"
-        rt = ResourceType.from_extension(dot)
-        return erf.get(resref, rt)
-    except Exception as e:
-        logger().debug(f"get_erf_resource_bytes failed: {e}", exc_info=True)
-        return None
+    def _body() -> bytes | None:
+        if not PYKOTOR_AVAILABLE:
+            return None
+        try:
+            from pykotor.resource.formats.erf import read_erf
+            from pykotor.resource.type import ResourceType
+
+            erf = read_erf(erf_path)
+            ext = restype_ext.strip().lower().lstrip(".")
+            dot = "." + ext if ext else ".mdl"
+            rt = ResourceType.from_extension(dot)
+            return erf.get(resref, rt)
+        except Exception as e:
+            logger().debug(f"get_erf_resource_bytes failed: {e}", exc_info=True)
+            return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.get_erf_resource_bytes",
+        _body,
+        filepath=erf_path,
+        context=ctx,
+    )
 
 
 def try_list_bif_resources(bif_path: str) -> list[tuple[str, str]]:
     """Return ``(resref, ext)`` entries if PyKotor can read the BIF."""
-    if not PYKOTOR_AVAILABLE:
-        return []
-    try:
-        from pykotor.resource.formats.bif import read_bif
 
-        bif = read_bif(bif_path)
-        return [(str(r.resref), _restype_extension(r.restype)) for r in bif]
-    except Exception as e:
-        logger().debug(f"try_list_bif_resources failed: {e}", exc_info=True)
-        return []
+    def _body() -> list[tuple[str, str]]:
+        if not PYKOTOR_AVAILABLE:
+            return []
+        try:
+            from pykotor.resource.formats.bif import read_bif
+
+            bif = read_bif(bif_path)
+            return [(str(r.resref), _restype_extension(r.restype)) for r in bif]
+        except Exception as e:
+            logger().debug(f"try_list_bif_resources failed: {e}", exc_info=True)
+            return []
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.try_list_bif_resources",
+        _body,
+        filepath=bif_path,
+    )
 
 
 def get_bif_resource_bytes(bif_path: str, resref: str, restype_ext: str) -> bytes | None:
     """Read one resource from a BIF by resref and extension (e.g. ``tpc``)."""
-    if not PYKOTOR_AVAILABLE:
-        return None
-    try:
-        from pykotor.resource.formats.bif import read_bif
-        from pykotor.resource.type import ResourceType
+    ctx = f"{resref}.{restype_ext.strip().lower().lstrip('.')}"
 
-        bif = read_bif(bif_path)
-        ext = restype_ext.strip().lower().lstrip(".")
-        dot = "." + ext if ext else ".mdl"
-        rt = ResourceType.from_extension(dot)
-        data = bif.get(resref, rt)
-        return bytes(data) if data is not None else None
-    except Exception as e:
-        logger().debug(f"get_bif_resource_bytes failed: {e}", exc_info=True)
-        return None
+    def _body() -> bytes | None:
+        if not PYKOTOR_AVAILABLE:
+            return None
+        try:
+            from pykotor.resource.formats.bif import read_bif
+            from pykotor.resource.type import ResourceType
+
+            bif = read_bif(bif_path)
+            ext = restype_ext.strip().lower().lstrip(".")
+            dot = "." + ext if ext else ".mdl"
+            rt = ResourceType.from_extension(dot)
+            data = bif.get(resref, rt)
+            return bytes(data) if data is not None else None
+        except Exception as e:
+            logger().debug(f"get_bif_resource_bytes failed: {e}", exc_info=True)
+            return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.get_bif_resource_bytes",
+        _body,
+        filepath=bif_path,
+        context=ctx,
+    )
 
 
 def twoda_to_tsv_string(twoda: Any) -> str:
     """Serialize PyKotor TwoDA to tab-separated text (row label in first column)."""
-    headers = twoda.get_headers()
-    lines: list[str] = ["\t".join([""] + list(headers))]
-    for i in range(twoda.get_height()):
-        row = twoda.get_row(i)
-        lab = row.label()
-        cells = [row.get_string(h) for h in headers]
-        lines.append("\t".join([lab] + cells))
-    return "\n".join(lines)
+    try:
+        _rows = int(twoda.get_height())
+    except Exception:
+        _rows = -1
+    ctx = f"rows={_rows}"
+
+    def _body() -> str:
+        headers = twoda.get_headers()
+        lines: list[str] = ["\t".join([""] + list(headers))]
+        for i in range(twoda.get_height()):
+            row = twoda.get_row(i)
+            lab = row.label()
+            cells = [row.get_string(h) for h in headers]
+            lines.append("\t".join([lab] + cells))
+        return "\n".join(lines)
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.twoda_to_tsv_string",
+        _body,
+        context=ctx,
+    )
 
 
 def twoda_from_tsv_string(text: str) -> Any | None:
     """Build PyKotor TwoDA from TSV (first column = row labels, header row = column names)."""
-    if not PYKOTOR_AVAILABLE:
-        return None
-    try:
-        from pykotor.resource.formats.twoda import TwoDA
+    ctx = f"chars={len(text)}"
 
-        lines = [ln for ln in text.replace("\r\n", "\n").split("\n") if ln.strip()]
-        if not lines:
+    def _body() -> Any | None:
+        if not PYKOTOR_AVAILABLE:
             return None
-        parts0 = lines[0].split("\t")
-        if len(parts0) < 2:
+        try:
+            from pykotor.resource.formats.twoda import TwoDA
+
+            lines = [ln for ln in text.replace("\r\n", "\n").split("\n") if ln.strip()]
+            if not lines:
+                return None
+            parts0 = lines[0].split("\t")
+            if len(parts0) < 2:
+                return None
+            headers = [h.strip() for h in parts0[1:] if h.strip()]
+            if not headers:
+                return None
+            td = TwoDA(headers)
+            for ln in lines[1:]:
+                cols = ln.split("\t")
+                lab = (cols[0] or "").strip() if cols else ""
+                cells: dict[str, str] = {}
+                for hi, h in enumerate(headers):
+                    idx = hi + 1
+                    cells[h] = cols[idx].strip() if idx < len(cols) else ""
+                td.add_row(lab or None, cells)
+            return td
+        except Exception as e:
+            logger().debug(f"twoda_from_tsv_string failed: {e}", exc_info=True)
             return None
-        headers = [h.strip() for h in parts0[1:] if h.strip()]
-        if not headers:
-            return None
-        td = TwoDA(headers)
-        for ln in lines[1:]:
-            cols = ln.split("\t")
-            lab = (cols[0] or "").strip() if cols else ""
-            cells: dict[str, str] = {}
-            for hi, h in enumerate(headers):
-                idx = hi + 1
-                cells[h] = cols[idx].strip() if idx < len(cols) else ""
-            td.add_row(lab or None, cells)
-        return td
-    except Exception as e:
-        logger().debug(f"twoda_from_tsv_string failed: {e}", exc_info=True)
-        return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.twoda_from_tsv_string",
+        _body,
+        context=ctx,
+    )
 
 
 def load_twoda_file(path: str) -> Any | None:
-    if not PYKOTOR_AVAILABLE:
-        return None
-    try:
-        from pykotor.resource.formats.twoda import read_2da
 
-        return read_2da(path)
-    except Exception as e:
-        logger().debug(f"load_twoda_file failed: {e}", exc_info=True)
-        return None
+    def _body() -> Any | None:
+        if not PYKOTOR_AVAILABLE:
+            return None
+        try:
+            from pykotor.resource.formats.twoda import read_2da
+
+            return read_2da(path)
+        except Exception as e:
+            logger().debug(f"load_twoda_file failed: {e}", exc_info=True)
+            return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.load_twoda_file",
+        _body,
+        filepath=path,
+    )
 
 
 def save_twoda_file(twoda: Any, path: str) -> bool:
-    if not PYKOTOR_AVAILABLE or twoda is None:
-        return False
-    try:
-        from pykotor.resource.formats.twoda import write_2da
 
-        write_2da(twoda, path)
-        return True
-    except Exception as e:
-        logger().debug(f"save_twoda_file failed: {e}", exc_info=True)
-        return False
+    def _body() -> bool:
+        if not PYKOTOR_AVAILABLE or twoda is None:
+            return False
+        try:
+            from pykotor.resource.formats.twoda import write_2da
+
+            write_2da(twoda, path)
+            return True
+        except Exception as e:
+            logger().debug(f"save_twoda_file failed: {e}", exc_info=True)
+            return False
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.save_twoda_file",
+        _body,
+        filepath=path,
+    )
 
 
 def load_vis_visibility_pairs(path: str) -> list[tuple[str, str]]:
     """Load VIS as (observer_room, visible_room) pairs using PyKotor."""
-    if not PYKOTOR_AVAILABLE:
-        return []
-    try:
-        from pykotor.resource.formats.vis import read_vis
 
-        vis = read_vis(path)
-        pairs: list[tuple[str, str]] = []
-        for observer, observed_set in vis:
-            for show in observed_set:
-                pairs.append((observer, show))
-        return pairs
-    except Exception as e:
-        logger().debug(f"load_vis_visibility_pairs failed: {e}", exc_info=True)
-        return []
+    def _body() -> list[tuple[str, str]]:
+        if not PYKOTOR_AVAILABLE:
+            return []
+        try:
+            from pykotor.resource.formats.vis import read_vis
+
+            vis = read_vis(path)
+            pairs: list[tuple[str, str]] = []
+            for observer, observed_set in vis:
+                for show in observed_set:
+                    pairs.append((observer, show))
+            return pairs
+        except Exception as e:
+            logger().debug(f"load_vis_visibility_pairs failed: {e}", exc_info=True)
+            return []
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.load_vis_visibility_pairs",
+        _body,
+        filepath=path,
+    )
 
 
 def save_vis_visibility_pairs(pairs: list[tuple[str, str]], path: str) -> bool:
     """Write VIS from (observer, visible) pairs using PyKotor."""
-    if not PYKOTOR_AVAILABLE or not pairs:
-        return False
-    try:
-        from pykotor.resource.formats.vis import write_vis
-        from pykotor.resource.formats.vis.vis_data import VIS
+    ctx = f"pairs={len(pairs)}"
 
-        vis = VIS()
-        for a, b in pairs:
-            aa, bb = a.lower(), b.lower()
-            vis.add_room(aa)
-            vis.add_room(bb)
-        for a, b in pairs:
-            vis.set_visible(a, b, visible=True)
-        write_vis(vis, path)
-        return True
-    except Exception as e:
-        logger().debug(f"save_vis_visibility_pairs failed: {e}", exc_info=True)
-        return False
+    def _body() -> bool:
+        if not PYKOTOR_AVAILABLE or not pairs:
+            return False
+        try:
+            from pykotor.resource.formats.vis import write_vis
+            from pykotor.resource.formats.vis.vis_data import VIS
+
+            vis = VIS()
+            for a, b in pairs:
+                aa, bb = a.lower(), b.lower()
+                vis.add_room(aa)
+                vis.add_room(bb)
+            for a, b in pairs:
+                vis.set_visible(a, b, visible=True)
+            write_vis(vis, path)
+            return True
+        except Exception as e:
+            logger().debug(f"save_vis_visibility_pairs failed: {e}", exc_info=True)
+            return False
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.save_vis_visibility_pairs",
+        _body,
+        filepath=path,
+        context=ctx,
+    )
 
 
 def discover_game_installation(path: str) -> SearchLocation | None:
@@ -1918,16 +2255,27 @@ def discover_game_installation(path: str) -> SearchLocation | None:
         PyKotor SearchLocation, or None if not found or PyKotor unavailable
 
     """
-    if not PYKOTOR_AVAILABLE:
-        return None
 
-    try:
-        # Optional: use PyKotor installation discovery (chitin.key, dialog.tlk, etc.)
-        # to return a SearchLocation. Until then, return None.
-        if os.path.exists(os.path.join(path, "chitin.key")):
-            # Return appropriate SearchLocation when PyKotor API is wired
-            pass
-        return None
-    except Exception as e:
-        logger().debug(f"PyKotor discover_game_installation failed for {path}: {e}", exc_info=True)
-        return None
+    def _body() -> SearchLocation | None:
+        if not PYKOTOR_AVAILABLE:
+            return None
+
+        try:
+            # Optional: use PyKotor installation discovery (chitin.key, dialog.tlk, etc.)
+            # to return a SearchLocation. Until then, return None.
+            if os.path.exists(os.path.join(path, "chitin.key")):
+                # Return appropriate SearchLocation when PyKotor API is wired
+                pass
+            return None
+        except Exception as e:
+            logger().debug(
+                f"PyKotor discover_game_installation failed for {path}: {e}",
+                exc_info=True,
+            )
+            return None
+
+    return _run_adapter_traced(
+        "vendor.pykotor_adapter.discover_game_installation",
+        _body,
+        filepath=path,
+    )

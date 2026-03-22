@@ -20,26 +20,34 @@ from __future__ import annotations
 
 import bpy
 
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import is_pykotor_available
 
 
 class KB_OT_indoor_map_builder(bpy.types.Operator):
     bl_idname = "kb.indoor_map_builder"
     bl_label = "Indoor Map Builder"
+    bl_options = {"REGISTER"}
     bl_description = (
-        "Full indoor map tools are not in Blender yet — import LYT, edit walkmeshes, and use "
-        "Scene → KotOR Game Installation → Area edit flag for upcoming gizmos. "
-        "Use HolocronToolset for full area GIT/VIS editing if needed"
+        "Enable KotOR area-edit mode and open the Indoor Map Builder sidebar section: "
+        "import LYT, set ARE/GIT/VIS paths; use HolocronToolset for full indoor kit"
     )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        if not is_pykotor_available():
-            self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
-            return {"CANCELLED"}
+        log = get_kb_logger("ops.tools.indoor_map_builder")
 
-        self.report(
-            {"INFO"},
-            "Indoor Map Builder: import LYT here; Scene props → Area edit flag for future use. "
-            "See operator tooltip for details.",
-        )
-        return {"FINISHED"}
+        def _body() -> set[str]:
+            if not is_pykotor_available():
+                self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
+                return {"CANCELLED"}
+
+            context.scene.kb.kotor_area_edit_active = True
+            self.report(
+                {"INFO"},
+                "Area edit mode on. Sidebar (N) → KotOR → Indoor Map Builder: LYT import, ARE/GIT/VIS paths. "
+                "Full GIT/VIS editing: HolocronToolset (see PyKotor vendor help wiki).",
+            )
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.indoor_map_builder", _body)

@@ -23,8 +23,20 @@ import os
 import bpy
 from bpy_extras.io_utils import ImportHelper
 
+from ...constants import LogReasonCode
+from ...diagnostic_log import (
+    begin_import_operator_diag,
+    end_import_operator_diag,
+    set_import_invoke_entry,
+)
 from ...format.tpc.reader import TpcReader
-from ...vendor.pykotor_adapter import convert_pykotor_tpc_to_tpcimage, get_use_pykotor_readers, is_pykotor_available, load_tpc_via_pykotor
+from ...log_config import get_kb_logger
+from ...vendor.pykotor_adapter import (
+    convert_pykotor_tpc_to_tpcimage,
+    get_use_pykotor_readers,
+    is_pykotor_available,
+    load_tpc_via_pykotor,
+)
 
 
 class KB_OT_convert_tpc_to_tga(bpy.types.Operator, ImportHelper):
@@ -35,26 +47,29 @@ class KB_OT_convert_tpc_to_tga(bpy.types.Operator, ImportHelper):
     filename_ext = ".tpc"
     filter_glob: bpy.props.StringProperty(default="*.tpc", options={"HIDDEN"})
 
-    def execute(self, context: bpy.types.Context) -> set[str]:
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        set_import_invoke_entry(self)
+        if self.filepath:
+            return self.execute(context)
+        return ImportHelper.invoke(self, context, event)
+
+    def _execute_convert_tpc_to_tga_core(self, context: bpy.types.Context) -> set[str]:
         if not os.path.isfile(self.filepath):
             self.report({"ERROR"}, f"File not found: {self.filepath}")
             return {"CANCELLED"}
 
-        # Load TPC using PyKotor or current reader
         tpc_image = None
         if get_use_pykotor_readers() and is_pykotor_available():
             pykotor_tpc = load_tpc_via_pykotor(self.filepath)
             if pykotor_tpc:
                 tpc_image = convert_pykotor_tpc_to_tpcimage(pykotor_tpc)
             if not tpc_image:
-                # Fallback to current reader
                 try:
                     tpc_image = TpcReader(self.filepath).load()
                 except Exception as e:
                     self.report({"ERROR"}, f"Failed to load TPC (PyKotor and fallback failed): {e}")
                     return {"CANCELLED"}
         else:
-            # Use current reader
             try:
                 tpc_image = TpcReader(self.filepath).load()
             except Exception as e:
@@ -65,20 +80,69 @@ class KB_OT_convert_tpc_to_tga(bpy.types.Operator, ImportHelper):
             self.report({"ERROR"}, "Failed to load TPC file")
             return {"CANCELLED"}
 
-        # Create Blender image from TpcImage
-        temp_name = os.path.basename(self.filepath)[:-4]  # Remove .tpc extension
+        temp_name = os.path.basename(self.filepath)[:-4]
         image = bpy.data.images.new(temp_name, tpc_image.w, tpc_image.h)
         image.pixels = tpc_image.pixels
         image.update()
 
-        # Save as TGA
         tga_path = self.filepath[:-4] + ".tga"
         image.filepath = tga_path
         image.file_format = "TARGA"
         image.save()
 
-        # Clean up temporary image
         bpy.data.images.remove(image)
 
         self.report({"INFO"}, f"Converted TPC to TGA: {tga_path}")
         return {"FINISHED"}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.texture.convert_tpc_to_tga")
+        session = begin_import_operator_diag(
+            log, "kb.convert_tpc_to_tga", self, self.filepath or ""
+        )
+        outcome = "FINISHED"
+        work_done = False
+        reason_code = LogReasonCode.OK
+        ret: set[str] = {"CANCELLED"}
+        try:
+            ret = self._execute_convert_tpc_to_tga_core(context)
+            work_done = ret == {"FINISHED"}
+            outcome = "FINISHED" if work_done else "CANCELLED"
+        except OSError as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = (
+                LogReasonCode.MISSING_FILE
+                if isinstance(ex, FileNotFoundError)
+                else LogReasonCode.IO_ERROR
+            )
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.convert_tpc_to_tga",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        except Exception as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = LogReasonCode.INTERNAL_ERROR
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.convert_tpc_to_tga",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        finally:
+            end_import_operator_diag(
+                session,
+                outcome=outcome,
+                work_done=work_done,
+                reason_code=reason_code,
+            )
+        return ret

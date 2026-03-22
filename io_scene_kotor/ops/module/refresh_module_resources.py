@@ -23,6 +23,8 @@ import os
 import bpy
 
 from ...constants import ResourceStorage, ResourceTab
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import (
     is_pykotor_available,
     list_erf_mod_resources,
@@ -48,6 +50,14 @@ class KB_OT_refresh_module_resources(bpy.types.Operator):
     bl_description = "Populate the resource list from the current tab and game installation"
 
     def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.module.refresh_module_resources")
+
+        def _body() -> set[str]:
+            return self._refresh_module_resources_body(context)
+
+        return run_simple_operator_logged(log, "kb.refresh_module_resources", _body)
+
+    def _refresh_module_resources_body(self, context: bpy.types.Context) -> set[str]:
         scene = context.scene
         kb = scene.kb
 

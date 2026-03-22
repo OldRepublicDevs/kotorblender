@@ -18,14 +18,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import bpy
 
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import is_pykotor_available
-
-if TYPE_CHECKING:
-    from bpy.stub_internal.rna_enums import OperatorReturnItems
 
 
 def _show_view3d_sidebar(context: bpy.types.Context) -> None:
@@ -53,14 +50,19 @@ class KB_OT_module_designer(bpy.types.Operator):
     bl_label = "Module Designer"
     bl_description = "Opens the right sidebar (N) in the 3D View — open the KotOR tab → Module Designer or Module Browser. Same path: Editor → KotOR → Quick access"
 
-    def execute(self, context: bpy.types.Context) -> set[OperatorReturnItems]:
-        if not is_pykotor_available():
-            self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
-            return {"CANCELLED"}
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.tools.module_designer")
 
-        _show_view3d_sidebar(context)
-        self.report(
-            {"INFO"},
-            "Sidebar (N) → KotOR → Module Designer: pack folder, BIF path, refresh.",
-        )
-        return {"FINISHED"}
+        def _body() -> set[str]:
+            if not is_pykotor_available():
+                self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
+                return {"CANCELLED"}
+
+            _show_view3d_sidebar(context)
+            self.report(
+                {"INFO"},
+                "Sidebar (N) → KotOR → Module Designer: pack folder, BIF path, refresh.",
+            )
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.module_designer", _body)

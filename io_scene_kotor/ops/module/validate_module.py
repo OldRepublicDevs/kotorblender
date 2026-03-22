@@ -25,6 +25,8 @@ from collections import Counter
 
 import bpy
 
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import (
     is_pykotor_available,
     list_erf_mod_resources,
@@ -42,69 +44,76 @@ class KB_OT_validate_module(bpy.types.Operator):
     )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        scene = context.scene
-        kb = scene.kb
-        lines: list[str] = []
+        log = get_kb_logger("ops.module.validate_module")
 
-        if not is_pykotor_available():
-            msg = "PyKotor not available — validation skipped."
-            kb.last_validation_report = msg
-            self.report({"ERROR"}, msg)
-            return {"CANCELLED"}
+        def _body() -> set[str]:
+            scene = context.scene
+            kb = scene.kb
+            lines: list[str] = []
 
-        install = resolve_game_install_path(kb)
-        if not install:
-            report = "ERROR: Game installation path not set or not found.\nSet it in Scene properties → KotOR Game Installation."
-            kb.last_validation_report = report
-            self.report({"ERROR"}, "No game installation path.")
-            return {"CANCELLED"}
+            if not is_pykotor_available():
+                msg = "PyKotor not available — validation skipped."
+                kb.last_validation_report = msg
+                self.report({"ERROR"}, msg)
+                return {"CANCELLED"}
 
-        lines.append(f"Installation: {install}")
-        chitin = os.path.join(install, "chitin.key")
-        lines.append(f"chitin.key: {'OK' if os.path.isfile(chitin) else 'MISSING (override-only / partial tree?)'}")
+            install = resolve_game_install_path(kb)
+            if not install:
+                report = "ERROR: Game installation path not set or not found.\nSet it in Scene properties → KotOR Game Installation."
+                kb.last_validation_report = report
+                self.report({"ERROR"}, "No game installation path.")
+                return {"CANCELLED"}
 
-        modules_dir = os.path.join(install, "modules")
-        if os.path.isdir(modules_dir):
-            n_mod = sum(1 for n in os.listdir(modules_dir) if n.lower().endswith(".mod"))
-            lines.append(f"modules/: {n_mod} .mod file(s)")
-        else:
-            lines.append("WARN: modules/ folder missing")
+            lines.append(f"Installation: {install}")
+            chitin = os.path.join(install, "chitin.key")
+            lines.append(f"chitin.key: {'OK' if os.path.isfile(chitin) else 'MISSING (override-only / partial tree?)'}")
 
-        ovr = os.path.join(install, "override")
-        lines.append(f"override/: {'OK' if os.path.isdir(ovr) else 'missing'}")
-
-        # Selected module
-        if kb.module_list and 0 <= kb.module_list_idx < len(kb.module_list):
-            mod_name = kb.module_list[kb.module_list_idx].name
-            mod_path = os.path.join(install, "modules", mod_name + ".mod")
-            if not os.path.isfile(mod_path):
-                lines.append(f"ERROR: Selected module file not found: {mod_path}")
+            modules_dir = os.path.join(install, "modules")
+            if os.path.isdir(modules_dir):
+                n_mod = sum(1 for n in os.listdir(modules_dir) if n.lower().endswith(".mod"))
+                lines.append(f"modules/: {n_mod} .mod file(s)")
             else:
-                entries = list_erf_mod_resources(mod_path)
-                if entries:
-                    lines.append(f"Selected module: {mod_name} — {len(entries)} resource(s)")
-                    ext_counts = Counter(ext.lower() for _rr, ext, _data in entries)
-                    top = ", ".join(f"{k}:{v}" for k, v in sorted(ext_counts.items())[:24])
-                    lines.append(f"Extensions: {top}")
-                    if len(ext_counts) > 24:
-                        lines.append(f"… +{len(ext_counts) - 24} more extension types")
+                lines.append("WARN: modules/ folder missing")
+
+            ovr = os.path.join(install, "override")
+            lines.append(f"override/: {'OK' if os.path.isdir(ovr) else 'missing'}")
+
+            # Selected module
+            if kb.module_list and 0 <= kb.module_list_idx < len(kb.module_list):
+                mod_name = kb.module_list[kb.module_list_idx].name
+                mod_path = os.path.join(install, "modules", mod_name + ".mod")
+                if not os.path.isfile(mod_path):
+                    lines.append(f"ERROR: Selected module file not found: {mod_path}")
                 else:
-                    lines.append(f"WARN: Selected module {mod_name} — no resources listed (empty or read failure)")
-        else:
-            lines.append("INFO: No module selected — skipped .mod contents check")
-
-        # Optional BIF path (same property as Module Browser BIF tab)
-        bif_path = (kb.active_bif_path or "").strip()
-        if bif_path:
-            if not os.path.isfile(bif_path):
-                lines.append(f"ERROR: BIF path is not a file: {bif_path}")
+                    entries = list_erf_mod_resources(mod_path)
+                    if entries:
+                        lines.append(f"Selected module: {mod_name} — {len(entries)} resource(s)")
+                        ext_counts = Counter(ext.lower() for _rr, ext, _data in entries)
+                        top = ", ".join(f"{k}:{v}" for k, v in sorted(ext_counts.items())[:24])
+                        lines.append(f"Extensions: {top}")
+                        if len(ext_counts) > 24:
+                            lines.append(f"… +{len(ext_counts) - 24} more extension types")
+                    else:
+                        lines.append(
+                            f"WARN: Selected module {mod_name} — no resources listed (empty or read failure)"
+                        )
             else:
-                bif_entries = try_list_bif_resources(bif_path)
-                lines.append(f"BIF: {os.path.basename(bif_path)} — {len(bif_entries)} entry name(s)")
+                lines.append("INFO: No module selected — skipped .mod contents check")
 
-        report = "\n".join(lines)
-        if len(report) > 65000:
-            report = report[:64900] + "\n… (truncated)"
-        kb.last_validation_report = report
-        self.report({"INFO"}, "Validation finished — see KotOR → Module Designer or Scene report field")
-        return {"FINISHED"}
+            # Optional BIF path (same property as Module Browser BIF tab)
+            bif_path = (kb.active_bif_path or "").strip()
+            if bif_path:
+                if not os.path.isfile(bif_path):
+                    lines.append(f"ERROR: BIF path is not a file: {bif_path}")
+                else:
+                    bif_entries = try_list_bif_resources(bif_path)
+                    lines.append(f"BIF: {os.path.basename(bif_path)} — {len(bif_entries)} entry name(s)")
+
+            report = "\n".join(lines)
+            if len(report) > 65000:
+                report = report[:64900] + "\n… (truncated)"
+            kb.last_validation_report = report
+            self.report({"INFO"}, "Validation finished — see KotOR → Module Designer or Scene report field")
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.validate_module", _body)

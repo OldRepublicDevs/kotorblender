@@ -19,7 +19,9 @@ from __future__ import annotations
 from typing import cast
 
 from ...constants import DummyType, RootType, WalkmeshType
+from ...diagnostic_log import begin_format_file_span, end_format_file_span
 from ...format.binreader import BinaryReader
+from ...log_config import get_kb_logger
 from ...scene.modelnode.aabb import AabbNode
 from ...scene.modelnode.dummy import DummyNode
 from ...scene.modelnode.trimesh import FaceList
@@ -51,15 +53,24 @@ class BwmReader:
         self.rel_use_vec2: list[float] = [0.0] * 3
 
     def load(self):
-        self.load_header()
-        self.load_vertices()
-        self.load_faces()
-        self.load_aabbs()
-        self.load_adjacent_edges()
-        self.load_outer_edges()
-        self.load_perimeters()
+        log = get_kb_logger("format")
+        span = begin_format_file_span(log, "format.bwm.reader.BwmReader.load", self.path)
+        err = False
+        try:
+            self.load_header()
+            self.load_vertices()
+            self.load_faces()
+            self.load_aabbs()
+            self.load_adjacent_edges()
+            self.load_outer_edges()
+            self.load_perimeters()
 
-        return self.new_walkmesh()
+            return self.new_walkmesh()
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_format_file_span(span, error=err)
 
     def load_header(self):
         file_type: str = self.bwm.read_string(4)

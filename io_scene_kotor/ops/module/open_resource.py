@@ -23,6 +23,8 @@ import os
 import bpy
 
 from ...constants import ResourceStorage
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import is_pykotor_available
 from .resource_helpers import resource_entry_bytes, temp_file_with_suffix
 
@@ -33,39 +35,44 @@ class KB_OT_open_resource(bpy.types.Operator):
     bl_description = "Open the selected resource in Blender (MDL, LYT, PTH, ASCII MDL) or the image editor (TGA/TPC as temp)"
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        scene = context.scene
-        kb = scene.kb
+        log = get_kb_logger("ops.module.open_resource")
 
-        if kb.resource_list_idx < 0 or kb.resource_list_idx >= len(kb.resource_list):
-            self.report({"ERROR"}, "No resource selected")
-            return {"CANCELLED"}
+        def _body() -> set[str]:
+            scene = context.scene
+            kb = scene.kb
 
-        if not is_pykotor_available():
-            self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
-            return {"CANCELLED"}
+            if kb.resource_list_idx < 0 or kb.resource_list_idx >= len(kb.resource_list):
+                self.report({"ERROR"}, "No resource selected")
+                return {"CANCELLED"}
 
-        entry = kb.resource_list[kb.resource_list_idx]
-        ext = (entry.restype_ext or "").lower().lstrip(".")
+            if not is_pykotor_available():
+                self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
+                return {"CANCELLED"}
 
-        # Loose path shortcut (no temp file)
-        if entry.storage == ResourceStorage.LOOSE and entry.loose_path and os.path.isfile(entry.loose_path):
-            path = entry.loose_path
-            return self._open_path(context, path, ext)
+            entry = kb.resource_list[kb.resource_list_idx]
+            ext = (entry.restype_ext or "").lower().lstrip(".")
 
-        data = resource_entry_bytes(entry)
-        if not data:
-            self.report({"ERROR"}, "Could not read resource data.")
-            return {"CANCELLED"}
+            # Loose path shortcut (no temp file)
+            if entry.storage == ResourceStorage.LOOSE and entry.loose_path and os.path.isfile(entry.loose_path):
+                path = entry.loose_path
+                return self._open_path(context, path, ext)
 
-        suffix = "." + ext if ext else ".dat"
-        tmp = temp_file_with_suffix(suffix, data)
-        try:
-            return self._open_path(context, tmp, ext)
-        finally:
+            data = resource_entry_bytes(entry)
+            if not data:
+                self.report({"ERROR"}, "Could not read resource data.")
+                return {"CANCELLED"}
+
+            suffix = "." + ext if ext else ".dat"
+            tmp = temp_file_with_suffix(suffix, data)
             try:
-                os.unlink(tmp)
-            except OSError:
-                pass
+                return self._open_path(context, tmp, ext)
+            finally:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+
+        return run_simple_operator_logged(log, "kb.open_resource", _body)
 
     def _open_path(self, context: bpy.types.Context, path: str, ext: str) -> set[str]:
         ext = ext.lower().lstrip(".")

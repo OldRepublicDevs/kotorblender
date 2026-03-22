@@ -26,7 +26,9 @@ from typing import TYPE_CHECKING
 from mathutils import Matrix, Quaternion, Vector
 
 from ...constants import NULL, NodeType
+from ...diagnostic_log import begin_format_file_span, end_format_file_span
 from ...format.binreader import BinaryReader
+from ...log_config import get_kb_logger
 from ...scene.animation import Animation
 from ...scene.animnode import AnimationNode
 from ...scene.model import Model
@@ -95,19 +97,28 @@ class MdlReader:
         self.xbox: bool = False
 
     def load(self):
-        self.model = Model()
+        log = get_kb_logger("format")
+        span = begin_format_file_span(log, "format.mdl.reader.MdlReader.load", self.path)
+        err = False
+        try:
+            self.model = Model()
 
-        self.load_file_header()
-        self.load_geometry_header()
-        self.load_model_header()
-        self.load_names()
-        self.peek_nodes(self.off_root_node)
+            self.load_file_header()
+            self.load_geometry_header()
+            self.load_model_header()
+            self.load_names()
+            self.peek_nodes(self.off_root_node)
 
-        self.model.root_node = self.load_nodes(self.off_root_node, 0)
+            self.model.root_node = self.load_nodes(self.off_root_node, 0)
 
-        self.load_animations()
+            self.load_animations()
 
-        return self.model
+            return self.model
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_format_file_span(span, error=err)
 
     def load_file_header(self):
         if self.mdl.read_uint32() != 0:

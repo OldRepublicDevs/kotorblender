@@ -28,6 +28,8 @@ import bpy
 from mathutils import Quaternion
 
 from ...constants import NULL, AsciiMdlKeyword, BlendType, EmitterRenderType, SpawnType, UpdateType
+from ...diagnostic_log import begin_format_file_span, end_format_file_span
+from ...log_config import get_kb_logger
 from ...scene.model import Model
 from ...scene.animation import Animation
 from ...scene.animnode import AnimationNode
@@ -75,28 +77,37 @@ class AsciiMdlWriter:
 
     def save(self) -> None:
         """Write the model to an ASCII MDL file."""
-        self.lines = []
+        log = get_kb_logger("format")
+        span = begin_format_file_span(log, "format.mdl.ascii_writer.AsciiMdlWriter.save", self.path)
+        err = False
+        try:
+            self.lines = []
 
-        # Build name map for .001 suffix handling
-        self._build_name_map()
+            # Build name map for .001 suffix handling
+            self._build_name_map()
 
-        # Write header
-        self._write_header()
+            # Write header
+            self._write_header()
 
-        # Write geometry
-        self._write_geometry()
+            # Write geometry
+            self._write_geometry()
 
-        # Write animations
-        self._write_animations()
+            # Write animations
+            self._write_animations()
 
-        # Write footer
-        self._write_footer()
+            # Write footer
+            self._write_footer()
 
-        # Write to file
-        with open(self.path, "w", encoding="utf-8") as f:
-            f.write("\n".join(self.lines))
-            if self.lines:
-                f.write("\n")
+            # Write to file
+            with open(self.path, "w", encoding="utf-8") as f:
+                f.write("\n".join(self.lines))
+                if self.lines:
+                    f.write("\n")
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_format_file_span(span, error=err)
 
     def _build_name_map(self) -> None:
         """Build a map of .001 suffix names to base names."""

@@ -141,15 +141,26 @@ from .ops.texture.convert_tga_to_tpc import KB_OT_convert_tga_to_tpc
 from .ops.texture.convert_tpc_to_tga import KB_OT_convert_tpc_to_tga
 from .ops.texture.extract_tpc_textures import KB_OT_extract_tpc_textures
 from .ops.tools.clone_module import KB_OT_clone_module
+from .ops.tools.git_instances import (
+    KB_OT_git_export_instances,
+    KB_OT_git_frame_linked,
+    KB_OT_git_import_instances,
+    KB_OT_git_select_linked,
+)
 from .ops.tools.file_search import KB_OT_file_search
 from .ops.tools.indoor_map_builder import KB_OT_indoor_map_builder
 from .ops.tools.kotor_diff import KB_OT_kotor_diff
 from .ops.tools.module_designer import KB_OT_module_designer
-from .ops.tools.tslpatchdata_editor import KB_OT_tslpatchdata_editor
+from .ops.tools.tslpatchdata_editor import (
+    KB_OT_tslpatchdata_editor,
+    KB_OT_tslpatchdata_load_changes_ini,
+    KB_OT_tslpatchdata_save_changes_ini,
+)
 from .ui.list.lensflares import KB_UL_lens_flares
 from .ui.list.modules import KB_UL_modules
 from .ui.list.pathpoints import KB_UL_path_points
 from .ui.list.resources import KB_UL_resources
+from .ui.list.tslpatch_package import KB_UL_tslpatch_package
 from .ui.menu.kotor import (
     KB_MT_kotor,
     KB_MT_kotor_editors,
@@ -192,6 +203,9 @@ from .ui.panel.modelnode.mesh import (
 from .ui.panel.modelnode.modelnode import KB_PT_modelnode
 from .ui.panel.modelnode.reference import KB_PT_reference
 from .ui.panel.module_browser import KB_PT_module_browser
+from .ui.panel.git_instances import KB_PT_git_instances
+from .view3d.walkmesh_overlay import register_walkmesh_overlay, unregister_walkmesh_overlay
+from .ui.panel.indoor_map_builder import KB_PT_indoor_map_builder
 from .ui.panel.module_designer import KB_PT_module_designer
 from .ui.panel.pathpoint import KB_PT_path_point
 from .ui.panel.resource.creature import KB_PT_creature
@@ -205,6 +219,14 @@ from .ui.panel.resource.sound import KB_PT_sound
 from .ui.panel.resource.trigger import KB_PT_trigger
 from .ui.panel.resource.waypoint import KB_PT_waypoint
 from .ui.panel.save_game import KB_PT_save_game
+from .ui.panel.tslpatchdata import (
+    KB_PT_tslpatchdata,
+    KB_PT_tslpatchdata_2da,
+    KB_PT_tslpatchdata_files,
+    KB_PT_tslpatchdata_gff,
+    KB_PT_tslpatchdata_scripts,
+    KB_PT_tslpatchdata_tlk,
+)
 from .ui.props.anim import AnimPropertyGroup
 from .ui.props.animevent import AnimEventPropertyGroup
 from .ui.props.image import ImagePropertyGroup
@@ -215,6 +237,7 @@ from .ui.props.scene import (
     ModulePropertyGroup,
     ResourceEntryPropertyGroup,
     ScenePropertyGroup,
+    TslPatchPackageFilePropertyGroup,
     VisEdgePropertyGroup,
 )
 
@@ -311,6 +334,7 @@ classes = (
     ObjectPropertyGroup,
     ResourceEntryPropertyGroup,
     VisEdgePropertyGroup,
+    TslPatchPackageFilePropertyGroup,
     ModulePropertyGroup,
     ScenePropertyGroup,
     ImagePropertyGroup,
@@ -413,12 +437,18 @@ classes = (
     KB_OT_extract_tpc_textures,
     # Tool operators
     KB_OT_clone_module,
+    KB_OT_git_export_instances,
+    KB_OT_git_frame_linked,
+    KB_OT_git_import_instances,
+    KB_OT_git_select_linked,
     KB_OT_file_search,
     KB_OT_open_addon_preferences,
     KB_OT_indoor_map_builder,
     KB_OT_kotor_diff,
     KB_OT_module_designer,
     KB_OT_tslpatchdata_editor,
+    KB_OT_tslpatchdata_load_changes_ini,
+    KB_OT_tslpatchdata_save_changes_ini,
     # Editor operators
     KB_OT_edit_dlg,
     KB_OT_edit_erf,
@@ -459,6 +489,15 @@ classes = (
     KB_PT_game_installation,
     KB_PT_module_browser,
     KB_PT_module_designer,
+    KB_UL_tslpatch_package,
+    KB_PT_indoor_map_builder,
+    KB_PT_git_instances,
+    KB_PT_tslpatchdata,
+    KB_PT_tslpatchdata_files,
+    KB_PT_tslpatchdata_2da,
+    KB_PT_tslpatchdata_tlk,
+    KB_PT_tslpatchdata_gff,
+    KB_PT_tslpatchdata_scripts,
     KB_PT_save_game,
     # Resource panels
     KB_PT_creature,
@@ -498,7 +537,7 @@ classes = (
 
 
 def register():
-    from .log_config import apply_preferences_log_level_safe, configure_package_logging
+    from .log_config import apply_preferences_log_level_safe, configure_package_logging, get_kb_logger
 
     import logging
 
@@ -548,8 +587,19 @@ def register():
 
     apply_preferences_log_level_safe()
 
+    get_kb_logger("io_scene_kotor").debug(
+        "event=addon_register phase=menus_keymaps_done classes=%s addon_keymaps=%s",
+        len(classes),
+        len(addon_keymaps),
+    )
+    register_walkmesh_overlay()
+
 
 def unregister():
+    from .log_config import get_kb_logger
+
+    get_kb_logger("io_scene_kotor").debug("event=addon_unregister phase=start")
+    unregister_walkmesh_overlay()
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_pth)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_lyt)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_ascii_mdl)
@@ -575,6 +625,8 @@ def unregister():
 
     for cls in classes:
         bpy.utils.unregister_class(cls)
+
+    get_kb_logger("io_scene_kotor").debug("event=addon_unregister phase=complete classes=%s", len(classes))
 
 
 if __name__ == "__main__":

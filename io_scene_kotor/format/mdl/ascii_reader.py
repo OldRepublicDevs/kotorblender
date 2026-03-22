@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING
 from mathutils import Quaternion, Vector
 
 from ...constants import NULL, AsciiMdlKeyword, BlendType, Classification, EmitterRenderType, NodeType, SpawnType, UpdateType
+from ...diagnostic_log import begin_format_file_span, end_format_file_span
+from ...log_config import get_kb_logger
 from ...scene.animation import Animation
 from ...scene.animnode import AnimationNode
 from ...scene.model import Model
@@ -120,39 +122,48 @@ class AsciiMdlReader:
 
     def load(self) -> Model:
         """Load an ASCII MDL file and return a Model object."""
-        if not os.path.exists(self.path):
-            raise FileNotFoundError(f"ASCII MDL file not found: {self.path}")
+        log = get_kb_logger("format")
+        span = begin_format_file_span(log, "format.mdl.ascii_reader.AsciiMdlReader.load", self.path)
+        err = False
+        try:
+            if not os.path.exists(self.path):
+                raise FileNotFoundError(f"ASCII MDL file not found: {self.path}")
 
-        with open(self.path, "r", encoding="utf-8") as f:
-            content = f.read()
+            with open(self.path, "r", encoding="utf-8") as f:
+                content = f.read()
 
-        self.model = Model()
-        self.lines = content.splitlines()
-        self.current_line = 0
+            self.model = Model()
+            self.lines = content.splitlines()
+            self.current_line = 0
 
-        # Find sections
-        geom_start = self._find_line_containing(AsciiMdlKeyword.NODE.value + " ")
-        anim_start = self._find_line_containing(AsciiMdlKeyword.NEWANIM.value + " ")
-        geom_end = self._find_line_containing(AsciiMdlKeyword.ENDMODELGEOM.value + " ")
+            # Find sections
+            geom_start = self._find_line_containing(AsciiMdlKeyword.NODE.value + " ")
+            anim_start = self._find_line_containing(AsciiMdlKeyword.NEWANIM.value + " ")
+            geom_end = self._find_line_containing(AsciiMdlKeyword.ENDMODELGEOM.value + " ")
 
-        if geom_start < 0:
-            raise ValueError("Unable to find geometry section (no 'node' keyword found)")
+            if geom_start < 0:
+                raise ValueError("Unable to find geometry section (no 'node' keyword found)")
 
-        if anim_start > 0 and geom_start > anim_start:
-            raise ValueError("Animations found before geometry section")
+            if anim_start > 0 and geom_start > anim_start:
+                raise ValueError("Animations found before geometry section")
 
-        # Parse header
-        self._parse_header(geom_start)
+            # Parse header
+            self._parse_header(geom_start)
 
-        # Parse geometry
-        self._parse_geometry(geom_start, geom_end if geom_end > 0 else len(self.lines))
+            # Parse geometry
+            self._parse_geometry(geom_start, geom_end if geom_end > 0 else len(self.lines))
 
-        # Parse animations
-        if anim_start > 0:
-            self._parse_animations(anim_start)
+            # Parse animations
+            if anim_start > 0:
+                self._parse_animations(anim_start)
 
-        assert self.model is not None
-        return self.model
+            assert self.model is not None
+            return self.model
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_format_file_span(span, error=err)
 
     def _find_line_containing(self, text: str) -> int:
         """Find the first line index containing the given text. Returns -1 if not found."""

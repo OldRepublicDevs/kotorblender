@@ -330,10 +330,12 @@ The test runner (`test/run_blender_tests.py`, invoked by `make test`) automatica
 
 - **Operator stubs.**  
   Some operators still report “not yet implemented” or minimal behavior (e.g. KotorDiff,
-  TSLPatchData editor UI, Indoor Map Builder, some resource editors). Module workflow
-  pieces that are implemented include **File Search**, **Module Designer** sidebar panel
-  (pack/unpack/clone/BIF path), **Clone Module**, **Batch Extract**, **Pack/Unpack Module**,
-  and **Refresh** resource lists when PyKotor is available.
+  some resource editors). **TSLPatchData** has a KotOR-sidebar workflow (load/save `changes.ini`,
+  raw INI text; structured 2DA/TLK/GFF tabs are placeholders). **Indoor Map Builder** turns on
+  area-edit mode and documents the LYT/ARE/GIT/VIS path workflow; full indoor kit remains in
+  HolocronToolset. Module workflow pieces include **File Search**, **Module Designer** (pack/unpack/clone/BIF),
+  **Clone Module** (PyKotor `clone_module`), **Batch Extract**, **Pack/Unpack Module**, and **Refresh**
+  when PyKotor is available.
 
 ---
 
@@ -381,7 +383,7 @@ class _Op:
 ## Learned User Preferences
 
 - Prefer tests that avoid monkeypatching; use real temp files, real bpy objects, and real data structures. For new `test/blender/test_*.py` files, follow the same structural pattern as `test_material.py` (workspace root on `sys.path`, enable `bl_ext.user_default.io_scene_kotor`, explicit `run_tests()`); scale depth and combinatorics to module risk, not necessarily material.py’s full breadth for every file.
-- When asked to run or fix tests, continue until the suite passes (run/fix until functional), unless the user explicitly restricts testing for that specific request.
+- When asked to run or fix tests, continue until functional; prefer rerunning only failing scripts when practical (e.g. `python test/run_blender_tests.py --filter <substring>`) before a full `make test`, unless the user explicitly restricts testing scope.
 - Tests should use the exact same pipeline as the GUI (e.g., `bpy.ops.kb.mdlimport` with real addon prefs) rather than only direct function calls, to catch operator-level issues.
 - Prefer full type hints in io_scene_kotor; do not use pyright: ignore or type: ignore—use isinstance or if/raise and `getattr(obj, "kb", None)` with None checks for Blender dynamic obj.kb and scene.kb.
 - Use enums and constants from constants.py (e.g. PropertyName) for UI property names and enum values instead of string literals.
@@ -391,7 +393,7 @@ class _Op:
 
 ## Learned Workspace Facts
 
-- On Windows (PowerShell or cmd), `make test` uses `python test/run_blender_tests.py --blender …` with the Makefile’s default Blender path; override with `BLENDER=… make test` or pass `--blender` when invoking the script directly. Auto-detect under Program Files applies when neither is set.
+- On Windows (PowerShell or cmd), `make test` uses `python test/run_blender_tests.py --blender …` with the Makefile’s default Blender path; override with `BLENDER=…` or `BLENDER_DIR=…` (directory containing `blender.exe`), pass `--blender` to the script, or rely on `scripts/blender_paths.py` discovery (scans typical install locations and picks the highest `x.y` when env vars are unset).
 - **`make build` / `make wheel-download`:** Use **GNU Make** (Git Bash, MSYS2, Chocolatey `make`, etc.); `nmake` is unsupported. The Makefile uses `$(PYTHON) helper_scripts/makefile_fs.py` instead of `mkdir -p` / `rm -rf` so recipes work under Windows `cmd.exe`. Set **`PYTHON=python`** if `python3` is not on `PATH`. Default **`PYKOTOR_SPEC=pykotor==2.3.1`** pins an exact PyPI build; a constraint like `pykotor>=2.3.1` resolves to the latest matching release, not a fixed version. Each `wheel-download` runs **`clean-whl`** first so an older PyKotor wheel is not left beside a new pin.
 - **`blender_manifest.toml`:** `tagline` must be **64 characters or fewer** or `blender --command extension build` fails (Blender 4.4+).
 - The test runner syncs the repo addon into Blender’s extensions directory (creates `extensions/user_default` if needed) so tests run against current code; on Windows it uses overwrite-only copy (no rmtree). After copy it strips invalid `wheels` glob entries (e.g. `pykotor-*.whl`) because Blender 4.4+ rejects them—run tests via `python test/run_blender_tests.py`, or `python test/run_blender_tests.py --sync-only` then open Blender. The manifest should list concrete `.whl` names or `wheels = []` when PyKotor is not bundled. To verify PyKotor is actually bundled, run **`make build`** (or `blender --command extension build`) and inspect the produced `.zip` for `wheels/*.whl`; the manifest alone does not prove the artifact was built correctly.
@@ -399,7 +401,7 @@ class _Op:
 - In `scene/modelnode/base.py`, `find_node` must be recursive so an AabbNode under a nested dummy (e.g. root → pivot → areawalk) is found for WOK export; use `from __future__ import annotations` there when `BaseNode` appears in type hints in the same module.
 - Tests that depend on `test_files/` (e.g. fixed MDL, PyKotor assets) should skip gracefully when the directory or files are missing so CI without assets exits 0.
 - KotorBlender is distributed as a Blender extension `.zip` (Preferences → Extensions → Install from Disk), not an installer `.exe`. Bump **`io_scene_kotor/blender_manifest.toml`** and **`io_scene_kotor/__init__.py`** (`bl_info`); tagging **`v*.*.*`** triggers `.github/workflows/release.yml` and attaches the zip to a GitHub Release.
-- For VS Code/Cursor Test Explorer and pytest, restrict discovery to `test/unit` only (`[tool.pytest.ini_options]` in `pyproject.toml` and `python.testing.pytestArgs`); install `pip install ".[dev]"` in the project `.venv` so discovery runs without Blender.
+- For VS Code/Cursor Test Explorer and pytest, restrict discovery to `test/unit` only (`[tool.pytest.ini_options]` in `pyproject.toml` and `python.testing.pytestArgs`); Pyright settings live in `[tool.pyright]` in the same file (no separate `pytest.ini` / `pyrightconfig.json`). Install `pip install ".[dev]"` in the project `.venv` so discovery runs without Blender.
 - MDL import treats a missing MDX file as optional; when the MDX is absent the reader uses empty geometry data instead of raising. In Blender 5.x, addon preference properties can return `_PropertyDeferred` instead of strings; coerce with `str()` before utilities like `semicolon_separated_to_absolute_paths()`.
 - Game-install autodetection and PyKotor “installation not found” issues are much easier to trace with add-on preferences **Diagnostics → Logging verbosity** set to Debug (`log_config` / `io_scene_kotor` package loggers on the system console).
 - Within io_scene_kotor use relative imports (e.g. `from ..constants`) rather than absolute `from io_scene_kotor`; when testing str Enum classes, assert `{e.value for e in EnumClass}` rather than using `dir()` so string methods are not mistaken for members.

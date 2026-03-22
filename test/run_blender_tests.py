@@ -7,51 +7,44 @@ Usage:
   python test/run_blender_tests.py [--blender PATH] [--filter SUBSTRING]
   python test/run_blender_tests.py --blender "C:/Program Files/.../blender.exe" --sync-only
   BLENDER=/path/to/blender python test/run_blender_tests.py   # optional env fallback
+  BLENDER_DIR="C:/Program Files/Blender Foundation/Blender 4.4" python test/run_blender_tests.py
 
 Exit: 0 if all pass, 1 if any fail.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
+from pathlib import Path
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-WORKSPACE_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+# Repo root: this file is test/run_blender_tests.py (not test/blender/*.py).
+WORKSPACE_ROOT = os.path.dirname(SCRIPT_DIR)
 TEST_DIR = os.path.join(SCRIPT_DIR, "blender")
 ADDON_SOURCE = os.path.join(WORKSPACE_ROOT, "io_scene_kotor")
 
 
+def _load_discover_blender() -> Callable[[], str]:
+    path = Path(WORKSPACE_ROOT) / "scripts" / "blender_paths.py"
+    spec = importlib.util.spec_from_file_location("_kb_blender_paths", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Cannot load blender_paths from {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.discover_blender_executable
+
+
+_discover_blender_executable = _load_discover_blender()
+
+
 def _find_blender() -> str:
-    env = os.environ.get("BLENDER")
-    if env:
-        return env
-    if sys.platform == "win32":
-        for base in [
-            os.environ.get("ProgramFiles", "C:\\Program Files"),
-            os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"),
-        ]:
-            if not base or not os.path.isdir(base):
-                continue
-            try:
-                for name in os.listdir(base):
-                    if "Blender" not in name:
-                        continue
-                    parent = os.path.join(base, name)
-                    # e.g. Blender Foundation/Blender 4.4/blender.exe
-                    exe = os.path.join(parent, "blender.exe")
-                    if os.path.isfile(exe):
-                        return exe
-                    for sub in os.listdir(parent):
-                        exe = os.path.join(parent, sub, "blender.exe")
-                        if os.path.isfile(exe):
-                            return exe
-            except OSError:
-                continue
-    return "blender"
+    return _discover_blender_executable()
 
 
 def _strip_quotes(path: str) -> str:
@@ -252,7 +245,7 @@ def main() -> int:
         print(">>>", name)
         exit_code = subprocess.run(
             [blender_exe, "--background", "--python", path],
-            cwd=os.path.dirname(os.path.dirname(SCRIPT_DIR)),
+            cwd=WORKSPACE_ROOT,
             timeout=120,
         ).returncode
         if exit_code == 0:

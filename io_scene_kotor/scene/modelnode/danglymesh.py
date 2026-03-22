@@ -22,6 +22,7 @@ import bpy
 
 from ...constants import ExportOptions, ImportOptions, MeshType, NodeType
 
+from .base import _log_modelnode
 from .trimesh import TrimeshNode
 
 CONSTRAINTS = "constraints"
@@ -51,6 +52,7 @@ class DanglymeshNode(TrimeshNode):
         if kb is None:
             raise ValueError(f"Object [{obj.name}] has no kb attribute")
         kb.constraints = group.name
+        _log_modelnode("DanglymeshNode.apply_vertex_constraints", self)
 
     def set_object_data(self, obj: bpy.types.Object, options: ImportOptions) -> None:
         TrimeshNode.set_object_data(self, obj, options)
@@ -60,6 +62,7 @@ class DanglymeshNode(TrimeshNode):
         kb.period = self.period
         kb.tightness = self.tightness
         kb.displacement = self.displacement
+        _log_modelnode("DanglymeshNode.set_object_data", self)
 
     def load_object_data(
         self, obj: bpy.types.Object, eval_obj: bpy.types.Object, options: ExportOptions
@@ -71,6 +74,7 @@ class DanglymeshNode(TrimeshNode):
         self.period = kb.period
         self.tightness = kb.tightness
         self.displacement = kb.displacement
+        _log_modelnode("DanglymeshNode.load_object_data", self)
 
     def unapply_edge_loop_mesh(
         self, obj: bpy.types.Object
@@ -82,6 +86,7 @@ class DanglymeshNode(TrimeshNode):
     def unapply_vertex_constraints(self, obj: bpy.types.Object, mesh: object) -> None:
         if CONSTRAINTS not in obj.vertex_groups:
             mesh.constraints = [0] * len(mesh.verts)
-            return
-        group = obj.vertex_groups[CONSTRAINTS]
-        mesh.constraints = [255.0 * group.weight(i) for i in range(len(mesh.verts))]
+        else:
+            group = obj.vertex_groups[CONSTRAINTS]
+            mesh.constraints = [255.0 * group.weight(i) for i in range(len(mesh.verts))]
+        _log_modelnode("DanglymeshNode.unapply_vertex_constraints", self)

@@ -20,11 +20,19 @@ from __future__ import annotations
 import struct
 from typing import BinaryIO, Literal
 
+from ..diagnostic_log import path_id_for_filepath
+from ..log_config import get_kb_logger
+
 
 class BinaryWriter:
     def __init__(
         self, path: str, byteorder: Literal["little", "big"] = "little"
     ) -> None:
+        get_kb_logger("format.binwriter").debug(
+            "event=format_binary fn=BinaryWriter.__init__ path_id=%s byteorder=%s",
+            path_id_for_filepath(path),
+            byteorder,
+        )
         self.file: BinaryIO = open(path, "wb")
         self.byteorder: Literal["little", "big"] = byteorder
 

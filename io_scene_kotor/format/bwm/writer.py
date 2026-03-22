@@ -21,7 +21,9 @@ from mathutils import Vector
 
 from ...aabb import generate_tree
 from ...constants import NON_WALKABLE, DummyType, WalkmeshType
+from ...diagnostic_log import begin_format_file_span, end_format_file_span
 from ...format.binwriter import BinaryWriter
+from ...log_config import get_kb_logger
 from ...format.mdl.types import *  # noqa: F403
 from ...scene.modelnode.aabb import AabbNode
 from ...scene.modelnode.dummy import DummyNode
@@ -76,15 +78,24 @@ class BwmWriter:
         self.perimeters = []
 
     def save(self):
-        self.peek_walkmesh()
+        log = get_kb_logger("format")
+        span = begin_format_file_span(log, "format.bwm.writer.BwmWriter.save", self.path)
+        err = False
+        try:
+            self.peek_walkmesh()
 
-        self.save_header()
-        self.save_vertices()
-        self.save_faces()
-        self.save_aabbs()
-        self.save_adjacent_edges()
-        self.save_outer_edges()
-        self.save_perimeters()
+            self.save_header()
+            self.save_vertices()
+            self.save_faces()
+            self.save_aabbs()
+            self.save_adjacent_edges()
+            self.save_outer_edges()
+            self.save_perimeters()
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_format_file_span(span, error=err)
 
     def peek_walkmesh(self):
         self.bwm_type = BWM_TYPE_WOK if self.walkmesh.walkmesh_type == WalkmeshType.WOK else BWM_TYPE_PWK_DWK

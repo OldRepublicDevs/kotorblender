@@ -21,9 +21,14 @@ from __future__ import annotations
 import bpy
 from bpy_extras.io_utils import ImportHelper
 
-from ...constants import ImportOptions
+from ...constants import ImportOptions, LogReasonCode
+from ...diagnostic_log import (
+    begin_import_operator_diag,
+    end_import_operator_diag,
+    set_import_invoke_entry,
+)
 from ...io import bwm
-from ...utils import logger
+from ...log_config import get_kb_logger
 
 
 class KB_OT_import_bwm(bpy.types.Operator, ImportHelper):
@@ -42,11 +47,20 @@ class KB_OT_import_bwm(bpy.types.Operator, ImportHelper):
     filter_glob: bpy.props.StringProperty(default="*.wok;*.pwk;*.dwk", options={"HIDDEN"})
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        set_import_invoke_entry(self)
         if self.filepath:
             return self.execute(context)
         return ImportHelper.invoke(self, context, event)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.bwm.importop")
+        session = begin_import_operator_diag(
+            log, "kb.bwmimport", self, self.filepath or ""
+        )
+        ret: set[str] = {"FINISHED"}
+        outcome = "FINISHED"
+        work_done = False
+        reason_code = LogReasonCode.INTERNAL_ERROR
         options = ImportOptions()
         options.import_geometry = True
         options.import_animations = False
@@ -54,8 +68,41 @@ class KB_OT_import_bwm(bpy.types.Operator, ImportHelper):
         options.build_armature = False
         try:
             bwm.load_bwm(self, self.filepath, options)
-        except Exception as e:
-            logger().exception(f"Error loading walkmesh [{self.filepath}]")
+            work_done = True
+            reason_code = LogReasonCode.OK
+        except OSError as e:
+            ret = {"CANCELLED"}
+            outcome = "ERROR"
+            reason_code = (
+                LogReasonCode.MISSING_FILE
+                if isinstance(e, FileNotFoundError)
+                else LogReasonCode.IO_ERROR
+            )
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.bwmimport",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
             self.report({"ERROR"}, str(e))
-            return {"CANCELLED"}
-        return {"FINISHED"}
+        except Exception as e:
+            ret = {"CANCELLED"}
+            outcome = "ERROR"
+            reason_code = LogReasonCode.INTERNAL_ERROR
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.bwmimport",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(e))
+        finally:
+            end_import_operator_diag(
+                session,
+                outcome=outcome,
+                work_done=work_done,
+                reason_code=reason_code,
+            )
+        return ret

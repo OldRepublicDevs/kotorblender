@@ -7,6 +7,7 @@ Run with:
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 
@@ -23,6 +24,40 @@ if MODULE not in bpy.context.preferences.addons:
 
 import io_scene_kotor.ops.showhideobjects as _kb_showhide  # noqa: F401, E402
 from io_scene_kotor.constants import NULL, MeshType  # noqa: E402
+
+
+class _ListHandler(logging.Handler):
+    def __init__(self, out: list[str]) -> None:
+        super().__init__()
+        self._out = out
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self._out.append(self.format(record))
+
+
+def test_hide_walkmeshes_emits_op_start_op_end() -> bool:
+    root = logging.getLogger("io_scene_kotor")
+    messages: list[str] = []
+    handler = _ListHandler(messages)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    root.addHandler(handler)
+    prev_level = root.level
+    root.setLevel(logging.INFO)
+    try:
+        bpy.ops.kb.hide_walkmeshes()
+    finally:
+        root.removeHandler(handler)
+        root.setLevel(prev_level)
+
+    joined = " ".join(messages)
+    ok = "event=op_start" in joined and "event=op_end" in joined
+    ok = ok and "operator_id=kb.hide_walkmeshes" in joined
+    ok = ok and "reason_code=OK" in joined
+    if ok:
+        print("  PASS test_hide_walkmeshes_emits_op_start_op_end")
+    else:
+        print(f"  FAIL test_hide_walkmeshes_emits_op_start_op_end messages={messages!r}")
+    return ok
 
 
 def _make_aabb_walkmesh(name: str) -> bpy.types.Object:
@@ -161,6 +196,7 @@ def test_hide_show_lights_roundtrip() -> bool:
 def run_tests() -> bool:
     print("\n=== test_ops_showhide_smoke.py ===")
     results = [
+        test_hide_walkmeshes_emits_op_start_op_end(),
         test_hide_show_walkmeshes_roundtrip(),
         test_hide_show_untextured_roundtrip(),
         test_hide_show_blockers_roundtrip(),

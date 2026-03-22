@@ -21,6 +21,8 @@ from __future__ import annotations
 import bpy
 
 from ..constants import Classification
+from ..diagnostic_log import run_simple_operator_logged
+from ..log_config import get_kb_logger
 from ..scene import armature
 from ..utils import find_objects, is_mdl_root, is_skin_mesh
 
@@ -54,25 +56,30 @@ class KB_OT_armature_unapply_keyframes(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        root: bpy.types.Object | None = context.object
-        if root is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
-        stack: list[bpy.types.Object] = [root]
-        while stack:
-            obj = stack.pop()
-            if is_skin_mesh(obj):
-                armature_mod = next(
-                    iter(mod for mod in obj.modifiers if mod.type == "ARMATURE"),
-                    None,
-                )
-                if armature_mod is None:
-                    return {"CANCELLED"}
-                armature_obj: bpy.types.Object | None = armature_mod.object
-                if armature_obj is None:
-                    return {"CANCELLED"}
-                armature.unapply_object_keyframes(root, armature_obj)
-                break
-            for child in obj.children:
-                stack.insert(0, child)
-        return {"FINISHED"}
+        log = get_kb_logger("ops.armatureunapplykeyframes")
+
+        def _body() -> set[str]:
+            root: bpy.types.Object | None = context.object
+            if root is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
+            stack: list[bpy.types.Object] = [root]
+            while stack:
+                obj = stack.pop()
+                if is_skin_mesh(obj):
+                    armature_mod = next(
+                        iter(mod for mod in obj.modifiers if mod.type == "ARMATURE"),
+                        None,
+                    )
+                    if armature_mod is None:
+                        return {"CANCELLED"}
+                    armature_obj: bpy.types.Object | None = armature_mod.object
+                    if armature_obj is None:
+                        return {"CANCELLED"}
+                    armature.unapply_object_keyframes(root, armature_obj)
+                    break
+                for child in obj.children:
+                    stack.insert(0, child)
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.armature_unapply_keyframes", _body)

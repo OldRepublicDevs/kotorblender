@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING
 
 import bpy
 
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...utils import is_mdl_root
 
 if TYPE_CHECKING:
@@ -53,23 +55,27 @@ class KB_OT_play_animation(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[rna_enums.OperatorReturnItems]:
-        mdl_root: bpy.types.Object | None = context.object
-        if mdl_root is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
-        kb: ObjectPropertyGroup | None = getattr(mdl_root, "kb", None)
-        if kb is None:
-            self.report({"ERROR"}, "Object.kb is None")
-            return {"CANCELLED"}
-        anim_list = kb.anim_list
-        anim_list_idx = kb.anim_list_idx
+        log = get_kb_logger("ops.anim.play")
 
-        scene: bpy.types.Scene | None = context.scene
-        if scene is None:
-            self.report({"ERROR"}, "Scene is None")
-            return {"CANCELLED"}
-        scene.frame_current = anim_list[anim_list_idx].frame_start
-        scene.frame_start = anim_list[anim_list_idx].frame_start
-        scene.frame_end = anim_list[anim_list_idx].frame_end
+        def _body() -> set[str]:
+            mdl_root: bpy.types.Object | None = context.object
+            if mdl_root is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
+            kb: ObjectPropertyGroup | None = getattr(mdl_root, "kb", None)
+            if kb is None:
+                self.report({"ERROR"}, "Object.kb is None")
+                return {"CANCELLED"}
+            anim_list = kb.anim_list
+            anim_list_idx = kb.anim_list_idx
 
-        return {"FINISHED"}
+            scene: bpy.types.Scene | None = context.scene
+            if scene is None:
+                self.report({"ERROR"}, "Scene is None")
+                return {"CANCELLED"}
+            scene.frame_current = anim_list[anim_list_idx].frame_start
+            scene.frame_start = anim_list[anim_list_idx].frame_start
+            scene.frame_end = anim_list[anim_list_idx].frame_end
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.play_animation", _body)

@@ -24,6 +24,8 @@ from mathutils import Vector
 
 from ...aabb import generate_tree
 from ...constants import NodeType, UpdateType
+from ...diagnostic_log import begin_format_file_span, end_format_file_span
+from ...log_config import get_kb_logger
 from ..binwriter import BinaryWriter
 from ...utils import is_not_null
 
@@ -126,14 +128,23 @@ class MdlWriter:
         self.anim_controller_data_counts = []
 
     def save(self):
-        self.peek_model()
+        log = get_kb_logger("format")
+        span = begin_format_file_span(log, "format.mdl.writer.MdlWriter.save", self.path)
+        err = False
+        try:
+            self.peek_model()
 
-        self.save_file_header()
-        self.save_geometry_header()
-        self.save_model_header()
-        self.save_names()
-        self.save_animations()
-        self.save_nodes()
+            self.save_file_header()
+            self.save_geometry_header()
+            self.save_model_header()
+            self.save_names()
+            self.save_animations()
+            self.save_nodes()
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_format_file_span(span, error=err)
 
     def peek_model(self):
         self.mdl_pos = 80 + 116  # geometry header + model header

@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import bpy
 
+from ....diagnostic_log import run_simple_operator_logged
+from ....log_config import get_kb_logger
 from ....scene.animation import Animation
 from ....utils import is_mdl_root
 
@@ -38,21 +40,25 @@ class KB_OT_add_anim_event(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        obj: bpy.types.Object | None = context.object
-        if obj is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
-        kb = getattr(obj, "kb", None)
-        if kb is None:
-            self.report({"ERROR"}, "Object.kb is None")
-            return {"CANCELLED"}
-        anim_list = kb.anim_list
-        anim_list_idx = kb.anim_list_idx
+        log = get_kb_logger("ops.anim.event.add")
 
-        if anim_list_idx < 0 or anim_list_idx >= len(anim_list):
-            return {"CANCELLED"}
+        def _body() -> set[str]:
+            obj: bpy.types.Object | None = context.object
+            if obj is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
+            kb = getattr(obj, "kb", None)
+            if kb is None:
+                self.report({"ERROR"}, "Object.kb is None")
+                return {"CANCELLED"}
+            anim_list = kb.anim_list
+            anim_list_idx = kb.anim_list_idx
 
-        anim = anim_list[anim_list_idx]
-        Animation.append_event_to_object_anim(anim, "newevent", 0)
+            if anim_list_idx < 0 or anim_list_idx >= len(anim_list):
+                return {"CANCELLED"}
 
-        return {"FINISHED"}
+            anim = anim_list[anim_list_idx]
+            Animation.append_event_to_object_anim(anim, "newevent", 0)
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.add_anim_event", _body)

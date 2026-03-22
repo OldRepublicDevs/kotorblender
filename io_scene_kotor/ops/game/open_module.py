@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING
 import bpy
 
 from ...constants import GameType
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import find_kotor_paths_from_default, is_pykotor_available
 
 if TYPE_CHECKING:
@@ -38,43 +40,51 @@ class KB_OT_open_module(bpy.types.Operator):  # pyright: ignore[reportIncompatib
     bl_description = "Open the selected module in the module browser"
 
     def execute(self, context: bpy.types.Context) -> set[OperatorReturnItems]:
-        scene: bpy.types.Scene | None = context.scene
-        if scene is None:
-            self.report({"ERROR"}, "Scene is None")
-            return {"CANCELLED"}
+        log = get_kb_logger("ops.game.open_module")
 
-        kb: ScenePropertyGroup | None = getattr(scene, "kb", None)
-        if kb is None:
-            self.report({"ERROR"}, "Scene.kb is None")
-            return {"CANCELLED"}
+        def _body() -> set[str]:
+            scene: bpy.types.Scene | None = context.scene
+            if scene is None:
+                self.report({"ERROR"}, "Scene is None")
+                return {"CANCELLED"}
 
-        if kb.module_list_idx < 0 or kb.module_list_idx >= len(kb.module_list):
-            self.report({"ERROR"}, "No module selected")
-            return {"CANCELLED"}
+            kb: ScenePropertyGroup | None = getattr(scene, "kb", None)
+            if kb is None:
+                self.report({"ERROR"}, "Scene.kb is None")
+                return {"CANCELLED"}
 
-        if not is_pykotor_available():
-            self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
-            return {"CANCELLED"}
+            if kb.module_list_idx < 0 or kb.module_list_idx >= len(kb.module_list):
+                self.report({"ERROR"}, "No module selected")
+                return {"CANCELLED"}
 
-        selected_module: ModulePropertyGroup | None = kb.module_list[kb.module_list_idx]
-        if selected_module is None:
-            self.report({"ERROR"}, "No module selected")
-            return {"CANCELLED"}
+            if not is_pykotor_available():
+                self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
+                return {"CANCELLED"}
 
-        module_name: str = selected_module.name
+            selected_module: ModulePropertyGroup | None = kb.module_list[kb.module_list_idx]
+            if selected_module is None:
+                self.report({"ERROR"}, "No module selected")
+                return {"CANCELLED"}
 
-        # Determine installation path (autofill from find_kotor_paths_from_default when KOTOR1/KOTOR2 and path empty)
-        if kb.game_type == GameType.CUSTOM:
-            install_path = kb.game_installation_path
-        else:
-            install_path = kb.game_installation_path
+            module_name: str = selected_module.name
+
+            # Determine installation path (autofill from find_kotor_paths_from_default when KOTOR1/KOTOR2 and path empty)
+            if kb.game_type == GameType.CUSTOM:
+                install_path = kb.game_installation_path
+            else:
+                install_path = kb.game_installation_path
+                if not install_path or not os.path.exists(install_path):
+                    paths = find_kotor_paths_from_default()
+                    install_path = paths.get(kb.game_type, "") or ""
+
             if not install_path or not os.path.exists(install_path):
-                paths = find_kotor_paths_from_default()
-                install_path = paths.get(kb.game_type, "") or ""
+                self.report({"ERROR"}, f"Game installation path not found: {install_path or '(empty)'}")
+                return {"CANCELLED"}
 
-        if not install_path or not os.path.exists(install_path):
-            self.report({"ERROR"}, f"Game installation path not found: {install_path or '(empty)'}")
-            return {"CANCELLED"}
+            self.report(
+                {"INFO"},
+                f"Module '{module_name}' selected. Open the Module Browser (3D Viewport sidebar) to browse resources.",
+            )
+            return {"FINISHED"}
 
-        self.report({"INFO"}, f"Module '{module_name}' selected. Open the Module Browser (3D Viewport sidebar) to browse resources.")
-        return {"FINISHED"}
+        return run_simple_operator_logged(log, "kb.open_module", _body)

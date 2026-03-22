@@ -20,10 +20,11 @@ from __future__ import annotations
 import math
 
 import bpy
-from bpy.types import Operator
 from mathutils import Vector
 
 from ..constants import NAME_TO_WALKMESH_MATERIAL
+from ..diagnostic_log import run_simple_operator_logged
+from ..log_config import get_kb_logger
 from ..scene.material import WalkmeshNodeName
 from ..utils import is_aabb_mesh
 
@@ -51,8 +52,10 @@ def get_or_create_text(name):
     return bpy.data.texts.new(name)
 
 
-class RenderMinimapOperator(Operator):
-    def execute(self, context: bpy.types.Context) -> set[str]:
+class _RenderMinimapCommon:
+    """Shared minimap logic; not a bpy.types.Operator subclass (Blender 5.x breaks nested Operator __init__)."""
+
+    def _execute_render_minimap_body(self, context: bpy.types.Context) -> set[str]:
         hide_untextured = bool(getattr(self, "hide_untextured", False))
         reset_render = bool(getattr(self, "reset_render", False))
         aabbs = [obj for obj in context.scene.objects if is_aabb_mesh(obj)]
@@ -167,7 +170,7 @@ class RenderMinimapOperator(Operator):
         return {"FINISHED"}
 
 
-class KB_OT_render_minimap_auto(RenderMinimapOperator):
+class KB_OT_render_minimap_auto(_RenderMinimapCommon, bpy.types.Operator):
     bl_idname = "kb.render_minimap_auto"
     bl_label = "Render Minimap (auto)"
     bl_description = (
@@ -179,8 +182,24 @@ class KB_OT_render_minimap_auto(RenderMinimapOperator):
         self.hide_untextured = True
         return self.execute(context)
 
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.renderminimap")
 
-class KB_OT_render_minimap_manual(RenderMinimapOperator):
+        def _body() -> set[str]:
+            return self._execute_render_minimap_body(context)
+
+        return run_simple_operator_logged(log, "kb.render_minimap_auto", _body)
+
+
+class KB_OT_render_minimap_manual(_RenderMinimapCommon, bpy.types.Operator):
     bl_idname = "kb.render_minimap_manual"
     bl_label = "Render Minimap (manual)"
     bl_description = "Render scene to an image, user is responsible for setting render properties and object visibility"
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.renderminimap")
+
+        def _body() -> set[str]:
+            return self._execute_render_minimap_body(context)
+
+        return run_simple_operator_logged(log, "kb.render_minimap_manual", _body)

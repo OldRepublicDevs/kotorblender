@@ -19,7 +19,9 @@ from __future__ import annotations
 
 from struct import pack, unpack
 
+from ...diagnostic_log import begin_format_file_span, end_format_file_span
 from ...format.binreader import BinaryReader
+from ...log_config import get_kb_logger
 
 from .types import (
     FILE_VERSION,
@@ -35,42 +37,52 @@ from .types import (
 
 class GffReader:
     def __init__(self, path: str, file_type: str) -> None:
+        self.path: str = path
         self.reader: BinaryReader = BinaryReader(path, "little")
         self.file_type: str = file_type.ljust(4)
 
     def load(self) -> dict[str, object]:
-        file_type = self.reader.read_string(4)
-        file_version = self.reader.read_string(4)
+        log = get_kb_logger("format")
+        span = begin_format_file_span(log, "format.gff.reader.GffReader.load", self.path)
+        err = False
+        try:
+            file_type = self.reader.read_string(4)
+            file_version = self.reader.read_string(4)
 
-        if file_type != self.file_type:
-            raise RuntimeError(
-                f"GFF file type is invalid: expected='{self.file_type}', actual='{file_type}'",
-            )
-        if file_version != FILE_VERSION:
-            raise RuntimeError(
-                f"GFF file version is invalid: expected='{FILE_VERSION}', actual='{file_version}'",
-            )
+            if file_type != self.file_type:
+                raise RuntimeError(
+                    f"GFF file type is invalid: expected='{self.file_type}', actual='{file_type}'",
+                )
+            if file_version != FILE_VERSION:
+                raise RuntimeError(
+                    f"GFF file version is invalid: expected='{FILE_VERSION}', actual='{file_version}'",
+                )
 
-        self.off_structs = self.reader.read_uint32()
-        self.num_structs = self.reader.read_uint32()
-        self.off_fields = self.reader.read_uint32()
-        self.num_fields = self.reader.read_uint32()
-        self.off_labels = self.reader.read_uint32()
-        self.num_labels = self.reader.read_uint32()
-        self.off_field_data = self.reader.read_uint32()
-        self.num_field_data = self.reader.read_uint32()
-        self.off_field_indices = self.reader.read_uint32()
-        self.num_field_indices = self.reader.read_uint32()
-        self.off_list_indices = self.reader.read_uint32()
-        self.num_list_indices = self.reader.read_uint32()
+            self.off_structs = self.reader.read_uint32()
+            self.num_structs = self.reader.read_uint32()
+            self.off_fields = self.reader.read_uint32()
+            self.num_fields = self.reader.read_uint32()
+            self.off_labels = self.reader.read_uint32()
+            self.num_labels = self.reader.read_uint32()
+            self.off_field_data = self.reader.read_uint32()
+            self.num_field_data = self.reader.read_uint32()
+            self.off_field_indices = self.reader.read_uint32()
+            self.num_field_indices = self.reader.read_uint32()
+            self.off_list_indices = self.reader.read_uint32()
+            self.num_list_indices = self.reader.read_uint32()
 
-        self.load_structs()
-        self.load_fields()
-        self.load_labels()
-        self.load_field_indices()
-        self.load_list_indices()
+            self.load_structs()
+            self.load_fields()
+            self.load_labels()
+            self.load_field_indices()
+            self.load_list_indices()
 
-        return self.new_tree_struct(0)
+            return self.new_tree_struct(0)
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_format_file_span(span, error=err)
 
     def load_structs(self) -> None:
         self.structs = []

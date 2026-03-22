@@ -21,6 +21,14 @@ from __future__ import annotations
 import bpy
 from bpy_extras.io_utils import ExportHelper
 
+from ...constants import LogReasonCode
+from ...diagnostic_log import (
+    begin_import_operator_diag,
+    end_import_operator_diag,
+    set_filepath_invoke_entry,
+)
+from ...log_config import get_kb_logger
+
 
 class KB_OT_new_nss(bpy.types.Operator, ExportHelper):
     bl_idname = "kb.new_nss"
@@ -30,13 +38,68 @@ class KB_OT_new_nss(bpy.types.Operator, ExportHelper):
     filename_ext = ".nss"
     filter_glob: bpy.props.StringProperty(default="*.nss", options={"HIDDEN"})
 
-    def execute(self, context: bpy.types.Context) -> set[str]:
-        # NSS files are plain text, no PyKotor needed
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        set_filepath_invoke_entry(self)
+        if self.filepath:
+            return self.execute(context)
+        return ExportHelper.invoke(self, context, event)
+
+    def _execute_new_nss_core(self, context: bpy.types.Context) -> set[str]:
         try:
-            with open(self.filepath, "w") as f:
+            with open(self.filepath, "w", encoding="utf-8", newline="\n") as f:
                 f.write("void main()\n{\n    \n}\n")
             self.report({"INFO"}, f"Created new NSS file: {self.filepath}")
             return {"FINISHED"}
-        except Exception as ex:
+        except OSError as ex:
             self.report({"ERROR"}, f"Failed to create NSS file: {ex}")
             return {"CANCELLED"}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.resource.new_nss")
+        session = begin_import_operator_diag(log, "kb.new_nss", self, self.filepath or "")
+        outcome = "FINISHED"
+        work_done = False
+        reason_code = LogReasonCode.OK
+        ret: set[str] = {"CANCELLED"}
+        try:
+            ret = self._execute_new_nss_core(context)
+            work_done = ret == {"FINISHED"}
+            outcome = "FINISHED" if work_done else "CANCELLED"
+        except OSError as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = (
+                LogReasonCode.MISSING_FILE
+                if isinstance(ex, FileNotFoundError)
+                else LogReasonCode.IO_ERROR
+            )
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.new_nss",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        except Exception as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = LogReasonCode.INTERNAL_ERROR
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.new_nss",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        finally:
+            end_import_operator_diag(
+                session,
+                outcome=outcome,
+                work_done=work_done,
+                reason_code=reason_code,
+            )
+        return ret

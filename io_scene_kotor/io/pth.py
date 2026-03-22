@@ -24,6 +24,8 @@ from typing import Any
 import bpy
 
 from ..constants import DummyType
+from ..diagnostic_log import begin_io_file_span, end_io_file_span
+from ..log_config import get_kb_logger
 from ..format.gff.reader import GffReader
 from ..format.gff.writer import GffWriter
 from ..utils import is_path_point
@@ -31,6 +33,21 @@ from ..vendor.pykotor_adapter import convert_pykotor_gff_to_tree, convert_tree_t
 
 
 def load_pth(
+    operator: bpy.types.Operator,
+    filepath: str,
+) -> None:
+    span = begin_io_file_span(get_kb_logger("io.pth"), "load_pth", filepath)
+    err = False
+    try:
+        _load_pth_body(operator, filepath)
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_io_file_span(span, error=err)
+
+
+def _load_pth_body(
     operator: bpy.types.Operator,
     filepath: str,
 ) -> None:
@@ -94,6 +111,21 @@ def load_pth(
 
 
 def save_pth(
+    operator: bpy.types.Operator,
+    filepath: str,
+) -> None:
+    span = begin_io_file_span(get_kb_logger("io.pth"), "save_pth", filepath)
+    err = False
+    try:
+        _save_pth_body(operator, filepath)
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_io_file_span(span, error=err)
+
+
+def _save_pth_body(
     operator: bpy.types.Operator,
     filepath: str,
 ) -> None:

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from mathutils import Vector
 
+from .log_config import get_kb_logger
 from .utils import is_close
 
 
@@ -39,28 +40,43 @@ class BoundingBox:
 
 
 def generate_tree(aabb_tree, faces, depth=0):
-    if depth > 128:
-        raise ValueError(f"depth must not exceed 128, but is equal to {depth}")
-    if not faces:
-        raise ValueError("faces must not be empty")
+    log = get_kb_logger("aabb")
+    root = depth == 0
+    tree_len0 = len(aabb_tree) if root else 0
+    try:
+        if depth > 128:
+            raise ValueError(f"depth must not exceed 128, but is equal to {depth}")
+        if not faces:
+            raise ValueError("faces must not be empty")
 
-    bounding_box = compute_bounding_box(faces)
+        if root:
+            log.debug("event=aabb fn=generate_tree_begin faces=%s depth=%s tree_nodes_before=%s", len(faces), depth, tree_len0)
 
-    # Only one face left - this node is a leaf
-    if len(faces) == 1:
-        face_idx = faces[0][0]
-        aabb_tree.append(new_aabb_node(bounding_box, -1, -1, face_idx, 0))
-        return
+        bounding_box = compute_bounding_box(faces)
 
-    split_axis = find_split_axis(bounding_box, faces)
-    left_faces, right_faces, actual_split_axis = split_faces(bounding_box, faces, split_axis)
+        # Only one face left - this node is a leaf
+        if len(faces) == 1:
+            face_idx = faces[0][0]
+            aabb_tree.append(new_aabb_node(bounding_box, -1, -1, face_idx, 0))
+            return
 
-    node = new_aabb_node(bounding_box, 0, 0, -1, 1 + actual_split_axis)
-    aabb_tree.append(node)
-    node[6] = len(aabb_tree)
-    generate_tree(aabb_tree, left_faces, depth + 1)
-    node[7] = len(aabb_tree)
-    generate_tree(aabb_tree, right_faces, depth + 1)
+        split_axis = find_split_axis(bounding_box, faces)
+        left_faces, right_faces, actual_split_axis = split_faces(bounding_box, faces, split_axis)
+
+        node = new_aabb_node(bounding_box, 0, 0, -1, 1 + actual_split_axis)
+        aabb_tree.append(node)
+        node[6] = len(aabb_tree)
+        generate_tree(aabb_tree, left_faces, depth + 1)
+        node[7] = len(aabb_tree)
+        generate_tree(aabb_tree, right_faces, depth + 1)
+    finally:
+        if root:
+            log.debug(
+                "event=aabb fn=generate_tree_done faces_in=%s nodes_added=%s total_nodes=%s",
+                len(faces),
+                len(aabb_tree) - tree_len0,
+                len(aabb_tree),
+            )
 
 
 def compute_bounding_box(faces):

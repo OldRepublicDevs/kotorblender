@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import bpy
 
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...utils import is_path_point
 
 
@@ -35,13 +37,18 @@ class KB_OT_add_path_connection(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        obj: bpy.types.Object | None = context.object
-        if obj is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
-        kb = getattr(obj, "kb", None)
-        if kb is None:
-            self.report({"ERROR"}, "Object.kb is None")
-            return {"CANCELLED"}
-        kb.path_connection_list.add()
-        return {"FINISHED"}
+        log = get_kb_logger("ops.pth.addconnection")
+
+        def _body() -> set[str]:
+            obj: bpy.types.Object | None = context.object
+            if obj is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
+            kb = getattr(obj, "kb", None)
+            if kb is None:
+                self.report({"ERROR"}, "Object.kb is None")
+                return {"CANCELLED"}
+            kb.path_connection_list.add()
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.add_path_connection", _body)

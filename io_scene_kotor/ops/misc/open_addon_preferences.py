@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING
 import bpy
 
 from ...constants import ADDON_PREFERENCE_MODULE_KEYS
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 
 if TYPE_CHECKING:
     from bpy.stub_internal.rna_enums import OperatorReturnItems
@@ -36,11 +38,16 @@ class KB_OT_open_addon_preferences(bpy.types.Operator):
     bl_description = "Open Preferences to this add-on (texture/lightmap search paths, optional external diff tool). Same as Edit → Preferences → Add-ons → search KotorBlender"
 
     def execute(self, context: bpy.types.Context) -> set[OperatorReturnItems]:
-        for mod in ADDON_PREFERENCE_MODULE_KEYS:
-            try:
-                bpy.ops.preferences.addon_show(module=mod)
-                return {"FINISHED"}
-            except RuntimeError:
-                continue
-        self.report({"WARNING"}, "Could not open add-on preferences (module id mismatch).")
-        return {"CANCELLED"}
+        log = get_kb_logger("ops.misc.open_addon_preferences")
+
+        def _body() -> set[str]:
+            for mod in ADDON_PREFERENCE_MODULE_KEYS:
+                try:
+                    bpy.ops.preferences.addon_show(module=mod)
+                    return {"FINISHED"}
+                except RuntimeError:
+                    continue
+            self.report({"WARNING"}, "Could not open add-on preferences (module id mismatch).")
+            return {"CANCELLED"}
+
+        return run_simple_operator_logged(log, "kb.open_addon_preferences", _body)

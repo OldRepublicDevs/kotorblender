@@ -23,8 +23,11 @@ import bpy
 from mathutils import Vector
 
 from ...constants import ExportOptions, ImportOptions, NON_WALKABLE, MeshType, NodeType
+from ...diagnostic_log import begin_scene_work_span, end_scene_work_span, sanitize_scene_context
+from ...log_config import get_kb_logger
 from ..material import rebuild_walkmesh_materials
 
+from .base import _log_modelnode
 from .trimesh import TrimeshNode
 
 ROOM_LINKS_COLORS = "RoomLinks"
@@ -54,18 +57,35 @@ class AabbNode(TrimeshNode):
     def add_to_collection(
         self, collection: bpy.types.Collection, options: ImportOptions
     ) -> bpy.types.Object:
-        mesh = self.mdl_to_edge_loop_mesh()
-        bl_mesh = self.create_blender_mesh(self.name, mesh)
-        obj = bpy.data.objects.new(self.name, bl_mesh)
-        self.set_object_data(obj, options)
-        collection.objects.link(obj)
+        log = get_kb_logger("scene.modelnode.aabb")
+        span = begin_scene_work_span(
+            log, "scene.modelnode.AabbNode.add_to_collection", sanitize_scene_context(self.name)
+        )
+        err = False
+        try:
+            log.debug(
+                "event=scene_modelnode fn=AabbNode.add_to_collection_begin faces=%s roomlinks=%s",
+                len(self.facelist.vertices),
+                len(self.roomlinks),
+            )
+            mesh = self.mdl_to_edge_loop_mesh()
+            bl_mesh = self.create_blender_mesh(self.name, mesh)
+            obj = bpy.data.objects.new(self.name, bl_mesh)
+            self.set_object_data(obj, options)
+            collection.objects.link(obj)
 
-        rebuild_walkmesh_materials(obj)
-        for polygon_idx, polygon in enumerate(bl_mesh.polygons):
-            polygon.material_index = self.facelist.materials[polygon_idx]
-        self.apply_room_links(bl_mesh)
+            rebuild_walkmesh_materials(obj)
+            for polygon_idx, polygon in enumerate(bl_mesh.polygons):
+                polygon.material_index = self.facelist.materials[polygon_idx]
+            self.apply_room_links(bl_mesh)
 
-        return obj
+            _log_modelnode("AabbNode.add_to_collection", self)
+            return obj
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)
 
     def apply_room_links(self, mesh: bpy.types.Mesh) -> None:
         if ROOM_LINKS_COLORS in mesh.vertex_colors:

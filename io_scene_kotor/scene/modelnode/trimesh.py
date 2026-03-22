@@ -26,8 +26,10 @@ from bpy_extras.io_utils import unpack_list
 from mathutils import Vector
 
 from ...constants import NULL, UV_MAP_LIGHTMAP, UV_MAP_MAIN, Compression, ExportOptions, ImportOptions, MeshType, NodeType, RootType
+from ...diagnostic_log import begin_scene_work_span, end_scene_work_span, sanitize_scene_context
+from ...log_config import get_kb_logger
 from ...utils import is_not_null
-from .base import BaseNode
+from .base import BaseNode, _log_modelnode
 
 if TYPE_CHECKING:
     from bpy.types import Armature, Camera, Curve, Curves, GreasePencil, Lattice, Light, LightProbe, Mesh, MetaBall, PointCloud, Speaker, SurfaceCurve, TextCurve, Volume
@@ -161,21 +163,41 @@ class TrimeshNode(BaseNode):
         collection: bpy.types.Collection,
         options: ImportOptions,
     ) -> bpy.types.Object:
-        mesh = self.mdl_to_edge_loop_mesh()
-        bl_mesh = self.create_blender_mesh(self.name, mesh)
-        obj = bpy.data.objects.new(self.name, bl_mesh)
-        self.apply_edge_loop_mesh(mesh, obj)
-        self.set_object_data(obj, options)
-        if options.build_materials and self.roottype == RootType.MODEL:
-            from .. import material
-
-            material.rebuild_object_materials(
-                obj,
-                options.texture_search_paths,
-                options.lightmap_search_paths,
+        log = get_kb_logger("scene.modelnode.trimesh")
+        cls_name = type(self).__name__
+        ctx = sanitize_scene_context(f"{cls_name}:{self.name}")
+        span = begin_scene_work_span(log, "scene.modelnode.TrimeshNode.add_to_collection", ctx)
+        err = False
+        try:
+            num_faces = len(self.facelist.vertices)
+            log.debug(
+                "event=scene_modelnode fn=TrimeshNode.add_to_collection_begin class=%s faces=%s verts=%s build_materials=%s",
+                cls_name,
+                num_faces,
+                len(self.verts),
+                bool(options.build_materials and self.roottype == RootType.MODEL),
             )
-        collection.objects.link(obj)
-        return obj
+            mesh = self.mdl_to_edge_loop_mesh()
+            bl_mesh = self.create_blender_mesh(self.name, mesh)
+            obj = bpy.data.objects.new(self.name, bl_mesh)
+            self.apply_edge_loop_mesh(mesh, obj)
+            self.set_object_data(obj, options)
+            if options.build_materials and self.roottype == RootType.MODEL:
+                from .. import material
+
+                material.rebuild_object_materials(
+                    obj,
+                    options.texture_search_paths,
+                    options.lightmap_search_paths,
+                )
+            collection.objects.link(obj)
+            _log_modelnode("TrimeshNode.add_to_collection", self)
+            return obj
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)
 
     def mdl_to_edge_loop_mesh(self) -> EdgeLoopMesh:
         num_faces: int = len(self.facelist.vertices)

@@ -21,6 +21,8 @@ import re
 import sys
 from typing import TYPE_CHECKING
 
+from .diagnostic_log import begin_scene_work_span, end_scene_work_span, path_id_for_filepath
+
 if TYPE_CHECKING:
     pass
 
@@ -441,6 +443,7 @@ def discover_kotor1_paths(log: logging.Logger) -> list[str]:
         if np not in seen:
             seen.add(np)
             out.append(np)
+    log.debug("event=game_install fn=discover_kotor1_paths deduped_count=%s", len(out))
     return out
 
 
@@ -457,25 +460,42 @@ def discover_kotor2_paths(log: logging.Logger) -> list[str]:
         if np not in seen:
             seen.add(np)
             out.append(np)
+    log.debug("event=game_install fn=discover_kotor2_paths deduped_count=%s", len(out))
     return out
 
 
 def first_valid_k1(log: logging.Logger) -> str | None:
-    for p in discover_kotor1_paths(log):
-        ok = is_probable_kotor1_install(p)
-        log.debug("K1 validate %s -> %s", p, ok)
-        if ok:
-            return p
-    return None
+    span = begin_scene_work_span(log, "game_install_detect.first_valid_k1", "")
+    err = False
+    try:
+        for p in discover_kotor1_paths(log):
+            ok = is_probable_kotor1_install(p)
+            log.debug("event=game_install fn=first_valid_k1 path_id=%s ok=%s", path_id_for_filepath(p), ok)
+            if ok:
+                return p
+        return None
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_scene_work_span(span, error=err)
 
 
 def first_valid_k2(log: logging.Logger) -> str | None:
-    for p in discover_kotor2_paths(log):
-        ok = is_probable_kotor2_install(p)
-        log.debug("K2 validate %s -> %s", p, ok)
-        if ok:
-            return p
-    return None
+    span = begin_scene_work_span(log, "game_install_detect.first_valid_k2", "")
+    err = False
+    try:
+        for p in discover_kotor2_paths(log):
+            ok = is_probable_kotor2_install(p)
+            log.debug("event=game_install fn=first_valid_k2 path_id=%s ok=%s", path_id_for_filepath(p), ok)
+            if ok:
+                return p
+        return None
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_scene_work_span(span, error=err)
 
 
 def log_install_discovery_summary(

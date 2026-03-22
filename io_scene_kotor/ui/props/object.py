@@ -19,7 +19,19 @@ from __future__ import annotations
 
 import bpy
 
-from ...constants import NULL, BlendType, Classification, DummyType, EmitterRenderType, MeshType, P2PType, SpawnType, UpdateType
+from ...constants import (
+    NULL,
+    BlendType,
+    Classification,
+    DummyType,
+    EmitterRenderType,
+    MeshType,
+    P2PType,
+    SpawnType,
+    UpdateType,
+    git_geometry_role_enum_items,
+    git_instance_section_enum_items,
+)
 from ...scene.modelnode.light import LightNode
 from .anim import AnimPropertyGroup
 from .lensflare import LensFlarePropertyGroup
@@ -595,3 +607,35 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     # Path Points
     path_connection_list: bpy.props.CollectionProperty(type=PathConnectionPropertyGroup)
     path_connection_idx: bpy.props.IntProperty()
+
+    # GIT viewport instances (see ops/tools/git_instances.py)
+    git_instance_section: bpy.props.EnumProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="GIT List",
+        description="Which GIT instance list this empty belongs to (set by GIT import)",
+        items=git_instance_section_enum_items(),
+        default="NONE",
+    )
+    git_instance_index: bpy.props.IntProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="GIT Row Index",
+        description="Zero-based index in that GIT list; do not duplicate or export may overwrite",
+        default=0,
+        min=0,
+    )
+    git_instance_resref: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="GIT ResRef",
+        description="Template ResRef at import time (informational)",
+        default="",
+        maxlen=32,
+    )
+    git_geometry_role: bpy.props.EnumProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="GIT Geometry",
+        description="Trigger/encounter hull mesh or encounter spawn linkage",
+        items=git_geometry_role_enum_items(),
+        default="NONE",
+    )
+    git_spawn_index: bpy.props.IntProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Spawn Index",
+        description="Encounter spawn point index within the encounter row",
+        default=0,
+        min=0,
+    )

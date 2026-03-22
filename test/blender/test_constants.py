@@ -39,6 +39,7 @@ from io_scene_kotor.constants import (
     DummyType,
     ExportOptions,
     ImportOptions,
+    LogReasonCode,
     MeshType,
     NodeType,
 )
@@ -182,6 +183,18 @@ def test_node_type_values():
     return ok
 
 
+def test_log_reason_code_values():
+    """LogReasonCode enum lists stable diagnostic reason strings."""
+    expected = {"OK", "INTERNAL_ERROR", "MISSING_FILE", "PARSE_ERROR", "IO_ERROR", "CONFIG_ERROR"}
+    actual = {e.value for e in LogReasonCode}
+    ok = expected == actual
+    if ok:
+        print(f"  PASS test_log_reason_code_values ({len(actual)} values)")
+    else:
+        print(f"  FAIL test_log_reason_code_values: missing={expected-actual}, extra={actual-expected}")
+    return ok
+
+
 def test_export_options_defaults():
     """ExportOptions default values are as documented."""
     opts = ExportOptions()
@@ -291,6 +304,7 @@ def run_tests():
         test_dummy_type_values,
         test_mesh_type_values,
         test_node_type_values,
+        test_log_reason_code_values,
         test_export_options_defaults,
         test_import_options_defaults,
         test_utility_is_mdl_root,

@@ -26,6 +26,8 @@ import bpy
 from mathutils import Matrix
 
 from ..constants import NULL, Classification, DummyType, ExportOptions, ImportOptions, MeshType, NodeType
+from ..diagnostic_log import begin_scene_work_span, end_scene_work_span, sanitize_scene_context
+from ..log_config import get_kb_logger
 from ..utils import is_dwk_root, is_mdl_root, is_pwk_root, logger
 
 from . import armature
@@ -68,58 +70,67 @@ class Model:
         options: ImportOptions,
         position: tuple[float, float, float] = (0.0, 0.0, 0.0),
     ) -> bpy.types.Object | None:
-        if self.root_node is None or not isinstance(self.root_node, DummyNode) or self.root_node.parent:
-            raise RuntimeError("Root node has to be a dummy without a parent")
+        log = get_kb_logger("scene.model")
+        span = begin_scene_work_span(log, "scene.model.Model.add_to_collection", self.name)
+        err = False
+        try:
+            if self.root_node is None or not isinstance(self.root_node, DummyNode) or self.root_node.parent:
+                raise RuntimeError("Root node has to be a dummy without a parent")
 
-        logger().info(f"Adding model [{self.name}] to collection")
+            logger().info(f"Adding model [{self.name}] to collection")
 
-        if options.import_geometry:
-            root_obj = self.root_node.add_to_collection(collection, options)
-            root_obj.location = position
-            kb = getattr(root_obj, "kb", None)
-            if kb is None:
-                raise ValueError("root_obj.kb is None")
-            kb.dummytype = DummyType.MDLROOT
-            kb.supermodel = self.supermodel
-            kb.classification = self.classification
-            kb.subclassification = self.subclassification
-            kb.classification_unk1 = self.classification_unk1
-            kb.affected_by_fog = self.affected_by_fog
-            kb.animroot = self.animroot
-            kb.animscale = self.animscale
-            kb.bounding_box_min = self.bounding_box_min
-            kb.bounding_box_max = self.bounding_box_max
-            kb.model_radius = self.model_radius
+            if options.import_geometry:
+                root_obj = self.root_node.add_to_collection(collection, options)
+                root_obj.location = position
+                kb = getattr(root_obj, "kb", None)
+                if kb is None:
+                    raise ValueError("root_obj.kb is None")
+                kb.dummytype = DummyType.MDLROOT
+                kb.supermodel = self.supermodel
+                kb.classification = self.classification
+                kb.subclassification = self.subclassification
+                kb.classification_unk1 = self.classification_unk1
+                kb.affected_by_fog = self.affected_by_fog
+                kb.animroot = self.animroot
+                kb.animscale = self.animscale
+                kb.bounding_box_min = self.bounding_box_min
+                kb.bounding_box_max = self.bounding_box_max
+                kb.model_radius = self.model_radius
 
-            for child in self.root_node.children:
-                self.import_nodes_to_collection(child, root_obj, collection, options)
+                for child in self.root_node.children:
+                    self.import_nodes_to_collection(child, root_obj, collection, options)
 
-            animscale = 1.0  # animation scale must only be applied to supermodel animations
-        else:
-            root_obj = next(
-                iter(obj for obj in bpy.context.selected_objects if is_mdl_root(obj)),
-                None,
-            )
-            if not root_obj:
+                animscale = 1.0  # animation scale must only be applied to supermodel animations
+            else:
                 root_obj = next(
-                    iter(obj for obj in bpy.context.collection.objects if is_mdl_root(obj)),
+                    iter(obj for obj in bpy.context.selected_objects if is_mdl_root(obj)),
                     None,
                 )
-            if root_obj is None:
-                return None
+                if not root_obj:
+                    root_obj = next(
+                        iter(obj for obj in bpy.context.collection.objects if is_mdl_root(obj)),
+                        None,
+                    )
+                if root_obj is None:
+                    return None
 
-            kb = getattr(root_obj, "kb", None)
-            animscale = float(kb.animscale) if kb is not None else 1.0
+                kb = getattr(root_obj, "kb", None)
+                animscale = float(kb.animscale) if kb is not None else 1.0
 
-        if options.import_animations:
-            self.create_animations(root_obj, animscale)
+            if options.import_animations:
+                self.create_animations(root_obj, animscale)
 
-        if options.build_armature:
-            armature_obj = armature.rebuild_armature(root_obj)
-            if armature_obj:
-                armature.apply_object_keyframes(root_obj, armature_obj)
+            if options.build_armature:
+                armature_obj = armature.rebuild_armature(root_obj)
+                if armature_obj:
+                    armature.apply_object_keyframes(root_obj, armature_obj)
 
-        return root_obj
+            return root_obj
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)
 
     def import_nodes_to_collection(
         self,
@@ -128,7 +139,13 @@ class Model:
         collection: bpy.types.Collection,
         options: ImportOptions,
     ) -> None:
-        logger().debug(f"Importing node [{node.name}] to collection")
+        logger().debug("Importing node [%s] to collection", sanitize_scene_context(node.name))
+        get_kb_logger("scene.model").debug(
+            "event=scene_model fn=import_nodes_to_collection node=%s parent=%s children=%s",
+            sanitize_scene_context(node.name),
+            sanitize_scene_context(parent_obj.name) if parent_obj is not None else "",
+            len(node.children),
+        )
 
         obj = node.add_to_collection(collection, options)
         if parent_obj is not None:
@@ -142,43 +159,86 @@ class Model:
         mdl_root: bpy.types.Object,
         animscale: float,
     ) -> None:
-        for anim in self.animations:
-            anim.add_to_objects(mdl_root, animscale)
+        log = get_kb_logger("scene.model")
+        span = begin_scene_work_span(log, "scene.model.Model.create_animations", mdl_root.name)
+        err = False
+        try:
+            log.debug(
+                "event=scene_model fn=Model.create_animations_begin count=%s animscale=%s mdl_root=%s",
+                len(self.animations),
+                animscale,
+                sanitize_scene_context(mdl_root.name),
+            )
+            for anim in self.animations:
+                anim.add_to_objects(mdl_root, animscale)
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)
 
     def find_node(self, test: Callable[[BaseNode], bool]) -> BaseNode | None:
+        log = get_kb_logger("scene.model")
         if self.root_node is None:
+            log.debug("event=scene_model fn=Model.find_node outcome=no_root")
             return None
-        return self.root_node.find_node(test)
+        result = self.root_node.find_node(test)
+        if result is not None:
+            log.debug(
+                "event=scene_model fn=Model.find_node outcome=hit node=%s nodetype=%s",
+                sanitize_scene_context(result.name),
+                getattr(result.nodetype, "name", str(result.nodetype)),
+            )
+        else:
+            log.debug("event=scene_model fn=Model.find_node outcome=miss")
+        return result
 
     @classmethod
     def from_mdl_root(cls, root_obj: bpy.types.Object, options: ExportOptions) -> Model:
-        logger().info(f"Loading model from object [{root_obj.name}]")
+        log = get_kb_logger("scene.model")
+        span = begin_scene_work_span(log, "scene.model.Model.from_mdl_root", root_obj.name)
+        err = False
+        try:
+            logger().info(f"Loading model from object [{root_obj.name}]")
 
-        cls.sanitize_model(root_obj)
+            cls.sanitize_model(root_obj)
 
-        model = Model()
-        model.name = root_obj.name
-        model.supermodel = root_obj.kb.supermodel
-        model.classification = root_obj.kb.classification
-        model.subclassification = root_obj.kb.subclassification
-        model.classification_unk1 = root_obj.kb.classification_unk1
-        model.affected_by_fog = root_obj.kb.affected_by_fog
-        model.animroot = root_obj.kb.animroot
-        model.animscale = root_obj.kb.animscale
-        model.bounding_box_min = root_obj.kb.bounding_box_min
-        model.bounding_box_max = root_obj.kb.bounding_box_max
-        model.model_radius = root_obj.kb.model_radius
-        model.root_node = cls.model_node_from_object(root_obj, options)
+            model = Model()
+            model.name = root_obj.name
+            kb: ObjectPropertyGroup | None = getattr(root_obj, "kb", None)  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+            if kb is None:
+                raise ValueError("root_obj.kb is None")
+            model.supermodel = kb.supermodel
+            model.classification = kb.classification
+            model.subclassification = kb.subclassification
+            model.classification_unk1 = kb.classification_unk1
+            model.affected_by_fog = kb.affected_by_fog
+            model.animroot = kb.animroot
+            model.animscale = kb.animscale
+            model.bounding_box_min = kb.bounding_box_min
+            model.bounding_box_max = kb.bounding_box_max
+            model.model_radius = kb.model_radius
+            model.root_node = cls.model_node_from_object(root_obj, options)
 
-        if options.export_animations:
-            model.animations = [
-                Animation.from_list_anim(anim, root_obj) for anim in root_obj.kb.anim_list
-            ]
+            if options.export_animations:
+                model.animations = [
+                    Animation.from_list_anim(anim, root_obj) for anim in kb.anim_list
+                ]
 
-        return model
+            return model
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)
 
     @classmethod
-    def sanitize_model(cls, root_obj):
+    def sanitize_model(cls, root_obj: bpy.types.Object):
+        log = get_kb_logger("scene.model")
+        log.debug(
+            "event=scene_model fn=sanitize_model_begin root=%s",
+            sanitize_scene_context(root_obj.name),
+        )
         # Make a set of unique node numbers
         node_numbers = set()
         obj_stack = []
@@ -208,6 +268,13 @@ class Model:
                 next_node_number += 1
             for child in obj.children:
                 obj_stack.append(child)
+
+        log.debug(
+            "event=scene_model fn=sanitize_model_done root=%s unique_assigned_node_numbers=%s next_node_number=%s",
+            sanitize_scene_context(root_obj.name),
+            len(node_numbers),
+            next_node_number,
+        )
 
     @classmethod
     def model_node_from_object(
@@ -242,6 +309,15 @@ class Model:
                 node_type = NodeType.TRIMESH
         elif obj.type == "LIGHT":
             node_type = NodeType.LIGHT
+
+        nt = getattr(node_type, "name", str(node_type))
+        get_kb_logger("scene.model").debug(
+            "event=scene_model fn=model_node_from_object obj=%s node_type=%s exclude_xwk=%s obj_type=%s",
+            sanitize_scene_context(obj.name),
+            nt,
+            exclude_xwk,
+            obj.type,
+        )
 
         switch = {
             NodeType.DUMMY: DummyNode,

@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING
 import bpy
 
 from ...constants import Direction
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 
 if TYPE_CHECKING:
     from bpy.stub_internal.rna_enums import OperatorReturnItems
@@ -89,26 +91,31 @@ class KB_OT_move_lens_flare(bpy.types.Operator):
         kb.flare_list_idx = new_idx
 
     def execute(self, context: bpy.types.Context) -> set[OperatorReturnItems]:
-        obj: bpy.types.Object | None = context.object
-        if obj is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
-        kb: ObjectPropertyGroup | None = getattr(obj, "kb", None)
-        if kb is None:
-            self.report({"ERROR"}, "Object.kb is None")
-            return {"CANCELLED"}
-        flare_list: FlareList = kb.flare_list
-        flare_list_idx = kb.flare_list_idx
+        log = get_kb_logger("ops.lensflare.move")
 
-        if self.direction == Direction.DOWN:
-            neighbour = flare_list_idx + 1
-            flare_list.move(flare_list_idx, neighbour)
-            self.move_index(context)
-        elif self.direction == Direction.UP:
-            neighbour = flare_list_idx - 1
-            flare_list.move(neighbour, flare_list_idx)
-            self.move_index(context)
-        else:
-            return {"CANCELLED"}
+        def _body() -> set[str]:
+            obj: bpy.types.Object | None = context.object
+            if obj is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
+            kb: ObjectPropertyGroup | None = getattr(obj, "kb", None)
+            if kb is None:
+                self.report({"ERROR"}, "Object.kb is None")
+                return {"CANCELLED"}
+            flare_list: FlareList = kb.flare_list
+            flare_list_idx = kb.flare_list_idx
 
-        return {"FINISHED"}
+            if self.direction == Direction.DOWN:
+                neighbour = flare_list_idx + 1
+                flare_list.move(flare_list_idx, neighbour)
+                self.move_index(context)
+            elif self.direction == Direction.UP:
+                neighbour = flare_list_idx - 1
+                flare_list.move(neighbour, flare_list_idx)
+                self.move_index(context)
+            else:
+                return {"CANCELLED"}
+
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.move_lens_flare", _body)

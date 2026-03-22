@@ -23,12 +23,30 @@ import os
 import bpy
 
 from ..constants import DummyType, ImportOptions
+from ..diagnostic_log import begin_io_file_span, end_io_file_span
+from ..log_config import get_kb_logger
 from ..utils import find_mdl_root_of
 
 from . import mdl
 
 
 def load_lyt(
+    operator: bpy.types.Operator,
+    filepath: str,
+    options: ImportOptions,
+) -> None:
+    span = begin_io_file_span(get_kb_logger("io.lyt"), "load_lyt", filepath)
+    err = False
+    try:
+        _load_lyt_body(operator, filepath, options)
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_io_file_span(span, error=err)
+
+
+def _load_lyt_body(
     operator: bpy.types.Operator,
     filepath: str,
     options: ImportOptions,
@@ -84,6 +102,21 @@ def load_lyt(
 
 
 def save_lyt(
+    operator: bpy.types.Operator,
+    filepath: str,
+) -> None:
+    span = begin_io_file_span(get_kb_logger("io.lyt"), "save_lyt", filepath)
+    err = False
+    try:
+        _save_lyt_body(operator, filepath)
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_io_file_span(span, error=err)
+
+
+def _save_lyt_body(
     operator: bpy.types.Operator,
     filepath: str,
 ) -> None:

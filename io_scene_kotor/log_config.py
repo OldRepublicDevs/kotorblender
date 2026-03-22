@@ -91,6 +91,13 @@ def configure_package_logging(level: int) -> None:
     if level <= logging.CRITICAL:
         _ensure_stderr_handler(root)
     _sync_pykotor_library_loggers(level)
+    if root.isEnabledFor(logging.DEBUG):
+        attached = _stderr_handler is not None and _stderr_handler in root.handlers
+        root.debug(
+            "event=log_config fn=configure_package_logging level_int=%s stderr_attached=%s",
+            level,
+            attached,
+        )
 
 
 def get_kb_logger(submodule: str = "") -> logging.Logger:
@@ -114,22 +121,41 @@ def apply_preferences_log_level_safe() -> None:
         return
 
     prefs = None
+    matched_addon_key: str | None = None
     try:
         for key in ADDON_PREFERENCE_MODULE_KEYS:
             addon = bpy.context.preferences.addons.get(key)
             if addon is not None and getattr(addon, "preferences", None) is not None:
                 prefs = addon.preferences
+                matched_addon_key = key
                 break
     except Exception:
         prefs = None
+        matched_addon_key = None
 
     raw = getattr(prefs, "log_verbosity", None) if prefs is not None else None
     if isinstance(raw, str):
-        configure_package_logging(verbosity_string_to_level(raw))
+        lvl = verbosity_string_to_level(raw)
+        configure_package_logging(lvl)
     else:
-        configure_package_logging(logging.INFO)
+        lvl = logging.INFO
+        configure_package_logging(lvl)
+
+    root = logging.getLogger(PACKAGE_ROOT_LOGGER)
+    if root.isEnabledFor(logging.DEBUG):
+        raw_repr = raw if isinstance(raw, str) else (type(raw).__name__ if raw is not None else "none")
+        root.debug(
+            "event=log_config fn=apply_preferences_log_level_safe addon_key=%s raw_verbosity=%s effective_level_int=%s",
+            matched_addon_key or "",
+            raw_repr,
+            lvl,
+        )
 
 
 def on_log_verbosity_updated(_prefs: object, _context: object) -> None:
     """``EnumProperty(update=...)`` hook for add-on preferences."""
     apply_preferences_log_level_safe()
+    root = logging.getLogger(PACKAGE_ROOT_LOGGER)
+    if root.isEnabledFor(logging.DEBUG):
+        raw = getattr(_prefs, "log_verbosity", "")
+        root.debug("event=log_config fn=on_log_verbosity_updated verbosity=%s", raw)

@@ -20,6 +20,9 @@ from __future__ import annotations
 import struct
 from typing import BinaryIO, Literal
 
+from ..diagnostic_log import path_id_for_filepath
+from ..log_config import get_kb_logger
+
 
 class SeekOrigin:
     BEGIN = 0
@@ -29,6 +32,11 @@ class SeekOrigin:
 
 class BinaryReader:
     def __init__(self, path: str, byteorder: Literal["little", "big"] = "little"):
+        get_kb_logger("format.binreader").debug(
+            "event=format_binary fn=BinaryReader.__init__ path_id=%s byteorder=%s",
+            path_id_for_filepath(path),
+            byteorder,
+        )
         self.file: BinaryIO = open(path, "rb")
         self.byteorder: Literal["little", "big"] = byteorder
 

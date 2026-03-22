@@ -20,6 +20,8 @@ from __future__ import annotations
 import bpy
 
 from ....constants import Direction
+from ....diagnostic_log import run_simple_operator_logged
+from ....log_config import get_kb_logger
 from ....utils import is_mdl_root
 
 
@@ -61,30 +63,34 @@ class KB_OT_move_anim_event(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        mdl_root: bpy.types.Object | None = context.object
-        if mdl_root is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
-        kb = getattr(mdl_root, "kb", None)
-        if kb is None:
-            self.report({"ERROR"}, "Object.kb is None")
-            return {"CANCELLED"}
-        anim_list = kb.anim_list
-        anim_list_idx = kb.anim_list_idx
-        anim = anim_list[anim_list_idx]
-        prev_idx = anim.event_list_idx
+        log = get_kb_logger("ops.anim.event.move")
 
-        if self.direction == Direction.DOWN:
-            new_idx = min(len(anim.event_list) - 1, prev_idx + 1)
-        elif self.direction == Direction.UP:
-            new_idx = max(0, prev_idx - 1)
-        else:
-            return {"CANCELLED"}
+        def _body() -> set[str]:
+            mdl_root: bpy.types.Object | None = context.object
+            if mdl_root is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
+            kb = getattr(mdl_root, "kb", None)
+            if kb is None:
+                self.report({"ERROR"}, "Object.kb is None")
+                return {"CANCELLED"}
+            anim_list = kb.anim_list
+            anim_list_idx = kb.anim_list_idx
+            anim = anim_list[anim_list_idx]
+            prev_idx = anim.event_list_idx
 
-        if new_idx == prev_idx:
-            return {"CANCELLED"}
+            if self.direction == Direction.DOWN:
+                new_idx = min(len(anim.event_list) - 1, prev_idx + 1)
+            elif self.direction == Direction.UP:
+                new_idx = max(0, prev_idx - 1)
+            else:
+                return {"CANCELLED"}
 
-        anim.event_list.move(prev_idx, new_idx)
-        anim.event_list_idx = new_idx
+            if new_idx == prev_idx:
+                return {"CANCELLED"}
 
-        return {"FINISHED"}
+            anim.event_list.move(prev_idx, new_idx)
+            anim.event_list_idx = new_idx
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.move_anim_event", _body)

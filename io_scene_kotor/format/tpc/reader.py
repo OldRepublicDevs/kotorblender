@@ -20,7 +20,9 @@ from __future__ import annotations
 from enum import Enum
 from struct import unpack
 
+from ...diagnostic_log import begin_format_file_span, end_format_file_span
 from ...format.binreader import BinaryReader, SeekOrigin
+from ...log_config import get_kb_logger
 
 
 class TpcEncoding(Enum):
@@ -46,41 +48,51 @@ class TpcImage:
 
 class TpcReader:
     def __init__(self, path):
+        self.path: str = path
         self.reader = BinaryReader(path)
 
     def load(self):
-        self.compressed_size = self.reader.read_uint32()
-        self.compressed = self.compressed_size > 0
-        self.reader.skip(4)
-        image_w = self.reader.read_uint16()
-        image_h = self.reader.read_uint16()
-        self.encoding = TpcEncoding(self.reader.read_uint8())
-        self.num_mips = self.reader.read_uint8()
-        self.reader.seek(128)
+        log = get_kb_logger("format")
+        span = begin_format_file_span(log, "format.tpc.reader.TpcReader.load", self.path)
+        err = False
+        try:
+            self.compressed_size = self.reader.read_uint32()
+            self.compressed = self.compressed_size > 0
+            self.reader.skip(4)
+            image_w = self.reader.read_uint16()
+            image_h = self.reader.read_uint16()
+            self.encoding = TpcEncoding(self.reader.read_uint8())
+            self.num_mips = self.reader.read_uint8()
+            self.reader.seek(128)
 
-        cubemap = image_h // image_w == 6
-        if cubemap:
-            sides = []
-            for _ in range(6):
-                mips = self.read_mips(image_w, image_w)
-                top_decomp = self.decompress_mip_if_compressed(mips[0])
-                sides.append(top_decomp)
-            mip = self.merge_cubemap(image_w, image_h, sides)
-        else:
-            mips = self.read_mips(image_w, image_h)
-            mip = self.decompress_mip_if_compressed(mips[0])
-        image = self.mip_to_image(mip)
+            cubemap = image_h // image_w == 6
+            if cubemap:
+                sides = []
+                for _ in range(6):
+                    mips = self.read_mips(image_w, image_w)
+                    top_decomp = self.decompress_mip_if_compressed(mips[0])
+                    sides.append(top_decomp)
+                mip = self.merge_cubemap(image_w, image_h, sides)
+            else:
+                mips = self.read_mips(image_w, image_h)
+                mip = self.decompress_mip_if_compressed(mips[0])
+            image = self.mip_to_image(mip)
 
-        current = self.reader.tell()
-        self.reader.seek(0, SeekOrigin.END)
-        filesize = self.reader.tell()
-        if filesize > current:
-            self.reader.seek(current)
-            image.txi_lines = (
-                self.reader.read_bytes(filesize - current).decode("utf-8").splitlines()
-            )
+            current = self.reader.tell()
+            self.reader.seek(0, SeekOrigin.END)
+            filesize = self.reader.tell()
+            if filesize > current:
+                self.reader.seek(current)
+                image.txi_lines = (
+                    self.reader.read_bytes(filesize - current).decode("utf-8").splitlines()
+                )
 
-        return image
+            return image
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_format_file_span(span, error=err)
 
     def read_mips(self, image_w, image_h):
         mips = []

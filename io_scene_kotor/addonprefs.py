@@ -18,16 +18,22 @@
 
 from __future__ import annotations
 
+import logging
+
 import bpy
 from bpy.props import EnumProperty, StringProperty
 from bpy.types import AddonPreferences
 
 from . import log_config
 from .constants import PACKAGE_NAME
+from .log_config import get_kb_logger
 from .vendor.pykotor_adapter import is_pykotor_available
 
 DEF_TEXTURE_SEARCH_PATHS = "textures;../textures;../texturepacks/swpc_tex_tpa"
 DEF_LIGHTMAP_SEARCH_PATHS = "lightmaps;../lightmaps"
+
+# One line when the preferences UI is first drawn at DEBUG — avoids logging every redraw.
+_addonprefs_draw_logged: bool = False
 
 
 class KotorBlenderAddonPreferences(AddonPreferences):
@@ -72,6 +78,19 @@ class KotorBlenderAddonPreferences(AddonPreferences):
     )
 
     def draw(self, context: bpy.types.Context) -> None:
+        global _addonprefs_draw_logged
+        log = get_kb_logger("addonprefs")
+        if not _addonprefs_draw_logged and log.isEnabledFor(logging.DEBUG):
+            _addonprefs_draw_logged = True
+            raw_v = getattr(self, "log_verbosity", "")
+            log.debug(
+                "event=addonprefs fn=draw_once pykotor_available=%s log_verbosity=%s texture_search_paths_chars=%s lightmap_search_paths_chars=%s has_external_diff_path=%s",
+                is_pykotor_available(),
+                raw_v,
+                len(str(getattr(self, "texture_search_paths", "") or "")),
+                len(str(getattr(self, "lightmap_search_paths", "") or "")),
+                bool(str(getattr(self, "external_diff_path", "") or "").strip()),
+            )
         layout = self.layout
         layout.label(text="Tip: press F3 in Blender and search “KotOR” to jump to any action", icon="INFO")
         status = layout.box()

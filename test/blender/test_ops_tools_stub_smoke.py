@@ -1,8 +1,8 @@
 """
-test_ops_tools_stub_smoke.py – tools operators: PyKotor gate, clone_module errors, TSLPatch stub
+test_ops_tools_stub_smoke.py – tools operators: PyKotor gate, clone_module errors, TSLPatch pick
 
 Ensures kb.module_designer, kb.indoor_map_builder, kb.clone_module, kb.tslpatchdata_editor
-do not throw uncaught exceptions in background mode.
+do not throw uncaught exceptions in background mode; TSLPatch pick loads INI into scene.kb.
 
 Run with:
     blender --background --python test/blender/test_ops_tools_stub_smoke.py
@@ -74,8 +74,7 @@ def test_indoor_map_builder_gate() -> bool:
 def test_clone_module_no_selection() -> bool:
     scene = bpy.context.scene
     kb = scene.kb
-    kb.module_list.clear()
-    kb.module_list_idx = 0
+    kb.module_list_idx = -1
     try:
         result = bpy.ops.kb.clone_module(new_module_name="clone_test")
     except RuntimeError as e:
@@ -100,21 +99,20 @@ def test_tslpatchdata_editor_gate() -> bool:
     os.close(fd)
     try:
         with open(path, "w", encoding="utf-8") as f:
-            f.write("[Settings]\n")
+            f.write("[Settings]\nmodname=TestMod\n")
         try:
             result = bpy.ops.kb.tslpatchdata_editor(filepath=path)
         except RuntimeError as e:
-            if not is_pykotor_available() and _pykotor_error_ok(e):
-                print("  PASS test_tslpatchdata_editor_gate (RuntimeError, no PyKotor)")
-                return True
             print(f"  FAIL tslpatchdata_editor unexpected RuntimeError: {e}")
             return False
-        if is_pykotor_available():
-            ok = result == {"FINISHED"}
-            print(f"  {'PASS' if ok else 'FAIL'} test_tslpatchdata_editor_gate FINISHED with PyKotor")
-            return ok
-        print(f"  FAIL tslpatchdata_editor expected error without PyKotor, got {result!r}")
-        return False
+        ok = result == {"FINISHED"}
+        kb = bpy.context.scene.kb
+        body_ok = "[Settings]" in (kb.tslpatchdata_ini_body or "")
+        print(
+            f"  {'PASS' if ok and body_ok else 'FAIL'} test_tslpatchdata_editor_gate "
+            f"FINISHED={ok} body_loaded={body_ok}"
+        )
+        return ok and body_ok
     finally:
         if os.path.isfile(path):
             os.unlink(path)

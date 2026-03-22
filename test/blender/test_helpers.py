@@ -6,7 +6,6 @@ Provides helper functions for test setup, including version-aware addon loading.
 
 import os
 import sys
-from typing import Optional
 
 import bpy
 
@@ -47,15 +46,16 @@ def enable_addon() -> bool:
         modules_to_try.append("bl_ext.user_default.io_scene_kotor")
     
     for mod in modules_to_try:
-        # Check if already enabled
+        # Disable first so a reload picks up synced extension files (stale enable would skip updates).
         if mod in bpy.context.preferences.addons:
-            return True
-        
-        # Try to enable
+            try:
+                bpy.ops.preferences.addon_disable(module=mod)
+            except RuntimeError:
+                pass
         result = bpy.ops.preferences.addon_enable(module=mod)
         if "FINISHED" in result:
             return True
-    
+
     print(f"ERROR: Could not enable addon. Tried: {modules_to_try}")
     return False
 

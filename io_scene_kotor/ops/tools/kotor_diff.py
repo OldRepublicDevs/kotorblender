@@ -25,6 +25,13 @@ import subprocess
 import bpy
 from bpy_extras.io_utils import ImportHelper
 
+from ...constants import LogReasonCode
+from ...diagnostic_log import (
+    begin_import_operator_diag,
+    end_import_operator_diag,
+    set_import_invoke_entry,
+)
+from ...log_config import get_kb_logger
 from ...utils import kotor_addon_preferences
 
 
@@ -48,6 +55,9 @@ class KB_OT_kotor_diff(bpy.types.Operator, ImportHelper):
     )
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        set_import_invoke_entry(self)
+        if self.filepath:
+            return self.execute(context)
         context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
@@ -58,7 +68,7 @@ class KB_OT_kotor_diff(bpy.types.Operator, ImportHelper):
         layout.label(text="After choosing file A, set file B here (adjust in redo panel):")
         layout.prop(self, "other_path")
 
-    def execute(self, context: bpy.types.Context) -> set[str]:
+    def _execute_kotor_diff_core(self, context: bpy.types.Context) -> set[str]:
         a = self.filepath
         b = (self.other_path or "").strip()
         if not a or not os.path.isfile(a):
@@ -81,7 +91,10 @@ class KB_OT_kotor_diff(bpy.types.Operator, ImportHelper):
             sa = da.decode("utf-8", errors="replace").splitlines(keepends=True)
             sb = db.decode("utf-8", errors="replace").splitlines(keepends=True)
         except Exception:
-            self.report({"INFO"}, "Binary comparison: sizes differ" if da != db else "Binary comparison: identical size")
+            self.report(
+                {"INFO"},
+                "Binary comparison: sizes differ" if da != db else "Binary comparison: identical size",
+            )
             return {"FINISHED"}
 
         diff = difflib.unified_diff(sa, sb, fromfile=a, tofile=b)
@@ -105,3 +118,55 @@ class KB_OT_kotor_diff(bpy.types.Operator, ImportHelper):
                 pass
 
         return {"FINISHED"}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.tools.kotor_diff")
+        session = begin_import_operator_diag(
+            log, "kb.kotor_diff", self, self.filepath or ""
+        )
+        outcome = "FINISHED"
+        work_done = False
+        reason_code = LogReasonCode.OK
+        ret: set[str] = {"CANCELLED"}
+        try:
+            ret = self._execute_kotor_diff_core(context)
+            work_done = ret == {"FINISHED"}
+            outcome = "FINISHED" if work_done else "CANCELLED"
+        except OSError as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = (
+                LogReasonCode.MISSING_FILE
+                if isinstance(ex, FileNotFoundError)
+                else LogReasonCode.IO_ERROR
+            )
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.kotor_diff",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        except Exception as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = LogReasonCode.INTERNAL_ERROR
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.kotor_diff",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        finally:
+            end_import_operator_diag(
+                session,
+                outcome=outcome,
+                work_done=work_done,
+                reason_code=reason_code,
+            )
+        return ret

@@ -195,6 +195,56 @@ class GameType(str, Enum):
     CUSTOM = "CUSTOM"
 
 
+class GitInstanceSection(str, Enum):
+    """GIT list names on ``pykotor.resource.generics.git.GIT`` (viewport empty linkage)."""
+
+    NONE = "NONE"
+    CREATURES = "creatures"
+    DOORS = "doors"
+    ENCOUNTERS = "encounters"
+    STORES = "stores"
+    PLACEABLES = "placeables"
+    SOUNDS = "sounds"
+    TRIGGERS = "triggers"
+    WAYPOINTS = "waypoints"
+    CAMERAS = "cameras"
+
+
+class GitGeometryRole(str, Enum):
+    """Linked GIT mesh/empty beyond the root instance marker."""
+
+    NONE = "NONE"
+    TRIGGER_HULL = "TRIGGER_HULL"
+    ENCOUNTER_HULL = "ENCOUNTER_HULL"
+    ENCOUNTER_SPAWN = "ENCOUNTER_SPAWN"
+
+
+def git_geometry_role_enum_items() -> list[tuple[str, str, str, int]]:
+    return [
+        (GitGeometryRole.NONE.value, "None", "Not GIT geometry helper", 0),
+        (GitGeometryRole.TRIGGER_HULL.value, "Trigger hull", "GIT trigger polygon (mesh)", 1),
+        (GitGeometryRole.ENCOUNTER_HULL.value, "Encounter hull", "GIT encounter polygon (mesh)", 2),
+        (GitGeometryRole.ENCOUNTER_SPAWN.value, "Encounter spawn", "GIT encounter spawn point (empty)", 3),
+    ]
+
+
+def git_instance_section_enum_items() -> list[tuple[str, str, str, int]]:
+    """RNA enum items for :class:`GitInstanceSection` (Blender ``EnumProperty``)."""
+
+    return [
+        (GitInstanceSection.NONE.value, "None", "Object is not linked to a GIT instance row", 0),
+        (GitInstanceSection.CREATURES.value, "Creatures", "GIT Creature List", 1),
+        (GitInstanceSection.DOORS.value, "Doors", "GIT Door List", 2),
+        (GitInstanceSection.ENCOUNTERS.value, "Encounters", "GIT Encounter List", 3),
+        (GitInstanceSection.STORES.value, "Stores", "GIT StoreList", 4),
+        (GitInstanceSection.PLACEABLES.value, "Placeables", "GIT Placeable List", 5),
+        (GitInstanceSection.SOUNDS.value, "Sounds", "GIT SoundList", 6),
+        (GitInstanceSection.TRIGGERS.value, "Triggers", "GIT TriggerList", 7),
+        (GitInstanceSection.WAYPOINTS.value, "Waypoints", "GIT WaypointList", 8),
+        (GitInstanceSection.CAMERAS.value, "Cameras", "GIT CameraList", 9),
+    ]
+
+
 class ResourceTab(str, Enum):
     CORE = "CORE"
     MODULES = "MODULES"
@@ -215,6 +265,17 @@ class ResourceStorage(str, Enum):
 class Direction(str, Enum):
     UP = "UP"
     DOWN = "DOWN"
+
+
+class LogReasonCode(str, Enum):
+    """Stable ``reason_code`` strings for package logging (grep-friendly)."""
+
+    OK = "OK"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+    MISSING_FILE = "MISSING_FILE"
+    PARSE_ERROR = "PARSE_ERROR"
+    IO_ERROR = "IO_ERROR"
+    CONFIG_ERROR = "CONFIG_ERROR"
 
 
 class PropertyName(str, Enum):
@@ -361,12 +422,22 @@ class PropertyName(str, Enum):
     GAME_TYPE = "game_type"
     GAME_INSTALLATION_PATH = "game_installation_path"
     MODULE_LIST_IDX = "module_list_idx"
+    ACTIVE_GIT_PATH = "active_git_path"
     RESOURCE_TAB = "resource_tab"
     RESOURCE_LIST_IDX = "resource_list_idx"
     EXTRACT_TPC_DECOMPILE = "extract_tpc_decompile"
     EXTRACT_TPC_TXI = "extract_tpc_txi"
     EXTRACT_MDL_DECOMPILE = "extract_mdl_decompile"
     EXTRACT_MDL_TEXTURES = "extract_mdl_textures"
+
+    # GIT viewport link (object.kb)
+    GIT_INSTANCE_SECTION = "git_instance_section"
+    GIT_INSTANCE_INDEX = "git_instance_index"
+    GIT_INSTANCE_RESREF = "git_instance_resref"
+    GIT_GEOMETRY_ROLE = "git_geometry_role"
+    GIT_SPAWN_INDEX = "git_spawn_index"
+
+    KOTOR_WALKMESH_OVERLAY = "kotor_walkmesh_overlay"
 
 
 class NodeName(str, Enum):

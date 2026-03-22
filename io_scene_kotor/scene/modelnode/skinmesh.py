@@ -23,6 +23,8 @@ from typing import Any
 import bpy
 
 from ...constants import MeshType, NodeType
+from ...log_config import get_kb_logger
+from .base import _log_modelnode
 from .trimesh import EdgeLoopMesh, TrimeshNode
 
 
@@ -46,6 +48,12 @@ class SkinmeshNode(TrimeshNode):
                     group = obj.vertex_groups.new(name=bone_name)
                     group.add([vert_idx], weight, "REPLACE")
                     groups[bone_name] = group
+        _log_modelnode("SkinmeshNode.apply_bone_weights", self)
+        get_kb_logger("scene.modelnode.skinmesh").debug(
+            "event=scene_modelnode fn=SkinmeshNode.apply_bone_weights_detail verts=%s bone_groups=%s",
+            len(getattr(mesh, "verts", []) or []),
+            len(groups),
+        )
 
     def unapply_edge_loop_mesh(
         self,
@@ -78,3 +86,8 @@ class SkinmeshNode(TrimeshNode):
             if total_weight != 0.0:
                 vert_weights = [(v[0], v[1] / total_weight) for v in vert_weights]
             mesh.weights[vert_idx] = vert_weights
+        _log_modelnode("SkinmeshNode.unapply_bone_weights", self)
+        get_kb_logger("scene.modelnode.skinmesh").debug(
+            "event=scene_modelnode fn=SkinmeshNode.unapply_bone_weights_detail verts=%s",
+            len(mesh.verts),
+        )

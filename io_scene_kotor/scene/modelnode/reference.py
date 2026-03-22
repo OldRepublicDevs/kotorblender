@@ -22,7 +22,7 @@ import bpy
 
 from ...constants import DummyType, ExportOptions, ImportOptions, NULL, NodeType
 
-from .base import BaseNode
+from .base import BaseNode, _log_modelnode
 
 
 class ReferenceNode(BaseNode):
@@ -42,6 +42,7 @@ class ReferenceNode(BaseNode):
         kb.dummytype = DummyType.REFERENCE
         kb.refmodel = self.refmodel
         kb.reattachable = self.reattachable == 1
+        _log_modelnode("ReferenceNode.set_object_data", self)
 
     def load_object_data(
         self, obj: bpy.types.Object, eval_obj: bpy.types.Object, options: ExportOptions
@@ -53,3 +54,4 @@ class ReferenceNode(BaseNode):
             raise ValueError(f"Object [{obj.name}] has no kb attribute")
         self.refmodel = kb.refmodel
         self.reattachable = 1 if kb.reattachable else 0
+        _log_modelnode("ReferenceNode.load_object_data", self)

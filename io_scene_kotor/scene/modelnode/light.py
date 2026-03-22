@@ -22,8 +22,10 @@ from typing import TYPE_CHECKING, cast
 import bpy
 
 from ...constants import ExportOptions, ImportOptions, NodeType
+from ...diagnostic_log import begin_scene_work_span, end_scene_work_span, sanitize_scene_context
+from ...log_config import get_kb_logger
 
-from .base import BaseNode
+from .base import BaseNode, _log_modelnode
 
 if TYPE_CHECKING:
     from ...ui.props.object import ObjectPropertyGroup
@@ -59,11 +61,23 @@ class LightNode(BaseNode):
         self.flare_list: FlareList = FlareList()
 
     def add_to_collection(self, collection: bpy.types.Collection, options: ImportOptions) -> bpy.types.Object | None:
-        light: bpy.types.Light = self.create_light(self.name)
-        obj: bpy.types.Object = bpy.data.objects.new(self.name, light)
-        self.set_object_data(obj, options)
-        collection.objects.link(obj)
-        return obj  # pyright: ignore[reportReturnNone]
+        log = get_kb_logger("scene.modelnode.light")
+        span = begin_scene_work_span(
+            log, "scene.modelnode.LightNode.add_to_collection", sanitize_scene_context(self.name)
+        )
+        err = False
+        try:
+            light: bpy.types.Light = self.create_light(self.name)
+            obj: bpy.types.Object = bpy.data.objects.new(self.name, light)
+            self.set_object_data(obj, options)
+            collection.objects.link(obj)
+            _log_modelnode("LightNode.add_to_collection", self)
+            return obj  # pyright: ignore[reportReturnNone]
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)
 
     def create_light(self, name: str) -> bpy.types.Light:
         negative: bool = any([c < 0.0 for c in self.color])

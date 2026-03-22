@@ -22,8 +22,10 @@ import bpy
 from bpy_extras.io_utils import unpack_list
 
 from ...constants import BlendType, EmitterRenderType, ExportOptions, ImportOptions, MeshType, NodeType, NULL, P2PType, SpawnType, UpdateType
+from ...diagnostic_log import begin_scene_work_span, end_scene_work_span, sanitize_scene_context
+from ...log_config import get_kb_logger
 
-from .base import BaseNode
+from .base import BaseNode, _log_modelnode
 
 
 class EmitterNode(BaseNode):
@@ -199,12 +201,24 @@ class EmitterNode(BaseNode):
     def add_to_collection(
         self, collection: bpy.types.Collection, options: ImportOptions
     ) -> bpy.types.Object:
-        mesh = self.create_mesh(self.name)
-        obj = bpy.data.objects.new(self.name, mesh)
+        log = get_kb_logger("scene.modelnode.emitter")
+        span = begin_scene_work_span(
+            log, "scene.modelnode.EmitterNode.add_to_collection", sanitize_scene_context(self.name)
+        )
+        err = False
+        try:
+            mesh = self.create_mesh(self.name)
+            obj = bpy.data.objects.new(self.name, mesh)
 
-        self.set_object_data(obj, options)
-        collection.objects.link(obj)
-        return obj
+            self.set_object_data(obj, options)
+            collection.objects.link(obj)
+            _log_modelnode("EmitterNode.add_to_collection", self)
+            return obj
+        except BaseException:
+            err = True
+            raise
+        finally:
+            end_scene_work_span(span, error=err)
 
     def create_mesh(self, name: str) -> bpy.types.Mesh:
         verts = [

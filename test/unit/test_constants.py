@@ -26,6 +26,7 @@ from io_scene_kotor.constants import (
     DummyType,
     ExportOptions,
     ImportOptions,
+    LogReasonCode,
     MeshType,
     NodeType,
 )
@@ -124,6 +125,12 @@ def test_node_type_values():
     }
     actual = {e.value for e in NodeType}
     assert expected == actual
+
+
+def test_log_reason_code_values():
+    """LogReasonCode lists stable diagnostic strings."""
+    expected = {"OK", "INTERNAL_ERROR", "MISSING_FILE", "PARSE_ERROR", "IO_ERROR", "CONFIG_ERROR"}
+    assert {e.value for e in LogReasonCode} == expected
 
 
 def test_export_options_defaults():

@@ -23,6 +23,8 @@ from typing import ClassVar
 import bpy
 
 from ..constants import MeshType
+from ..diagnostic_log import run_simple_operator_logged
+from ..log_config import get_kb_logger
 from ..scene import material
 
 
@@ -51,9 +53,14 @@ class KB_OT_rebuild_material(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        obj: bpy.types.Object | None = context.object
-        if obj is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
-        material.rebuild_object_materials(obj)
-        return {"FINISHED"}
+        log = get_kb_logger("ops.rebuildmaterial")
+
+        def _body() -> set[str]:
+            obj: bpy.types.Object | None = context.object
+            if obj is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
+            material.rebuild_object_materials(obj)
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.rebuild_material", _body)

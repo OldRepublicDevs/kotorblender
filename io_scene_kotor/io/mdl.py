@@ -32,6 +32,8 @@ import os
 import bpy
 
 from ..constants import ANIM_FPS, ExportOptions, ImportOptions
+from ..diagnostic_log import begin_io_file_span, end_io_file_span, sanitize_scene_context
+from ..log_config import get_kb_logger
 from ..format.bwm.reader import BwmReader
 from ..format.bwm.writer import BwmWriter
 from ..format.mdl.ascii_reader import AsciiMdlReader
@@ -79,7 +81,36 @@ def load_mdl(
     options: ImportOptions,
     position: tuple[float, float, float] = (0.0, 0.0, 0.0),
 ) -> None:
+    span = begin_io_file_span(get_kb_logger("io.mdl"), "load_mdl", filepath)
+    err = False
+    try:
+        _load_mdl_body(operator, filepath, options, position)
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_io_file_span(span, error=err)
+
+
+def _load_mdl_body(
+    operator: bpy.types.Operator,
+    filepath: str,
+    options: ImportOptions,
+    position: tuple[float, float, float],
+) -> None:
+    log = get_kb_logger("io.mdl")
     operator.report({"INFO"}, f"Loading model from '{filepath}'")
+    is_ascii = _is_ascii_mdl(filepath)
+    log.debug(
+        "event=io_mdl fn=_load_mdl_body phase=start ascii=%s import_geometry=%s import_walkmeshes=%s import_animations=%s build_armature=%s tex_paths=%s lm_paths=%s",
+        is_ascii,
+        options.import_geometry,
+        options.import_walkmeshes,
+        options.import_animations,
+        options.build_armature,
+        len(options.texture_search_paths or []),
+        len(options.lightmap_search_paths or []),
+    )
 
     # Build texture/lightmap search paths from addon preferences if not already set
     if not options.texture_search_paths or not options.lightmap_search_paths:
@@ -106,7 +137,7 @@ def load_mdl(
                 options.lightmap_search_paths = []
 
     # Detect format and use appropriate reader
-    if _is_ascii_mdl(filepath):
+    if is_ascii:
         operator.report({"INFO"}, "Detected ASCII MDL format")
         mdl = AsciiMdlReader(filepath)
         model = mdl.load()
@@ -151,8 +182,23 @@ def load_mdl(
             dwk_walkmesh2 = dwk2.load()
             dwk_walkmesh3 = dwk3.load()
 
+    wok_g = options.import_geometry and options.import_walkmeshes
+    log.debug(
+        "event=io_mdl fn=_load_mdl_body phase=sidecars wok=%s pwk=%s dwk012=%s",
+        wok_g and os.path.exists(filepath[:-4] + ".wok"),
+        wok_g and os.path.exists(filepath[:-4] + ".pwk"),
+        wok_g
+        and os.path.exists(filepath[:-4] + "0.dwk")
+        and os.path.exists(filepath[:-4] + "1.dwk")
+        and os.path.exists(filepath[:-4] + "2.dwk"),
+    )
+
     collection = bpy.context.collection
     model_root = model.add_to_collection(collection, options, position)
+    log.debug(
+        "event=io_mdl fn=_load_mdl_body phase=collection_root name=%s",
+        sanitize_scene_context(model_root.name),
+    )
 
     if pwk_walkmesh:
         pwk_walkmesh.attach_to_collection(model_root, collection, options)
@@ -172,6 +218,23 @@ def save_mdl(
     filepath: str,
     options: ExportOptions,
 ) -> None:
+    span = begin_io_file_span(get_kb_logger("io.mdl"), "save_mdl", filepath)
+    err = False
+    try:
+        _save_mdl_body(operator, filepath, options)
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_io_file_span(span, error=err)
+
+
+def _save_mdl_body(
+    operator: bpy.types.Operator,
+    filepath: str,
+    options: ExportOptions,
+) -> None:
+    log = get_kb_logger("io.mdl")
     # Reset pose
     bpy.context.scene.frame_set(0)
 
@@ -186,7 +249,18 @@ def save_mdl(
             None,
         )
     if not mdl_root:
+        log.debug("event=io_mdl fn=_save_mdl_body outcome=no_mdl_root")
         return
+    is_ascii = _is_ascii_mdl(filepath)
+    log.debug(
+        "event=io_mdl fn=_save_mdl_body phase=start root=%s ascii=%s export_walkmeshes=%s export_animations=%s export_tsl=%s export_xbox=%s",
+        sanitize_scene_context(mdl_root.name),
+        is_ascii,
+        options.export_walkmeshes,
+        options.export_animations,
+        options.export_for_tsl,
+        options.export_for_xbox,
+    )
 
     # Ensure MDL root is selected and is in OBJECT mode
     mdl_root.select_set(True)
@@ -200,7 +274,7 @@ def save_mdl(
     operator.report({"INFO"}, f"Saving model to '{filepath}'")
 
     # Detect format and use appropriate writer
-    if _is_ascii_mdl(filepath):
+    if is_ascii:
         operator.report({"INFO"}, "Detected ASCII MDL format")
         mdl = AsciiMdlWriter(filepath, model)
         mdl.save()
@@ -214,6 +288,11 @@ def save_mdl(
             options.compress_quaternions,
         )
         mdl.save()
+    log.debug(
+        "event=io_mdl fn=_save_mdl_body phase=mdl_written ascii=%s model_name=%s",
+        is_ascii,
+        sanitize_scene_context(model.name),
+    )
 
     if options.export_walkmeshes:
         # Export WOK
@@ -244,3 +323,4 @@ def save_mdl(
             operator.report({"INFO"}, f"Saving walkmesh to '{xwk_path}'")
             bwm = BwmWriter(xwk_path, walkmesh)
             bwm.save()
+    log.debug("event=io_mdl fn=_save_mdl_body phase=complete")

@@ -22,6 +22,8 @@ from typing import ClassVar
 import bpy
 
 from ..constants import MeshType
+from ..diagnostic_log import run_simple_operator_logged
+from ..log_config import get_kb_logger
 from ..scene import material
 from ..utils import find_objects, is_mdl_root
 
@@ -40,20 +42,25 @@ class KB_OT_rebuild_all_materials(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        root: bpy.types.Object | None = context.object
-        if root is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
+        log = get_kb_logger("ops.rebuildallmaterials")
 
-        def is_rebuild_target(o: bpy.types.Object) -> bool:
-            if o.type != "MESH":
-                return False
-            kb = getattr(o, "kb", None)
-            if kb is None:
-                return False
-            return kb.meshtype not in (MeshType.EMITTER,)
+        def _body() -> set[str]:
+            root: bpy.types.Object | None = context.object
+            if root is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
 
-        objects = find_objects(root, is_rebuild_target)
-        for obj in objects:
-            material.rebuild_object_materials(obj)
-        return {"FINISHED"}
+            def is_rebuild_target(o: bpy.types.Object) -> bool:
+                if o.type != "MESH":
+                    return False
+                kb = getattr(o, "kb", None)
+                if kb is None:
+                    return False
+                return kb.meshtype not in (MeshType.EMITTER,)
+
+            objects = find_objects(root, is_rebuild_target)
+            for obj in objects:
+                material.rebuild_object_materials(obj)
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.rebuild_all_materials", _body)

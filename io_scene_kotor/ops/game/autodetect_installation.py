@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 import bpy
 
 from ...constants import GameType
+from ...diagnostic_log import run_simple_operator_logged
 from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import find_kotor_paths_from_default, is_pykotor_available
 
@@ -42,37 +43,41 @@ class KB_OT_autodetect_game_installation(bpy.types.Operator):
     )
 
     def execute(self, context: bpy.types.Context) -> set[OperatorReturnItems]:
-        scene: bpy.types.Scene | None = context.scene
-        if scene is None:
-            self.report({"ERROR"}, "Scene is None")
-            return {"CANCELLED"}
+        log = get_kb_logger("ops.game.autodetect_installation")
 
-        kb: ScenePropertyGroup | None = getattr(scene, "kb", None)
-        if kb is None:
-            self.report({"ERROR"}, "Scene.kb is None")
-            return {"CANCELLED"}
-        if kb.game_type == GameType.CUSTOM:
-            self.report({"INFO"}, "Select KotOR 1 or KotOR 2 to autodetect path.")
-            return {"CANCELLED"}
+        def _body() -> set[str]:
+            scene: bpy.types.Scene | None = context.scene
+            if scene is None:
+                self.report({"ERROR"}, "Scene is None")
+                return {"CANCELLED"}
 
-        log = get_kb_logger("ops.autodetect")
-        log.info("Autodetect requested for game_type=%s", kb.game_type)
-        if not is_pykotor_available():
-            log.info("PyKotor import unavailable; using native registry/Steam/GOG heuristics only")
-        paths = find_kotor_paths_from_default()
-        log.info("find_kotor_paths_from_default() -> %r", paths)
-        path = paths.get(kb.game_type, "") or ""
-        if not path or not os.path.exists(path):
-            msg = (
-                f"No {kb.game_type} install found. "
-                "Set Add-on Preferences → Logging to Debug, open Window → Toggle System Console, "
-                "then Autodetect again to see every candidate path."
-            )
-            log.warning(msg)
-            self.report({"WARNING"}, msg)
-            return {"CANCELLED"}
+            kb: ScenePropertyGroup | None = getattr(scene, "kb", None)
+            if kb is None:
+                self.report({"ERROR"}, "Scene.kb is None")
+                return {"CANCELLED"}
+            if kb.game_type == GameType.CUSTOM:
+                self.report({"INFO"}, "Select KotOR 1 or KotOR 2 to autodetect path.")
+                return {"CANCELLED"}
 
-        kb.game_installation_path = path
-        log.info("Set game_installation_path=%s", path)
-        self.report({"INFO"}, f"Set path to: {path}")
-        return {"FINISHED"}
+            log.info("Autodetect requested for game_type=%s", kb.game_type)
+            if not is_pykotor_available():
+                log.info("PyKotor import unavailable; using native registry/Steam/GOG heuristics only")
+            paths = find_kotor_paths_from_default()
+            log.info("find_kotor_paths_from_default() -> %r", paths)
+            path = paths.get(kb.game_type, "") or ""
+            if not path or not os.path.exists(path):
+                msg = (
+                    f"No {kb.game_type} install found. "
+                    "Set Add-on Preferences → Logging to Debug, open Window → Toggle System Console, "
+                    "then Autodetect again to see every candidate path."
+                )
+                log.warning(msg)
+                self.report({"WARNING"}, msg)
+                return {"CANCELLED"}
+
+            kb.game_installation_path = path
+            log.info("Set game_installation_path=%s", path)
+            self.report({"INFO"}, f"Set path to: {path}")
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.autodetect_game_installation", _body)

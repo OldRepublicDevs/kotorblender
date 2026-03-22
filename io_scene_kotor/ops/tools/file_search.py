@@ -23,6 +23,8 @@ import os
 import bpy
 
 from ...constants import ResourceStorage
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import is_pykotor_available, resolve_game_install_path
 from ..module.resource_helpers import add_resource_entry, clear_resource_list
 
@@ -48,56 +50,61 @@ class KB_OT_file_search(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        if not is_pykotor_available():
-            self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
-            return {"CANCELLED"}
+        log = get_kb_logger("ops.tools.file_search")
 
-        scene = context.scene
-        kb = scene.kb
-        install = resolve_game_install_path(kb)
-        if not install:
-            self.report({"ERROR"}, "Game installation path not set or not found.")
-            return {"CANCELLED"}
+        def _body() -> set[str]:
+            if not is_pykotor_available():
+                self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
+                return {"CANCELLED"}
 
-        q = (self.search_query or "").strip().lower()
-        if len(q) < 2:
-            self.report({"WARNING"}, "Enter at least 2 characters to search.")
-            return {"CANCELLED"}
+            scene = context.scene
+            kb = scene.kb
+            install = resolve_game_install_path(kb)
+            if not install:
+                self.report({"ERROR"}, "Game installation path not set or not found.")
+                return {"CANCELLED"}
 
-        clear_resource_list(kb)
-        found = 0
-        for sub in _SEARCH_SUBDIRS:
-            root = os.path.join(install, sub)
-            if not os.path.isdir(root):
-                continue
-            for dirpath, _dirnames, filenames in os.walk(root):
-                for name in filenames:
-                    if q not in name.lower():
-                        continue
-                    path = os.path.join(dirpath, name)
-                    rel = os.path.relpath(path, install).replace("\\", "/")
-                    base, ext = os.path.splitext(name)
-                    ext = ext.lstrip(".").lower()
-                    add_resource_entry(
-                        kb,
-                        label=rel,
-                        resref=base,
-                        restype_ext=ext or "dat",
-                        storage=ResourceStorage.LOOSE,
-                        loose_path=path,
-                    )
-                    found += 1
+            q = (self.search_query or "").strip().lower()
+            if len(q) < 2:
+                self.report({"WARNING"}, "Enter at least 2 characters to search.")
+                return {"CANCELLED"}
+
+            clear_resource_list(kb)
+            found = 0
+            for sub in _SEARCH_SUBDIRS:
+                root = os.path.join(install, sub)
+                if not os.path.isdir(root):
+                    continue
+                for dirpath, _dirnames, filenames in os.walk(root):
+                    for name in filenames:
+                        if q not in name.lower():
+                            continue
+                        path = os.path.join(dirpath, name)
+                        rel = os.path.relpath(path, install).replace("\\", "/")
+                        base, ext = os.path.splitext(name)
+                        ext = ext.lstrip(".").lower()
+                        add_resource_entry(
+                            kb,
+                            label=rel,
+                            resref=base,
+                            restype_ext=ext or "dat",
+                            storage=ResourceStorage.LOOSE,
+                            loose_path=path,
+                        )
+                        found += 1
+                        if found >= _MAX_RESULTS:
+                            break
                     if found >= _MAX_RESULTS:
                         break
                 if found >= _MAX_RESULTS:
                     break
-            if found >= _MAX_RESULTS:
-                break
 
-        kb.resource_list_idx = 0
-        kb.resource_name_filter = self.search_query
-        self.report(
-            {"INFO"},
-            f"Found {found} file(s). Open View3D → KotOR sidebar to browse; use Refresh for tab listings.",
-        )
-        return {"FINISHED"}
+            kb.resource_list_idx = 0
+            kb.resource_name_filter = self.search_query
+            self.report(
+                {"INFO"},
+                f"Found {found} file(s). Open View3D → KotOR sidebar to browse; use Refresh for tab listings.",
+            )
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.file_search", _body)

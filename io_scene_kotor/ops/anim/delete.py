@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING
 
 import bpy
 
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...utils import is_mdl_root
 
 if TYPE_CHECKING:
@@ -51,20 +53,24 @@ class KB_OT_delete_animation(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[rna_enums.OperatorReturnItems]:
-        mdl_root: bpy.types.Object | None = context.object
-        if mdl_root is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
-        kb = getattr(mdl_root, "kb", None)
-        if kb is None:
-            self.report({"ERROR"}, "Object.kb is None")
-            return {"CANCELLED"}
-        anim_list = kb.anim_list
-        anim_list_idx = kb.anim_list_idx
+        log = get_kb_logger("ops.anim.delete")
 
-        if anim_list_idx == len(anim_list) - 1 and anim_list_idx > 0:
-            kb.anim_list_idx = anim_list_idx - 1
+        def _body() -> set[str]:
+            mdl_root: bpy.types.Object | None = context.object
+            if mdl_root is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
+            kb = getattr(mdl_root, "kb", None)
+            if kb is None:
+                self.report({"ERROR"}, "Object.kb is None")
+                return {"CANCELLED"}
+            anim_list = kb.anim_list
+            anim_list_idx = kb.anim_list_idx
 
-        anim_list.remove(anim_list_idx)
+            if anim_list_idx == len(anim_list) - 1 and anim_list_idx > 0:
+                kb.anim_list_idx = anim_list_idx - 1
 
-        return {"FINISHED"}
+            anim_list.remove(anim_list_idx)
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.delete_animation", _body)

@@ -20,13 +20,17 @@ from __future__ import annotations
 import bpy
 
 from ..constants import MeshType
+from ..diagnostic_log import run_simple_operator_logged
+from ..log_config import get_kb_logger
 from ..scene.material import NodeName
 from ..scene.modelnode.trimesh import UV_MAP_LIGHTMAP
 from ..utils import is_mesh_type, is_null
 
 
-class BakeLightmapsOperator(bpy.types.Operator):
-    def execute(self, context: bpy.types.Context) -> set[str]:
+class _BakeLightmapsCommon:
+    """Shared bake logic; not a bpy.types.Operator subclass (Blender 5.x breaks nested Operator __init__)."""
+
+    def _execute_bake_lightmaps_body(self, context: bpy.types.Context) -> set[str]:
         hide_nm = bool(getattr(self, "hide_non_lightmapped", True))
         # Find bake targets
         objects: list[bpy.types.Object] = (
@@ -164,7 +168,7 @@ class BakeLightmapsOperator(bpy.types.Operator):
         links.new(diffuse_bsdf.inputs[0], diffuse_tex.outputs[0])
 
 
-class KB_OT_bake_lightmaps_auto(BakeLightmapsOperator):
+class KB_OT_bake_lightmaps_auto(_BakeLightmapsCommon, bpy.types.Operator):
     bl_idname = "kb.bake_lightmaps_auto"
     bl_label = "Bake Lightmaps (auto)"
     bl_description = "Bake lighting and shadows into lightmap textures, hiding non-lightmapped objects from render"
@@ -173,8 +177,16 @@ class KB_OT_bake_lightmaps_auto(BakeLightmapsOperator):
         self.hide_non_lightmapped = True
         return self.execute(context)
 
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.bakelightmaps")
 
-class KB_OT_bake_lightmaps_manual(BakeLightmapsOperator):
+        def _body() -> set[str]:
+            return self._execute_bake_lightmaps_body(context)
+
+        return run_simple_operator_logged(log, "kb.bake_lightmaps_auto", _body)
+
+
+class KB_OT_bake_lightmaps_manual(_BakeLightmapsCommon, bpy.types.Operator):
     bl_idname = "kb.bake_lightmaps_manual"
     bl_label = "Bake Lightmaps (manual)"
     bl_description = "Bake lighting and shadows into lightmap textures, user is responsible for setting object visibility"
@@ -182,3 +194,11 @@ class KB_OT_bake_lightmaps_manual(BakeLightmapsOperator):
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         self.hide_non_lightmapped = False
         return self.execute(context)
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.bakelightmaps")
+
+        def _body() -> set[str]:
+            return self._execute_bake_lightmaps_body(context)
+
+        return run_simple_operator_logged(log, "kb.bake_lightmaps_manual", _body)

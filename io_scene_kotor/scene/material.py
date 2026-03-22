@@ -24,7 +24,9 @@ import bpy
 from bpy_extras import image_utils
 
 from ..constants import UV_MAP_LIGHTMAP, WALKMESH_MATERIALS, NodeName, WalkmeshNodeName
+from ..diagnostic_log import begin_scene_work_span, end_scene_work_span, sanitize_scene_context
 from ..format.tpc.reader import TpcReader
+from ..log_config import get_kb_logger
 from ..ui.props.object import ObjectPropertyGroup
 from ..utils import color_to_hex, float_to_byte, int_to_hex, is_aabb_mesh, is_not_null, logger
 from ..vendor.pykotor_adapter import convert_pykotor_tpc_to_tpcimage, get_use_pykotor_readers, load_tpc_via_pykotor
@@ -38,11 +40,18 @@ def rebuild_object_materials(
     if obj.data is None or not isinstance(obj.data, bpy.types.Mesh):
         logger().warning(f"Object [{obj.name}] is not a mesh, skipping material rebuild")
         return
+    diag = get_kb_logger("scene.material")
+    ctx = sanitize_scene_context(obj.name)
+    span = begin_scene_work_span(diag, "scene.material.rebuild_object_materials", ctx)
+    err = False
     try:
         rebuild_object_materials0(obj, texture_search_paths, lightmap_search_paths)
     except Exception:
+        err = True
         logger().exception(f"Error building object [{obj.name}] materials")
         obj.data.materials.clear()
+    finally:
+        end_scene_work_span(span, error=err)
 
 
 def rebuild_object_materials0(
@@ -52,6 +61,13 @@ def rebuild_object_materials0(
 ) -> None:
     texture_search_paths = [] if texture_search_paths is None else texture_search_paths
     lightmap_search_paths = [] if lightmap_search_paths is None else lightmap_search_paths
+    diag = get_kb_logger("scene.material")
+    diag.debug(
+        "event=scene_material fn=rebuild_object_materials0 obj=%s tex_paths=%s lm_paths=%s",
+        sanitize_scene_context(obj.name),
+        len(texture_search_paths),
+        len(lightmap_search_paths),
+    )
 
     mesh: bpy.types.Armature | bpy.types.Camera | bpy.types.Curve | bpy.types.Curves | bpy.types.GreasePencil | bpy.types.Lattice | bpy.types.Light | bpy.types.LightProbe | bpy.types.Mesh | bpy.types.MetaBall | bpy.types.PointCloud | bpy.types.Speaker | bpy.types.SurfaceCurve | bpy.types.TextCurve | bpy.types.Volume | None = obj.data
     if mesh is None or not isinstance(mesh, bpy.types.Mesh):
@@ -61,6 +77,10 @@ def rebuild_object_materials0(
     mesh.materials.clear()
 
     if is_aabb_mesh(obj):
+        diag.debug(
+            "event=scene_material fn=rebuild_object_materials0_branch branch=walkmesh polys=%s",
+            len(polygon_materials),
+        )
         rebuild_walkmesh_materials(obj)
         mesh.polygons.foreach_set("material_index", polygon_materials)
         return
@@ -70,10 +90,12 @@ def rebuild_object_materials0(
         logger().warning(f"Object [{obj.name}] has no kb property group. Cannot rebuild material.")
         return
     if is_not_null(kb.bitmap):
+        diag.debug("event=scene_material fn=rebuild_object_materials0_branch branch=textured")
         material = get_or_create_material(obj.name)
         mesh.materials.append(material)
         rebuild_material_textured(material, obj, texture_search_paths, lightmap_search_paths)
     else:
+        diag.debug("event=scene_material fn=rebuild_object_materials0_branch branch=solid")
         diffuse = color_to_hex(kb.diffuse)
         alpha = int_to_hex(float_to_byte(kb.alpha))
         material = get_or_create_material(f"D{diffuse}__A{alpha}")
@@ -86,6 +108,11 @@ def rebuild_walkmesh_materials(obj: bpy.types.Object) -> None:
         logger().warning(f"Object [{obj.name}] is not a mesh, skipping walkmesh material rebuild")
         return
     mesh: bpy.types.Mesh = obj.data
+    get_kb_logger("scene.material").debug(
+        "event=scene_material fn=rebuild_walkmesh_materials obj=%s materials=%s",
+        sanitize_scene_context(obj.name),
+        len(WALKMESH_MATERIALS),
+    )
 
     for name, color, _ in WALKMESH_MATERIALS:
         material: bpy.types.Material = get_or_create_material(name)
@@ -526,12 +553,16 @@ def create_image(name: str, search_paths: list[str]) -> bpy.types.Image:
     txi_filename = (name + ".txi").lower()
     tpc_filename = (name + ".tpc").lower()
     for search_path in search_paths:
-        if not os.path.exists(search_path):
+        if not os.path.isdir(search_path):
             continue
         tga_path = None
         txi_path = None
         tpc_path = None
-        for filename in os.listdir(search_path):
+        try:
+            filenames = os.listdir(search_path)
+        except OSError:
+            continue
+        for filename in filenames:
             lower_filename = filename.lower()
             if lower_filename == tga_filename:
                 tga_path = os.path.join(search_path, filename)

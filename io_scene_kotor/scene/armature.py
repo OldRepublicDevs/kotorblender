@@ -25,58 +25,69 @@ from bpy_extras import anim_utils
 from mathutils import Quaternion, Vector
 
 from ..constants import Classification
+from ..diagnostic_log import begin_scene_work_span, end_scene_work_span
+from ..log_config import get_kb_logger
 from ..utils import find_objects, is_char_bone, is_char_dummy, is_skin_mesh
 
 from .animnode import AnimationNode
 
 
 def rebuild_armature(mdl_root: bpy.types.Object) -> bpy.types.Object | None:
-    kb = getattr(mdl_root, "kb", None)
-    if kb is None or kb.classification != Classification.CHARACTER:
-        return None
+    log = get_kb_logger("scene.armature")
+    span = begin_scene_work_span(log, "scene.armature.rebuild_armature", mdl_root.name)
+    err = False
+    try:
+        kb = getattr(mdl_root, "kb", None)
+        if kb is None or kb.classification != Classification.CHARACTER:
+            return None
 
-    # MDL root must have at least one skinmesh
-    skinmeshes = find_objects(mdl_root, is_skin_mesh)
-    if not skinmeshes:
-        return None
+        # MDL root must have at least one skinmesh
+        skinmeshes = find_objects(mdl_root, is_skin_mesh)
+        if not skinmeshes:
+            return None
 
-    # Remove existing armature
-    name = "Armature_" + mdl_root.name
-    if name in bpy.context.collection.objects:
-        armature_obj = bpy.context.collection.objects[name]
-        armature_obj.animation_data_clear()
-        armature = armature_obj.data
-        bpy.context.collection.objects.unlink(armature_obj)
-        bpy.data.armatures.remove(armature)
+        # Remove existing armature
+        name = "Armature_" + mdl_root.name
+        if name in bpy.context.collection.objects:
+            armature_obj = bpy.context.collection.objects[name]
+            armature_obj.animation_data_clear()
+            armature = armature_obj.data
+            bpy.context.collection.objects.unlink(armature_obj)
+            bpy.data.armatures.remove(armature)
 
-    # Create an armature and activate it
-    armature = bpy.data.armatures.new(name)
-    armature.display_type = "STICK"
-    armature_obj = bpy.data.objects.new(name, armature)
-    armature_obj.show_in_front = True
-    bpy.context.collection.objects.link(armature_obj)
+        # Create an armature and activate it
+        armature = bpy.data.armatures.new(name)
+        armature.display_type = "STICK"
+        armature_obj = bpy.data.objects.new(name, armature)
+        armature_obj.show_in_front = True
+        bpy.context.collection.objects.link(armature_obj)
 
-    # Create armature bones
-    bpy.context.scene.frame_set(0)
-    bpy.context.view_layer.objects.active = armature_obj
-    bpy.ops.object.mode_set(mode="EDIT")
-    create_armature_bones(armature, mdl_root)
-    bpy.ops.object.mode_set(mode="OBJECT")
+        # Create armature bones
+        bpy.context.scene.frame_set(0)
+        bpy.context.view_layer.objects.active = armature_obj
+        bpy.ops.object.mode_set(mode="EDIT")
+        create_armature_bones(armature, mdl_root)
+        bpy.ops.object.mode_set(mode="OBJECT")
 
-    # Add Armature modifier to all skinmeshes
-    for mesh in skinmeshes:
-        modifier = None
-        for mod in mesh.modifiers:
-            if mod.type == "ARMATURE":
-                modifier = mod
-                break
-        if not modifier:
-            modifier = mesh.modifiers.new(name="Armature", type="ARMATURE")
-        modifier.object = armature_obj
+        # Add Armature modifier to all skinmeshes
+        for mesh in skinmeshes:
+            modifier = None
+            for mod in mesh.modifiers:
+                if mod.type == "ARMATURE":
+                    modifier = mod
+                    break
+            if not modifier:
+                modifier = mesh.modifiers.new(name="Armature", type="ARMATURE")
+            modifier.object = armature_obj
 
-    bpy.context.view_layer.objects.active = mdl_root
+        bpy.context.view_layer.objects.active = mdl_root
 
-    return armature_obj
+        return armature_obj
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_scene_work_span(span, error=err)
 
 
 def create_armature_bones(
@@ -100,38 +111,58 @@ def apply_object_keyframes(
     mdl_root: bpy.types.Object,
     armature: bpy.types.Object,
 ) -> None:
-    bpy.context.scene.frame_set(0)
-    bpy.context.view_layer.objects.active = armature
-    bpy.ops.object.mode_set(mode="POSE")
+    log = get_kb_logger("scene.armature")
+    ctx = f"{mdl_root.name}->{armature.name}"
+    span = begin_scene_work_span(log, "scene.armature.apply_object_keyframes", ctx)
+    err = False
+    try:
+        bpy.context.scene.frame_set(0)
+        bpy.context.view_layer.objects.active = armature
+        bpy.ops.object.mode_set(mode="POSE")
 
-    anim_data = AnimationNode.get_or_create_animation_data(armature)
-    action = AnimationNode.get_or_create_action(armature.name)
-    if not anim_data.action:
-        anim_data.action = action
-    action_slot = None
-    if bpy.app.version >= (4, 4):
-        action_slot = AnimationNode.get_or_create_action_slot(action, "OBJECT", armature.name)
-        if not anim_data.action_slot:
-            anim_data.action_slot = action_slot
+        anim_data = AnimationNode.get_or_create_animation_data(armature)
+        action = AnimationNode.get_or_create_action(armature.name)
+        if not anim_data.action:
+            anim_data.action = action
+        action_slot = None
+        if bpy.app.version >= (4, 4):
+            action_slot = AnimationNode.get_or_create_action_slot(action, "OBJECT", armature.name)
+            if not anim_data.action_slot:
+                anim_data.action_slot = action_slot
 
-    if bpy.app.version >= (5, 0) and action_slot:
-        channelbag = anim_utils.action_ensure_channelbag_for_slot(action, action_slot)
-        channelbag.fcurves.clear()
-    else:
-        action.fcurves.clear()
+        if bpy.app.version >= (5, 0) and action_slot:
+            channelbag = anim_utils.action_ensure_channelbag_for_slot(action, action_slot)
+            channelbag.fcurves.clear()
+        else:
+            action.fcurves.clear()
 
-    apply_object_keyframes_to_armature(mdl_root, armature, action, armature_action_slot=action_slot)
-    bpy.ops.object.mode_set(mode="OBJECT")
+        apply_object_keyframes_to_armature(mdl_root, armature, action, armature_action_slot=action_slot)
+        bpy.ops.object.mode_set(mode="OBJECT")
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_scene_work_span(span, error=err)
 
 
 def unapply_object_keyframes(
     mdl_root: bpy.types.Object,
     armature_obj: bpy.types.Object,
 ) -> None:
-    bpy.context.scene.frame_set(0)
-    bpy.context.view_layer.objects.active = mdl_root
-    bpy.ops.object.mode_set(mode="OBJECT")
-    unapply_object_keyframes_from_armature(mdl_root, mdl_root.name, armature_obj)
+    log = get_kb_logger("scene.armature")
+    ctx = f"{mdl_root.name}->{armature_obj.name}"
+    span = begin_scene_work_span(log, "scene.armature.unapply_object_keyframes", ctx)
+    err = False
+    try:
+        bpy.context.scene.frame_set(0)
+        bpy.context.view_layer.objects.active = mdl_root
+        bpy.ops.object.mode_set(mode="OBJECT")
+        unapply_object_keyframes_from_armature(mdl_root, mdl_root.name, armature_obj)
+    except BaseException:
+        err = True
+        raise
+    finally:
+        end_scene_work_span(span, error=err)
 
 
 def apply_object_keyframes_to_armature(

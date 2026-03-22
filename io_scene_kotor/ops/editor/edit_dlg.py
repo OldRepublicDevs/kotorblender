@@ -18,15 +18,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import bpy
 from bpy_extras.io_utils import ImportHelper
 
+from ...constants import LogReasonCode
+from ...diagnostic_log import (
+    begin_import_operator_diag,
+    end_import_operator_diag,
+    set_import_invoke_entry,
+)
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import is_pykotor_available
-
-if TYPE_CHECKING:
-    from bpy.stub_internal.rna_enums import OperatorReturnItems
 
 
 class KB_OT_edit_dlg(bpy.types.Operator, ImportHelper):  # pyright: ignore[reportIncompatibleMethodOverride]
@@ -37,10 +39,66 @@ class KB_OT_edit_dlg(bpy.types.Operator, ImportHelper):  # pyright: ignore[repor
     filename_ext = ".dlg"
     filter_glob: bpy.props.StringProperty(default="*.dlg", options={"HIDDEN"})  # pyright: ignore[reportInvalidTypeForm]
 
-    def execute(self, context: bpy.types.Context) -> set[OperatorReturnItems]:
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        set_import_invoke_entry(self)
+        if self.filepath:
+            return self.execute(context)
+        return ImportHelper.invoke(self, context, event)
+
+    def _execute_edit_dlg_core(self, context: bpy.types.Context) -> set[str]:
         if not is_pykotor_available():
             self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
             return {"CANCELLED"}
 
         self.report({"INFO"}, f"Editing DLG file: {self.filepath}")
         return {"FINISHED"}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.editor.edit_dlg")
+        session = begin_import_operator_diag(log, "kb.edit_dlg", self, self.filepath or "")
+        outcome = "FINISHED"
+        work_done = False
+        reason_code = LogReasonCode.OK
+        ret: set[str] = {"CANCELLED"}
+        try:
+            ret = self._execute_edit_dlg_core(context)
+            work_done = ret == {"FINISHED"}
+            outcome = "FINISHED" if work_done else "CANCELLED"
+        except OSError as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = (
+                LogReasonCode.MISSING_FILE
+                if isinstance(ex, FileNotFoundError)
+                else LogReasonCode.IO_ERROR
+            )
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.edit_dlg",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        except Exception as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = LogReasonCode.INTERNAL_ERROR
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.edit_dlg",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        finally:
+            end_import_operator_diag(
+                session,
+                outcome=outcome,
+                work_done=work_done,
+                reason_code=reason_code,
+            )
+        return ret

@@ -1,0 +1,43 @@
+# ##### BEGIN GPL LICENSE BLOCK #####
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# ##### END GPL LICENSE BLOCK #####
+
+from __future__ import annotations
+
+import bpy
+
+
+class KB_UL_tslpatch_package(bpy.types.UIList):
+    """Stub list for Holocron TSLPatchData “files to package” (rows optional; add/remove not wired)."""
+
+    def draw_item(
+        self,
+        context: bpy.types.Context,
+        layout: bpy.types.UILayout,
+        data: object,
+        item: object,
+        icon: int,
+        active_data: object,
+        active_propname: str,
+        index: int = 0,
+    ) -> None:
+        if self.layout_type in {"DEFAULT", "COMPACT"}:
+            label = getattr(item, "label", "") or "(empty)"
+            layout.label(text=str(label))
+        elif self.layout_type in {"GRID"}:
+            layout.alignment = "CENTER"
+            layout.label(text="", icon_value=icon)

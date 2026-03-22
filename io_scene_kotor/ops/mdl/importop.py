@@ -17,14 +17,17 @@
 # ##### END GPL LICENSE BLOCK #####
 from __future__ import annotations
 
-import os
-
 import bpy
 from bpy_extras.io_utils import ImportHelper
 
-from ...constants import ImportOptions
+from ...constants import ImportOptions, LogReasonCode
+from ...diagnostic_log import (
+    begin_import_operator_diag,
+    end_import_operator_diag,
+    set_import_invoke_entry,
+)
 from ...io import mdl
-from ...utils import logger
+from ...log_config import get_kb_logger
 
 
 class KB_OT_import_mdl(bpy.types.Operator, ImportHelper):
@@ -66,11 +69,19 @@ class KB_OT_import_mdl(bpy.types.Operator, ImportHelper):
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         """When filepath is set (e.g. drag-and-drop), run execute(); otherwise open file browser."""
+        set_import_invoke_entry(self)
         if self.filepath:
             return self.execute(context)
         return ImportHelper.invoke(self, context, event)
 
     def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.mdl.importop")
+        session = begin_import_operator_diag(
+            log, "kb.mdlimport", self, self.filepath or ""
+        )
+        outcome = "FINISHED"
+        work_done = False
+        reason_code = LogReasonCode.INTERNAL_ERROR
         options = ImportOptions()
         options.import_geometry = self.import_geometry
         options.import_animations = self.import_animations
@@ -83,8 +94,40 @@ class KB_OT_import_mdl(bpy.types.Operator, ImportHelper):
 
         try:
             mdl.load_mdl(self, self.filepath, options)
-        except Exception as ex:
-            logger().exception(f"Error loading MDL file [{self.filepath}]")
+            work_done = True
+            reason_code = LogReasonCode.OK
+        except OSError as ex:
+            outcome = "ERROR"
+            reason_code = (
+                LogReasonCode.MISSING_FILE
+                if isinstance(ex, FileNotFoundError)
+                else LogReasonCode.IO_ERROR
+            )
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.mdlimport",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
             self.report({"ERROR"}, str(ex))
+        except Exception as ex:
+            outcome = "ERROR"
+            reason_code = LogReasonCode.INTERNAL_ERROR
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.mdlimport",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+        finally:
+            end_import_operator_diag(
+                session,
+                outcome=outcome,
+                work_done=work_done,
+                reason_code=reason_code,
+            )
 
         return {"FINISHED"}

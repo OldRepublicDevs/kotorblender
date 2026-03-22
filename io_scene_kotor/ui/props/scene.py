@@ -22,6 +22,14 @@ import bpy
 from ...constants import GameType, ResourceStorage, ResourceTab
 
 
+def _walkmesh_overlay_ui_update(_self: object, _context: bpy.types.Context) -> None:
+    try:
+        from ...view3d.walkmesh_overlay import tag_all_view3d_redraw
+    except ImportError:
+        return
+    tag_all_view3d_redraw()
+
+
 class ModulePropertyGroup(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Module Name")  # pyright: ignore[reportInvalidTypeForm]
 
@@ -49,6 +57,12 @@ class ResourceEntryPropertyGroup(bpy.types.PropertyGroup):
 class VisEdgePropertyGroup(bpy.types.PropertyGroup):
     room_a: bpy.props.StringProperty(name="Room A", default="")  # pyright: ignore[reportInvalidTypeForm]
     room_b: bpy.props.StringProperty(name="Room B", default="")  # pyright: ignore[reportInvalidTypeForm]
+
+
+class TslPatchPackageFilePropertyGroup(bpy.types.PropertyGroup):
+    """Stub row for TSLPatchData package file list (Holocron parity; add/remove not wired yet)."""
+
+    label: bpy.props.StringProperty(name="File", default="")  # pyright: ignore[reportInvalidTypeForm]
 
 
 class ScenePropertyGroup(bpy.types.PropertyGroup):
@@ -115,6 +129,39 @@ class ScenePropertyGroup(bpy.types.PropertyGroup):
     are_tag: bpy.props.StringProperty(name="ARE Tag", default="")  # pyright: ignore[reportInvalidTypeForm]
     are_name: bpy.props.StringProperty(name="ARE Name", default="")  # pyright: ignore[reportInvalidTypeForm]
 
+    # Walkmesh x-ray overlay (GPU, all AABB walkmeshes in the scene)
+    kotor_walkmesh_overlay: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Walkmesh Overlay",
+        description="Draw semi-transparent walkmesh triangles and wire edges on top of the scene",
+        default=False,
+        update=_walkmesh_overlay_ui_update,
+    )
+    kotor_walkmesh_overlay_fill: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Overlay Fill",
+        default=True,
+        update=_walkmesh_overlay_ui_update,
+    )
+    kotor_walkmesh_overlay_edges: bpy.props.BoolProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Overlay Edges",
+        default=True,
+        update=_walkmesh_overlay_ui_update,
+    )
+    kotor_walkmesh_overlay_alpha: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Overlay Strength",
+        description="Multiplier for hull transparency",
+        default=1.0,
+        min=0.0,
+        max=1.0,
+        update=_walkmesh_overlay_ui_update,
+    )
+    kotor_walkmesh_overlay_edge_alpha: bpy.props.FloatProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Edge Alpha",
+        default=0.55,
+        min=0.0,
+        max=1.0,
+        update=_walkmesh_overlay_ui_update,
+    )
+
     # Module validation / designer
     last_validation_report: bpy.props.StringProperty(name="Last Validation", default="", maxlen=65535)  # pyright: ignore[reportInvalidTypeForm]
     pack_source_directory: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
@@ -139,6 +186,30 @@ class ScenePropertyGroup(bpy.types.PropertyGroup):
         subtype="FILE_PATH",
         default="",
     )
+    tslpatchdata_folder: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="TSLPatchData Folder",
+        description="Folder containing changes.ini (tslpatchdata root)",
+        subtype="DIR_PATH",
+        default="",
+    )
+    tslpatchdata_mod_name: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Mod Name",
+        description="HoloPatcher [settings] modname (filled when loading INI when present)",
+        default="",
+    )
+    tslpatchdata_mod_author: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="Author",
+        description="HoloPatcher [settings] author when present in INI",
+        default="",
+    )
+    tslpatchdata_ini_body: bpy.props.StringProperty(  # pyright: ignore[reportInvalidTypeForm]
+        name="changes.ini Text",
+        description="Raw content of changes.ini (load/save from TSLPatchData panel)",
+        default="",
+        maxlen=65535,
+    )
+    tslpatch_package_list: bpy.props.CollectionProperty(type=TslPatchPackageFilePropertyGroup)  # pyright: ignore[reportInvalidTypeForm]
+    tslpatch_package_list_idx: bpy.props.IntProperty(name="Package File Index", default=0)  # pyright: ignore[reportInvalidTypeForm]
     tslpatchdata_report: bpy.props.StringProperty(name="TSLPatch Report", default="", maxlen=65535)  # pyright: ignore[reportInvalidTypeForm]
 
     # Timeline / sequencing (lightweight notes per scene)

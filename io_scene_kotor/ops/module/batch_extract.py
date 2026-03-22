@@ -24,6 +24,8 @@ import shutil
 import bpy
 
 from ...constants import ResourceStorage
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import is_pykotor_available
 from .resource_helpers import resource_entry_bytes, write_bytes_to_filepath
 
@@ -47,40 +49,45 @@ class KB_OT_batch_extract_resources(bpy.types.Operator):
         self.layout.prop(self, "dest_directory")
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        if not is_pykotor_available():
-            self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
-            return {"CANCELLED"}
+        log = get_kb_logger("ops.module.batch_extract")
 
-        dest = (self.dest_directory or "").strip()
-        if not dest or not os.path.isdir(dest):
-            self.report({"ERROR"}, "Choose a valid output folder.")
-            return {"CANCELLED"}
+        def _body() -> set[str]:
+            if not is_pykotor_available():
+                self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
+                return {"CANCELLED"}
 
-        scene = context.scene
-        kb = scene.kb
-        n_ok = 0
-        n_fail = 0
-        for entry in kb.resource_list:
-            if not entry.bulk_select:
-                continue
-            fname = f"{entry.resref}.{entry.restype_ext}".strip(".")
-            out_path = os.path.join(dest, fname)
-            try:
-                if (
-                    entry.storage == ResourceStorage.LOOSE
-                    and entry.loose_path
-                    and os.path.isfile(entry.loose_path)
-                ):
-                    shutil.copy2(entry.loose_path, out_path)
-                else:
-                    data = resource_entry_bytes(entry)
-                    if not data:
-                        n_fail += 1
-                        continue
-                    write_bytes_to_filepath(data, out_path)
-                n_ok += 1
-            except OSError:
-                n_fail += 1
+            dest = (self.dest_directory or "").strip()
+            if not dest or not os.path.isdir(dest):
+                self.report({"ERROR"}, "Choose a valid output folder.")
+                return {"CANCELLED"}
 
-        self.report({"INFO"}, f"Batch extract: {n_ok} ok, {n_fail} failed.")
-        return {"FINISHED"}
+            scene = context.scene
+            kb = scene.kb
+            n_ok = 0
+            n_fail = 0
+            for entry in kb.resource_list:
+                if not entry.bulk_select:
+                    continue
+                fname = f"{entry.resref}.{entry.restype_ext}".strip(".")
+                out_path = os.path.join(dest, fname)
+                try:
+                    if (
+                        entry.storage == ResourceStorage.LOOSE
+                        and entry.loose_path
+                        and os.path.isfile(entry.loose_path)
+                    ):
+                        shutil.copy2(entry.loose_path, out_path)
+                    else:
+                        data = resource_entry_bytes(entry)
+                        if not data:
+                            n_fail += 1
+                            continue
+                        write_bytes_to_filepath(data, out_path)
+                    n_ok += 1
+                except OSError:
+                    n_fail += 1
+
+            self.report({"INFO"}, f"Batch extract: {n_ok} ok, {n_fail} failed.")
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.batch_extract_resources", _body)

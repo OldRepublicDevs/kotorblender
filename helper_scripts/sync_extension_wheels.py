@@ -5,8 +5,10 @@ io_scene_kotor/wheels/*.whl (sorted). Run after ``pip wheel pykotor -w io_scene_
 
 Blender 4.4+ requires explicit wheel filenames (no globs).
 """
+
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -16,7 +18,7 @@ MANIFEST = REPO_ROOT / "io_scene_kotor" / "blender_manifest.toml"
 
 
 def _replace_wheels_array(content: str, wheel_basenames: list[str]) -> str:
-    m = re.search(r"^wheels\s*=\s*\[", content, re.MULTILINE)
+    m: re.Match[str] | None = re.search(r"^wheels\s*=\s*\[", content, re.MULTILINE)
     if not m:
         msg = "Could not find 'wheels = [' in blender_manifest.toml"
         raise ValueError(msg)
@@ -27,7 +29,7 @@ def _replace_wheels_array(content: str, wheel_basenames: list[str]) -> str:
         msg = "internal: expected '[' after wheels ="
         raise ValueError(msg)
     depth = 0
-    end = None
+    end: int | None = None
     for j in range(bracket_open, len(content)):
         c = content[j]
         if c == "[":

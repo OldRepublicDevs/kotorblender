@@ -25,6 +25,8 @@ import bpy
 from bpy_extras import anim_utils
 
 from ..constants import ANIM_REST_POSE_OFFSET, NodeType
+from ..diagnostic_log import sanitize_scene_context
+from ..log_config import get_kb_logger
 from ..utils import frame_to_time, is_close, time_to_frame
 
 
@@ -200,6 +202,16 @@ class AnimationNode:
         root_name: str,
         animscale: float,
     ) -> None:
+        n_channels = sum(1 for label, data in self.keyframes.items() if data and label in LABEL_TO_PROPERTY)
+        get_kb_logger("scene.animnode").debug(
+            "event=scene_animnode fn=AnimationNode.add_keyframes_to_object node_num=%s obj=%s obj_type=%s channels=%s frames=%s..%s",
+            self.node_number,
+            sanitize_scene_context(obj.name),
+            obj.type,
+            n_channels,
+            getattr(anim, "frame_start", ""),
+            getattr(anim, "frame_end", ""),
+        )
         for label, data in self.keyframes.items():
             if not data or label not in LABEL_TO_PROPERTY:
                 continue

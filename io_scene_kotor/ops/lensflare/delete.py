@@ -19,6 +19,9 @@ from __future__ import annotations
 
 import bpy
 
+from ...diagnostic_log import run_simple_operator_logged
+from ...log_config import get_kb_logger
+
 
 class KB_OT_delete_lens_flare(bpy.types.Operator):
     bl_idname = "kb.delete_lens_flare"
@@ -48,20 +51,24 @@ class KB_OT_delete_lens_flare(bpy.types.Operator):
         return True
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        obj: bpy.types.Object | None = context.object
-        if obj is None:
-            self.report({"ERROR"}, "No object selected")
-            return {"CANCELLED"}
-        kb = getattr(obj, "kb", None)
-        if kb is None:
-            self.report({"ERROR"}, "Object.kb is None")
-            return {"CANCELLED"}
-        flare_list = kb.flare_list
-        flare_list_idx = kb.flare_list_idx
+        log = get_kb_logger("ops.lensflare.delete")
 
-        if flare_list_idx == len(flare_list) - 1 and flare_list_idx > 0:
-            kb.flare_list_idx = flare_list_idx - 1
+        def _body() -> set[str]:
+            obj: bpy.types.Object | None = context.object
+            if obj is None:
+                self.report({"ERROR"}, "No object selected")
+                return {"CANCELLED"}
+            kb = getattr(obj, "kb", None)
+            if kb is None:
+                self.report({"ERROR"}, "Object.kb is None")
+                return {"CANCELLED"}
+            flare_list = kb.flare_list
+            flare_list_idx = kb.flare_list_idx
 
-        flare_list.remove(flare_list_idx)
+            if flare_list_idx == len(flare_list) - 1 and flare_list_idx > 0:
+                kb.flare_list_idx = flare_list_idx - 1
 
-        return {"FINISHED"}
+            flare_list.remove(flare_list_idx)
+            return {"FINISHED"}
+
+        return run_simple_operator_logged(log, "kb.delete_lens_flare", _body)

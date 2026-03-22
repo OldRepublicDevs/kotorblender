@@ -21,6 +21,13 @@ from __future__ import annotations
 import bpy
 from bpy_extras.io_utils import ExportHelper
 
+from ...constants import LogReasonCode
+from ...diagnostic_log import (
+    begin_import_operator_diag,
+    end_import_operator_diag,
+    set_filepath_invoke_entry,
+)
+from ...log_config import get_kb_logger
 from ...vendor.pykotor_adapter import is_pykotor_available
 
 
@@ -32,10 +39,66 @@ class KB_OT_new_uts(bpy.types.Operator, ExportHelper):
     filename_ext = ".uts"
     filter_glob: bpy.props.StringProperty(default="*.uts", options={"HIDDEN"})
 
-    def execute(self, context: bpy.types.Context) -> set[str]:
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        set_filepath_invoke_entry(self)
+        if self.filepath:
+            return self.execute(context)
+        return ExportHelper.invoke(self, context, event)
+
+    def _execute_new_uts_core(self, context: bpy.types.Context) -> set[str]:
         if not is_pykotor_available():
             self.report({"ERROR"}, "PyKotor is not available. Install PyKotor to use this feature.")
             return {"CANCELLED"}
 
         self.report({"INFO"}, f"Created new UTS file: {self.filepath}")
         return {"FINISHED"}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        log = get_kb_logger("ops.resource.new_uts")
+        session = begin_import_operator_diag(log, "kb.new_uts", self, self.filepath or "")
+        outcome = "FINISHED"
+        work_done = False
+        reason_code = LogReasonCode.OK
+        ret: set[str] = {"CANCELLED"}
+        try:
+            ret = self._execute_new_uts_core(context)
+            work_done = ret == {"FINISHED"}
+            outcome = "FINISHED" if work_done else "CANCELLED"
+        except OSError as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = (
+                LogReasonCode.MISSING_FILE
+                if isinstance(ex, FileNotFoundError)
+                else LogReasonCode.IO_ERROR
+            )
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.new_uts",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        except Exception as ex:
+            outcome = "ERROR"
+            work_done = False
+            reason_code = LogReasonCode.INTERNAL_ERROR
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.new_uts",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+            ret = {"CANCELLED"}
+        finally:
+            end_import_operator_diag(
+                session,
+                outcome=outcome,
+                work_done=work_done,
+                reason_code=reason_code,
+            )
+        return ret

@@ -23,8 +23,20 @@ import os
 import bpy
 from bpy_extras.io_utils import ExportHelper
 
+from ...constants import LogReasonCode
+from ...diagnostic_log import (
+    begin_import_operator_diag,
+    end_import_operator_diag,
+    set_filepath_invoke_entry,
+)
 from ...format.gff.writer import GffWriter
-from ...vendor.pykotor_adapter import convert_tree_to_pykotor_gff, get_use_pykotor_readers, is_pykotor_available, save_gff_via_pykotor
+from ...log_config import get_kb_logger
+from ...vendor.pykotor_adapter import (
+    convert_tree_to_pykotor_gff,
+    get_use_pykotor_readers,
+    is_pykotor_available,
+    save_gff_via_pykotor,
+)
 
 
 class KB_OT_new_gff(bpy.types.Operator, ExportHelper):
@@ -35,44 +47,81 @@ class KB_OT_new_gff(bpy.types.Operator, ExportHelper):
     filename_ext = ".gff"
     filter_glob: bpy.props.StringProperty(default="*.gff", options={"HIDDEN"})
 
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
+        set_filepath_invoke_entry(self)
+        if self.filepath:
+            return self.execute(context)
+        return ExportHelper.invoke(self, context, event)
+
     def execute(self, context: bpy.types.Context) -> set[str]:
-        if os.path.exists(self.filepath):
-            self.report({"WARNING"}, f"File already exists: {self.filepath}")
+        log = get_kb_logger("ops.resource.new_gff")
+        session = begin_import_operator_diag(log, "kb.new_gff", self, self.filepath or "")
+        outcome = "FINISHED"
+        work_done = False
+        reason_code = LogReasonCode.INTERNAL_ERROR
+        try:
+            if os.path.exists(self.filepath):
+                self.report({"WARNING"}, f"File already exists: {self.filepath}")
 
-        # Create empty GFF tree
-        tree = {
-            "_type": 0xFFFFFFFF,
-            "_fields": {},
-        }
+            tree = {
+                "_type": 0xFFFFFFFF,
+                "_fields": {},
+            }
 
-        # Infer file type from filename
-        file_type = os.path.splitext(os.path.basename(self.filepath))[0].upper()[:4]
-        if len(file_type) < 4:
-            file_type = "GFF "
+            file_type = os.path.splitext(os.path.basename(self.filepath))[0].upper()[:4]
+            if len(file_type) < 4:
+                file_type = "GFF "
 
-        # Save using PyKotor or current writer
-        if get_use_pykotor_readers() and is_pykotor_available():
-            pykotor_gff = convert_tree_to_pykotor_gff(tree, file_type)
-            if pykotor_gff:
-                if save_gff_via_pykotor(pykotor_gff, self.filepath):
+            if get_use_pykotor_readers() and is_pykotor_available():
+                pykotor_gff = convert_tree_to_pykotor_gff(tree, file_type)
+                if pykotor_gff and save_gff_via_pykotor(pykotor_gff, self.filepath):
                     self.report({"INFO"}, f"Created new GFF file: {self.filepath}")
-                    return {"FINISHED"}
-            # Fallback to current writer
-            try:
+                    work_done = True
+                    reason_code = LogReasonCode.OK
+                else:
+                    saver = GffWriter(tree, self.filepath, file_type)
+                    saver.save()
+                    self.report({"INFO"}, f"Created new GFF file: {self.filepath}")
+                    work_done = True
+                    reason_code = LogReasonCode.OK
+            else:
                 saver = GffWriter(tree, self.filepath, file_type)
                 saver.save()
                 self.report({"INFO"}, f"Created new GFF file: {self.filepath}")
-                return {"FINISHED"}
-            except Exception as e:
-                self.report({"ERROR"}, f"Failed to create GFF (PyKotor and fallback failed): {e}")
-                return {"CANCELLED"}
-        else:
-            # Use current writer
-            try:
-                saver = GffWriter(tree, self.filepath, file_type)
-                saver.save()
-                self.report({"INFO"}, f"Created new GFF file: {self.filepath}")
-                return {"FINISHED"}
-            except Exception as e:
-                self.report({"ERROR"}, f"Failed to create GFF: {e}")
-                return {"CANCELLED"}
+                work_done = True
+                reason_code = LogReasonCode.OK
+        except OSError as ex:
+            outcome = "ERROR"
+            reason_code = (
+                LogReasonCode.MISSING_FILE
+                if isinstance(ex, FileNotFoundError)
+                else LogReasonCode.IO_ERROR
+            )
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.new_gff",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, str(ex))
+        except Exception as ex:
+            outcome = "ERROR"
+            reason_code = LogReasonCode.INTERNAL_ERROR
+            log.exception(
+                "event=op_error operator_id=%s run_id=%s reason_code=%s",
+                "kb.new_gff",
+                session.run_id,
+                reason_code.value,
+                exc_info=True,
+            )
+            self.report({"ERROR"}, f"Failed to create GFF: {ex}")
+        finally:
+            end_import_operator_diag(
+                session,
+                outcome=outcome,
+                work_done=work_done,
+                reason_code=reason_code,
+            )
+
+        return {"FINISHED"} if work_done else {"CANCELLED"}

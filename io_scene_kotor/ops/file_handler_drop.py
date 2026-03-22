@@ -21,6 +21,10 @@
 When users drag .mdl, .lyt, .pth, .wok, .pwk, .dwk, or .mdl.ascii files onto the 3D View (or
 Outliner in ViewLayer mode), Blender invokes the corresponding import
 operator with the dropped file path. Requires Blender 3.2+ (FileHandler API).
+
+Diagnostics: import operators log ``event=op_start`` with ``entry=file_drop`` when
+``filepath`` is preset on :meth:`invoke` (typical for these handlers). See
+:mod:`io_scene_kotor.diagnostic_log`.
 """
 
 from __future__ import annotations
