@@ -25,8 +25,7 @@ from ..utils import is_null, is_mesh_type
 
 
 class BakeLightmapsOperator(bpy.types.Operator):
-    def _init__(self):
-        self.hide_non_lightmapped = True
+    hide_non_lightmapped = True
 
     def execute(self, context):
         # Find bake targets
@@ -147,8 +146,7 @@ class KB_OT_bake_lightmaps_auto(BakeLightmapsOperator):
     bl_label = "Bake Lightmaps (auto)"
     bl_description = "Bake lighting and shadows into lightmap textures, hiding non-lightmapped objects from render"
 
-    def __init__(self):
-        self.hide_non_lightmapped = True
+    hide_non_lightmapped = True
 
 
 class KB_OT_bake_lightmaps_manual(BakeLightmapsOperator):
@@ -156,5 +154,4 @@ class KB_OT_bake_lightmaps_manual(BakeLightmapsOperator):
     bl_label = "Bake Lightmaps (manual)"
     bl_description = "Bake lighting and shadows into lightmap textures, user is responsible for setting object visibility"
 
-    def __init__(self):
-        self.hide_non_lightmapped = False
+    hide_non_lightmapped = False
