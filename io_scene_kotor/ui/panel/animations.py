@@ -18,7 +18,7 @@
 
 import bpy
 
-from ...utils import is_mdl_root, is_skin_mesh, find_objects
+from ...utils import find_objects, is_mdl_root, is_skin_mesh
 
 
 class KB_PT_animations(bpy.types.Panel):
@@ -80,11 +80,7 @@ class KB_PT_animations_events(bpy.types.Panel):
     def poll(cls, context):
         obj = context.object
         anim_list_idx = obj.kb.anim_list_idx
-        return (
-            is_mdl_root(obj)
-            and anim_list_idx >= 0
-            and anim_list_idx < len(obj.kb.anim_list)
-        )
+        return is_mdl_root(obj) and anim_list_idx >= 0 and anim_list_idx < len(obj.kb.anim_list)
 
     def draw(self, context):
         obj = context.object
@@ -94,9 +90,7 @@ class KB_PT_animations_events(bpy.types.Panel):
         # Event List
         anim = obj.kb.anim_list[obj.kb.anim_list_idx]
         row = layout.row()
-        row.template_list(
-            "UI_UL_list", "anim_events", anim, "event_list", anim, "event_list_idx"
-        )
+        row.template_list("UI_UL_list", "anim_events", anim, "event_list", anim, "event_list_idx")
         col = row.column(align=True)
         col.operator("kb.add_anim_event", text="", icon="ADD")
         col.operator("kb.delete_anim_event", text="", icon="REMOVE")
@@ -123,9 +117,7 @@ class KB_PT_animations_armature(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         mdl_root = context.object
-        return is_mdl_root(mdl_root) and find_objects(
-            mdl_root, lambda obj: is_skin_mesh(obj)
-        )
+        return is_mdl_root(mdl_root) and find_objects(mdl_root, lambda obj: is_skin_mesh(obj))
 
     def draw(self, context):
         layout = self.layout

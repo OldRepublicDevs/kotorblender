@@ -53,4 +53,4 @@ class KB_OT_delete_lens_flare(bpy.types.Operator):
 
         flare_list.remove(flare_list_idx)
 
-        return{"FINISHED"}
+        return {"FINISHED"}

@@ -37,7 +37,5 @@ class KB_OT_delete_path_connection(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        context.object.kb.path_connection_list.remove(
-            context.object.kb.path_connection_idx
-        )
+        context.object.kb.path_connection_list.remove(context.object.kb.path_connection_idx)
         return {"FINISHED"}

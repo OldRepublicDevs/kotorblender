@@ -1,4 +1,5 @@
 import os
+
 import bpy
 
 offset = int(os.environ["OFFSET"]) if "OFFSET" in os.environ else 0
@@ -13,9 +14,7 @@ def list_model_names(dir):
             filter(lambda path: path.endswith(".mdl"), os.listdir(dir)),
         )
     )
-    return (
-        [] if len(names) <= offset else names[offset : min(offset + limit, len(names))]
-    )
+    return [] if len(names) <= offset else names[offset : min(offset + limit, len(names))]
 
 
 data_dir = os.environ["DATA_DIR"]

@@ -19,9 +19,8 @@
 import math
 import re
 
-from ..constants import DummyType, ANIM_PADDING, NULL
-from ..utils import find_object, time_to_frame, frame_to_time
-
+from ..constants import ANIM_PADDING, NULL, DummyType
+from ..utils import find_object, frame_to_time, time_to_frame
 from .animnode import AnimationNode
 
 
@@ -44,9 +43,7 @@ class Animation:
 
         self.add_nodes_to_objects(list_anim, self.root_node, mdl_root, animscale)
 
-    def add_nodes_to_objects(
-        self, anim, node, mdl_root, animscale, below_animroot=False
-    ):
+    def add_nodes_to_objects(self, anim, node, mdl_root, animscale, below_animroot=False):
         obj = find_object(mdl_root, lambda o: o.kb.node_number == node.node_number)
         if obj:
             if not below_animroot and obj.name.lower() == mdl_root.kb.animroot.lower():
@@ -58,9 +55,7 @@ class Animation:
             self.add_nodes_to_objects(anim, child, mdl_root, animscale, below_animroot)
 
     @classmethod
-    def append_to_object(
-        cls, mdl_root, name, length=0.0, transtime=0.25, animroot=NULL
-    ):
+    def append_to_object(cls, mdl_root, name, length=0.0, transtime=0.25, animroot=NULL):
         anim = mdl_root.kb.anim_list.add()
         anim.name = name
         anim.root = animroot

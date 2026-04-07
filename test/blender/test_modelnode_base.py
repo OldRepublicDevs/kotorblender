@@ -12,6 +12,7 @@ import os
 import sys
 
 import bpy
+
 from mathutils import Quaternion
 
 # ---------------------------------------------------------------------------
@@ -94,7 +95,9 @@ def test_set_object_data():
     if ok:
         print("  PASS test_set_object_data")
     else:
-        print(f"  FAIL test_set_object_data: loc={list(obj.location)}, scale={list(obj.scale)}, kb.node_number={obj.kb.node_number}")
+        print(
+            f"  FAIL test_set_object_data: loc={list(obj.location)}, scale={list(obj.scale)}, kb.node_number={obj.kb.node_number}"
+        )
     return ok
 
 

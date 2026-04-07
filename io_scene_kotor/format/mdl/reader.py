@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import math
 import os
+
 from math import sqrt
 from typing import TYPE_CHECKING
 
@@ -157,7 +158,9 @@ class MdlReader:
 
         mdx_size = self.mdl.read_uint32()
         if mdx_size != self.mdx_size:
-            raise RuntimeError("MDX size mismatch: expected={}, actual={}".format(self.mdx_size, mdx_size))
+            raise RuntimeError(
+                "MDX size mismatch: expected={}, actual={}".format(self.mdx_size, mdx_size)
+            )
 
         _mdx_offset = self.mdl.read_uint32()
         self.name_arr = self.get_array_def()
@@ -193,7 +196,11 @@ class MdlReader:
         children_arr = self.get_array_def()
 
         if name_index >= len(self.names):
-            raise RuntimeError("Node name index out of range: index={}, count={}".format(name_index, len(self.names)))
+            raise RuntimeError(
+                "Node name index out of range: index={}, count={}".format(
+                    name_index, len(self.names)
+                )
+            )
         name = self.names[name_index]
         self.node_names.append(name)
 
@@ -223,7 +230,11 @@ class MdlReader:
         controller_data_arr = self.get_array_def()
 
         if name_index >= len(self.names):
-            raise RuntimeError("Node name index out of range: index={}, count={}".format(name_index, len(self.names)))
+            raise RuntimeError(
+                "Node name index out of range: index={}, count={}".format(
+                    name_index, len(self.names)
+                )
+            )
         name = self.names[name_index]
         node_type: str = self.get_node_type(type_flags)
         node: BaseNode = self.new_node(name, node_type)
@@ -238,7 +249,11 @@ class MdlReader:
         node.export_order = export_order
         node.position = tuple(position)
         node.orientation = tuple(orientation)
-        node.from_root = node.from_root @ Matrix.Translation(Vector(position)) @ Quaternion(orientation).to_matrix().to_4x4()
+        node.from_root = (
+            node.from_root
+            @ Matrix.Translation(Vector(position))
+            @ Quaternion(orientation).to_matrix().to_4x4()
+        )
 
         if offset == self.off_anim_root and self.model:
             self.model.animroot = name
@@ -308,7 +323,11 @@ class MdlReader:
             node.loop = loop != 0  # pyright: ignore[reportAttributeAccessIssue]
             node.renderorder = render_order  # pyright: ignore[reportAttributeAccessIssue]
             node.frame_blending = frame_blending != 0  # pyright: ignore[reportAttributeAccessIssue]
-            node.depth_texture_name = depth_texture_name if len(depth_texture_name) > 0 and depth_texture_name.lower() != "null" else NULL  # pyright: ignore[reportAttributeAccessIssue]
+            node.depth_texture_name = (
+                depth_texture_name
+                if len(depth_texture_name) > 0 and depth_texture_name.lower() != "null"
+                else NULL
+            )  # pyright: ignore[reportAttributeAccessIssue]
             # flags
             node.p2p = flags & EMITTER_FLAG_P2P != 0  # pyright: ignore[reportAttributeAccessIssue]
             node.p2p_sel = flags & EMITTER_FLAG_P2P_SEL != 0  # pyright: ignore[reportAttributeAccessIssue]
@@ -458,15 +477,43 @@ class MdlReader:
         if controller_arr.count > 0:
             controllers = self.load_controllers(controller_arr, controller_data_arr)
             if type_flags & NODE_MESH:
-                node.alpha = controllers[CTRL_MESH_ALPHA][0][1] if CTRL_MESH_ALPHA in controllers else 1.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.scale = controllers[CTRL_MESH_SCALE][0][1] if CTRL_MESH_SCALE in controllers else 1.0
-                node.selfillumcolor = controllers[CTRL_MESH_SELFILLUMCOLOR][0][1:] if CTRL_MESH_SELFILLUMCOLOR in controllers else [0.0] * 3  # pyright: ignore[reportAttributeAccessIssue]
+                node.alpha = (
+                    controllers[CTRL_MESH_ALPHA][0][1] if CTRL_MESH_ALPHA in controllers else 1.0
+                )  # pyright: ignore[reportAttributeAccessIssue]
+                node.scale = (
+                    controllers[CTRL_MESH_SCALE][0][1] if CTRL_MESH_SCALE in controllers else 1.0
+                )
+                node.selfillumcolor = (
+                    controllers[CTRL_MESH_SELFILLUMCOLOR][0][1:]
+                    if CTRL_MESH_SELFILLUMCOLOR in controllers
+                    else [0.0] * 3
+                )  # pyright: ignore[reportAttributeAccessIssue]
             elif type_flags & NODE_LIGHT:
-                node.radius = controllers[CTRL_LIGHT_RADIUS][0][1] if CTRL_LIGHT_RADIUS in controllers else 1.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.shadowradius = controllers[CTRL_LIGHT_SHADOWRADIUS][0][1] if CTRL_LIGHT_SHADOWRADIUS in controllers else 0.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.verticaldisplacement = controllers[CTRL_LIGHT_VERTICALDISPLACEMENT][0][1] if CTRL_LIGHT_VERTICALDISPLACEMENT in controllers else 0.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.multiplier = controllers[CTRL_LIGHT_MULTIPLIER][0][1] if CTRL_LIGHT_MULTIPLIER in controllers else 1.0  # pyright: ignore[reportAttributeAccessIssue]
-                node.color = controllers[CTRL_LIGHT_COLOR][0][1:] if CTRL_LIGHT_COLOR in controllers else [1.0] * 3  # pyright: ignore[reportAttributeAccessIssue]
+                node.radius = (
+                    controllers[CTRL_LIGHT_RADIUS][0][1]
+                    if CTRL_LIGHT_RADIUS in controllers
+                    else 1.0
+                )  # pyright: ignore[reportAttributeAccessIssue]
+                node.shadowradius = (
+                    controllers[CTRL_LIGHT_SHADOWRADIUS][0][1]
+                    if CTRL_LIGHT_SHADOWRADIUS in controllers
+                    else 0.0
+                )  # pyright: ignore[reportAttributeAccessIssue]
+                node.verticaldisplacement = (
+                    controllers[CTRL_LIGHT_VERTICALDISPLACEMENT][0][1]
+                    if CTRL_LIGHT_VERTICALDISPLACEMENT in controllers
+                    else 0.0
+                )  # pyright: ignore[reportAttributeAccessIssue]
+                node.multiplier = (
+                    controllers[CTRL_LIGHT_MULTIPLIER][0][1]
+                    if CTRL_LIGHT_MULTIPLIER in controllers
+                    else 1.0
+                )  # pyright: ignore[reportAttributeAccessIssue]
+                node.color = (
+                    controllers[CTRL_LIGHT_COLOR][0][1:]
+                    if CTRL_LIGHT_COLOR in controllers
+                    else [1.0] * 3
+                )  # pyright: ignore[reportAttributeAccessIssue]
             elif type_flags & NODE_EMITTER:
                 for val, key, dim in EMITTER_CONTROLLER_KEYS:
                     if val not in controllers:
@@ -481,7 +528,9 @@ class MdlReader:
             node.flare_list.sizes = [self.mdl.read_float() for _ in range(flare_size_arr.count)]  # pyright: ignore[reportAttributeAccessIssue]
 
             self.mdl.seek(MDL_OFFSET + flare_position_arr.offset)
-            node.flare_list.positions = [self.mdl.read_float() for _ in range(flare_position_arr.count)]  # pyright: ignore[reportAttributeAccessIssue]
+            node.flare_list.positions = [
+                self.mdl.read_float() for _ in range(flare_position_arr.count)
+            ]  # pyright: ignore[reportAttributeAccessIssue]
 
             self.mdl.seek(MDL_OFFSET + flare_color_shift_arr.offset)
             for _ in range(flare_color_shift_arr.count):
@@ -690,7 +739,11 @@ class MdlReader:
         controller_data_arr = self.get_array_def()
 
         if name_index >= len(self.names):
-            raise RuntimeError("Animation node name index out of range: index={}, count={}".format(name_index, len(self.names)))
+            raise RuntimeError(
+                "Animation node name index out of range: index={}, count={}".format(
+                    name_index, len(self.names)
+                )
+            )
         name = self.names[name_index]
         node = AnimationNode(name)
         node.node_number = node_number
@@ -704,24 +757,38 @@ class MdlReader:
                 if CTRL_BASE_POSITION in controllers:
                     node.keyframes["position"] = [row for row in controllers[CTRL_BASE_POSITION]]
                 if CTRL_BASE_ORIENTATION in controllers:
-                    orientations = [self.orientation_controller_to_quaternion(row[1:]) for row in controllers[CTRL_BASE_ORIENTATION]]
-                    node.keyframes["orientation"] = [[row[0]] + orientations[i] for i, row in enumerate(controllers[CTRL_BASE_ORIENTATION])]
+                    orientations = [
+                        self.orientation_controller_to_quaternion(row[1:])
+                        for row in controllers[CTRL_BASE_ORIENTATION]
+                    ]
+                    node.keyframes["orientation"] = [
+                        [row[0]] + orientations[i]
+                        for i, row in enumerate(controllers[CTRL_BASE_ORIENTATION])
+                    ]
                 if isinstance(supernode, TrimeshNode):
                     if CTRL_MESH_ALPHA in controllers:
                         node.keyframes["alpha"] = [row for row in controllers[CTRL_MESH_ALPHA]]
                     if CTRL_MESH_SCALE in controllers:
                         node.keyframes["scale"] = [row for row in controllers[CTRL_MESH_SCALE]]
                     if CTRL_MESH_SELFILLUMCOLOR in controllers:
-                        node.keyframes["selfillumcolor"] = [row for row in controllers[CTRL_MESH_SELFILLUMCOLOR]]
+                        node.keyframes["selfillumcolor"] = [
+                            row for row in controllers[CTRL_MESH_SELFILLUMCOLOR]
+                        ]
                 if isinstance(supernode, LightNode):
                     if CTRL_LIGHT_RADIUS in controllers:
                         node.keyframes["radius"] = [row for row in controllers[CTRL_LIGHT_RADIUS]]
                     if CTRL_LIGHT_SHADOWRADIUS in controllers:
-                        node.keyframes["shadowradius"] = [row for row in controllers[CTRL_LIGHT_SHADOWRADIUS]]
+                        node.keyframes["shadowradius"] = [
+                            row for row in controllers[CTRL_LIGHT_SHADOWRADIUS]
+                        ]
                     if CTRL_LIGHT_VERTICALDISPLACEMENT in controllers:
-                        node.keyframes["verticaldisplacement"] = [row for row in controllers[CTRL_LIGHT_VERTICALDISPLACEMENT]]
+                        node.keyframes["verticaldisplacement"] = [
+                            row for row in controllers[CTRL_LIGHT_VERTICALDISPLACEMENT]
+                        ]
                     if CTRL_LIGHT_MULTIPLIER in controllers:
-                        node.keyframes["multiplier"] = [row for row in controllers[CTRL_LIGHT_MULTIPLIER]]
+                        node.keyframes["multiplier"] = [
+                            row for row in controllers[CTRL_LIGHT_MULTIPLIER]
+                        ]
                     if CTRL_LIGHT_COLOR in controllers:
                         node.keyframes["color"] = [row for row in controllers[CTRL_LIGHT_COLOR]]
                 if isinstance(supernode, EmitterNode):
@@ -770,8 +837,14 @@ class MdlReader:
                 bezier = key.num_columns & CTRL_FLAG_BEZIER
                 if bezier:
                     num_columns *= 3
-            values = [self.mdl.read_uint32() if integral else self.mdl.read_float() for _ in range(num_columns * key.num_rows)]
-            controllers[key.ctrl_type] = [[timekeys[i]] + values[i * num_columns : i * num_columns + num_columns] for i in range(key.num_rows)]
+            values = [
+                self.mdl.read_uint32() if integral else self.mdl.read_float()
+                for _ in range(num_columns * key.num_rows)
+            ]
+            controllers[key.ctrl_type] = [
+                [timekeys[i]] + values[i * num_columns : i * num_columns + num_columns]
+                for i in range(key.num_rows)
+            ]
         return controllers
 
     def get_node_type(self, flags: int) -> str:

@@ -14,10 +14,11 @@ Run with:
 import os
 import sys
 
+import bpy
+
+
 # mathutils is supplied by Blender – must run inside Blender
 from mathutils import Vector
-
-import bpy
 
 # ---------------------------------------------------------------------------
 # Path setup
@@ -164,7 +165,9 @@ def test_compute_bounding_box_two_faces_shared_vertex():
     if ok:
         print("  PASS test_compute_bounding_box_two_faces_shared_vertex")
     else:
-        print(f"  FAIL test_compute_bounding_box_two_faces_shared_vertex: min={bb.min}, max={bb.max}, center={bb.center}")
+        print(
+            f"  FAIL test_compute_bounding_box_two_faces_shared_vertex: min={bb.min}, max={bb.max}, center={bb.center}"
+        )
     return ok
 
 
@@ -282,10 +285,16 @@ def test_aabb_node_structure():
     node = new_aabb_node(bb, 1, 2, -1, 1)
     ok = (
         len(node) == 10
-        and _float_eq(node[0], 1.0) and _float_eq(node[1], 2.0) and _float_eq(node[2], 3.0)
-        and _float_eq(node[3], 4.0) and _float_eq(node[4], 5.0) and _float_eq(node[5], 6.0)
-        and node[6] == 1 and node[7] == 2
-        and node[8] == -1 and node[9] == 1
+        and _float_eq(node[0], 1.0)
+        and _float_eq(node[1], 2.0)
+        and _float_eq(node[2], 3.0)
+        and _float_eq(node[3], 4.0)
+        and _float_eq(node[4], 5.0)
+        and _float_eq(node[5], 6.0)
+        and node[6] == 1
+        and node[7] == 2
+        and node[8] == -1
+        and node[9] == 1
     )
     if ok:
         print("  PASS test_aabb_node_structure")
@@ -305,7 +314,9 @@ def test_split_faces_degenerate_returns_consistent_partition():
     if ok:
         print("  PASS test_split_faces_degenerate_returns_consistent_partition")
     else:
-        print(f"  FAIL test_split_faces_degenerate_returns_consistent_partition: left={len(left)}, right={len(right)}")
+        print(
+            f"  FAIL test_split_faces_degenerate_returns_consistent_partition: left={len(left)}, right={len(right)}"
+        )
     return ok
 
 

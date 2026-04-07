@@ -20,12 +20,11 @@ import bpy
 
 from ..constants import MeshType
 from ..utils import (
-    is_null,
-    is_not_null,
-    is_char_dummy,
-    is_char_bone,
-    is_mesh_type,
     is_aabb_mesh,
+    is_char_bone,
+    is_char_dummy,
+    is_mesh_type,
+    is_null,
     is_skin_mesh,
 )
 
@@ -75,9 +74,7 @@ class KB_OT_hide_unlightmapped(bpy.types.Operator):
         bpy.ops.object.select_all(action="DESELECT")
 
         for obj in bpy.context.scene.objects:
-            if obj.type == "MESH" and (
-                not obj.kb.lightmapped or is_null(obj.kb.bitmap2)
-            ):
+            if obj.type == "MESH" and (not obj.kb.lightmapped or is_null(obj.kb.bitmap2)):
                 obj.hide_viewport = True
                 obj.hide_render = True
 
@@ -215,9 +212,7 @@ class KB_OT_show_unlightmapped(bpy.types.Operator):
         bpy.ops.object.select_all(action="DESELECT")
 
         for obj in bpy.context.scene.objects:
-            if obj.type == "MESH" and (
-                not obj.kb.lightmapped or is_null(obj.kb.bitmap2)
-            ):
+            if obj.type == "MESH" and (not obj.kb.lightmapped or is_null(obj.kb.bitmap2)):
                 obj.hide_viewport = False
                 obj.hide_render = False
 

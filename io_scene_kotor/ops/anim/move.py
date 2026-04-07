@@ -28,7 +28,9 @@ from ...utils import is_mdl_root
 class KB_OT_move_animation(bpy.types.Operator):
     bl_idname: ClassVar[str] = "kb.move_animation"
     bl_label: ClassVar[str] = "Move an animation in the list, without affecting keyframes"
-    bl_description: ClassVar[str] = "Reorder the selected animation up or down in the list without changing keyframes"
+    bl_description: ClassVar[str] = (
+        "Reorder the selected animation up or down in the list without changing keyframes"
+    )
     bl_options: ClassVar[set[str]] = {"UNDO"}
 
     direction: bpy.props.EnumProperty(items=[("UP", "Up", ""), ("DOWN", "Down", "")])  # pyright: ignore[reportInvalidTypeForm]

@@ -18,9 +18,8 @@
 
 import bpy
 
-from ...constants import Classification, DummyType, MeshType, NULL
+from ...constants import NULL, Classification, DummyType, MeshType
 from ...scene.modelnode.light import LightNode
-
 from .anim import AnimPropertyGroup
 from .lensflare import LensFlarePropertyGroup
 from .pathconnection import PathConnectionPropertyGroup
@@ -163,9 +162,7 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     lightmapped: bpy.props.BoolProperty(
         name="Lightmapped", description="This object is lightmapped"
     )
-    beaming: bpy.props.BoolProperty(
-        name="Beaming", description="This object should cast beams"
-    )
+    beaming: bpy.props.BoolProperty(name="Beaming", description="This object should cast beams")
     tangentspace: bpy.props.BoolProperty(
         name="Tangent Space", description="This object is normal mapped"
     )
@@ -177,18 +174,14 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
         name="Background Geometry",
         description="This object is part of background geometry",
     )
-    dirt_enabled: bpy.props.BoolProperty(
-        name="Dirt", description="Enable dirt (TSL only)"
-    )
+    dirt_enabled: bpy.props.BoolProperty(name="Dirt", description="Enable dirt (TSL only)")
     dirt_texture: bpy.props.IntProperty(name="Dirt Texture", default=1)
     dirt_worldspace: bpy.props.IntProperty(name="Dirt World Space", default=1)
     hologram_donotdraw: bpy.props.BoolProperty(
         name="Hide in Hologram",
         description="This object should be hidden in hologram mode (e.g., tongue)",
     )
-    animateuv: bpy.props.BoolProperty(
-        name="Animate UV", description="Animate texture coordinates"
-    )
+    animateuv: bpy.props.BoolProperty(name="Animate UV", description="Animate texture coordinates")
     uvdirectionx: bpy.props.FloatProperty(name="X Direction", default=1.0)
     uvdirectiony: bpy.props.FloatProperty(name="Y Direction")
     uvjitter: bpy.props.FloatProperty(name="Jitter Amount")
@@ -222,9 +215,7 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     # Danglymesh
     period: bpy.props.FloatProperty(name="Period", default=1.0, min=0.0, max=32.0)
     tightness: bpy.props.FloatProperty(name="Tightness", default=1.0, min=0.0, max=32.0)
-    displacement: bpy.props.FloatProperty(
-        name="Displacement", default=0.5, min=0.0, max=32.0
-    )
+    displacement: bpy.props.FloatProperty(name="Displacement", default=0.5, min=0.0, max=32.0)
     constraints: bpy.props.StringProperty(
         name="Constraints",
         description="Name of the vertex group to store constraints in",
@@ -232,9 +223,7 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
 
     # Light
     ambientonly: bpy.props.BoolProperty(name="Ambient Only")
-    lightpriority: bpy.props.IntProperty(
-        name="Light Priority", default=3, soft_min=1, soft_max=5
-    )
+    lightpriority: bpy.props.IntProperty(name="Light Priority", default=3, soft_min=1, soft_max=5)
     fadinglight: bpy.props.BoolProperty(name="Fading Light")
     dynamictype: bpy.props.IntProperty(
         name="Dynamic Type",
@@ -249,15 +238,11 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     flareradius: bpy.props.FloatProperty(name="Flare Radius", min=0.0, max=1e6)
     flare_list: bpy.props.CollectionProperty(type=LensFlarePropertyGroup)
     flare_list_idx: bpy.props.IntProperty()
-    radius: bpy.props.FloatProperty(
-        name="Radius", min=0.0, max=1e6, update=on_update_light_power
-    )
+    radius: bpy.props.FloatProperty(name="Radius", min=0.0, max=1e6, update=on_update_light_power)
     multiplier: bpy.props.FloatProperty(
         name="Multiplier", default=1.0, min=0.0, max=10.0, update=on_update_light_power
     )
-    negativelight: bpy.props.BoolProperty(
-        name="Negative Light", update=on_update_light_power
-    )
+    negativelight: bpy.props.BoolProperty(name="Negative Light", update=on_update_light_power)
     shadowradius: bpy.props.FloatProperty(
         name="Shadow Radius",
         description="Animated light shadow radius",
@@ -275,17 +260,13 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
 
     # Emitter
     alphaend: bpy.props.FloatProperty(name="Alpha End", default=1.0, min=0.0, max=1.0)
-    alphastart: bpy.props.FloatProperty(
-        name="Alpha Start", default=1.0, min=0.0, max=1.0
-    )
+    alphastart: bpy.props.FloatProperty(name="Alpha Start", default=1.0, min=0.0, max=1.0)
     birthrate: bpy.props.FloatProperty(
         name="Birthrate", default=10.0, soft_min=-90.0, soft_max=400.0
     )
     bounce_co: bpy.props.FloatProperty(name="Bounce Coefficient", min=0.0, max=1.0)
     combinetime: bpy.props.FloatProperty(name="Combine Time", min=0.0, soft_max=3.0)
-    drag: bpy.props.FloatProperty(
-        name="Drag", description="Drag (m/s²)", min=0.0, max=1.0
-    )
+    drag: bpy.props.FloatProperty(name="Drag", description="Drag (m/s²)", min=0.0, max=1.0)
     fps: bpy.props.FloatProperty(
         name="FPS",
         description="Frames Per Second",
@@ -304,16 +285,10 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     mass: bpy.props.FloatProperty(name="Mass", default=1.0, soft_min=-0.5, soft_max=9.0)
     p2p_bezier2: bpy.props.FloatProperty(name="Bezier 2", min=0.0, soft_max=0.2)
     p2p_bezier3: bpy.props.FloatProperty(name="Bezier 3", min=0.0, soft_max=3.0)
-    particlerot: bpy.props.FloatProperty(
-        name="Particle Rotation", soft_min=-5.0, soft_max=720.0
-    )
+    particlerot: bpy.props.FloatProperty(name="Particle Rotation", soft_min=-5.0, soft_max=720.0)
     randvel: bpy.props.FloatProperty(name="Random Velocity", min=0.0, soft_max=20.0)
-    sizestart: bpy.props.FloatProperty(
-        name="Size Start", default=1.0, min=0.0, soft_max=255.0
-    )
-    sizeend: bpy.props.FloatProperty(
-        name="Size End", default=1.0, min=0.0, soft_max=255.0
-    )
+    sizestart: bpy.props.FloatProperty(name="Size Start", default=1.0, min=0.0, soft_max=255.0)
+    sizeend: bpy.props.FloatProperty(name="Size End", default=1.0, min=0.0, soft_max=255.0)
     sizestart_y: bpy.props.FloatProperty(name="Y Size Start", min=0.0, soft_max=40.0)
     sizeend_y: bpy.props.FloatProperty(name="Y Size End", min=0.0, soft_max=60.0)
     spread: bpy.props.FloatProperty(name="Spread", min=0.0, soft_max=360.0)
@@ -321,9 +296,7 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     velocity: bpy.props.FloatProperty(name="Velocity", soft_min=-2.0, soft_max=200.0)
     xsize: bpy.props.FloatProperty(name="Size X", min=0.0, soft_max=10000.0)
     ysize: bpy.props.FloatProperty(name="Size Y", min=0.0, soft_max=10000.0)
-    blurlength: bpy.props.FloatProperty(
-        name="Blur Length", default=10.0, min=0.0, soft_max=10.0
-    )
+    blurlength: bpy.props.FloatProperty(name="Blur Length", default=10.0, min=0.0, soft_max=10.0)
     lightningdelay: bpy.props.FloatProperty(
         name="Lightning Delay",
         description="Lighting delay (seconds)",
@@ -336,46 +309,24 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
         min=0.0,
         soft_max=0.5,
     )
-    lightningsubdiv: bpy.props.FloatProperty(
-        name="Lightning Subdivisions", min=0.0, soft_max=10.0
-    )
-    lightningscale: bpy.props.FloatProperty(
-        name="Lightning Scale", default=1.0, min=0.0, max=1.0
-    )
-    lightningzigzag: bpy.props.FloatProperty(
-        name="Lightning Zig-Zag", min=0.0, soft_max=25
-    )
+    lightningsubdiv: bpy.props.FloatProperty(name="Lightning Subdivisions", min=0.0, soft_max=10.0)
+    lightningscale: bpy.props.FloatProperty(name="Lightning Scale", default=1.0, min=0.0, max=1.0)
+    lightningzigzag: bpy.props.FloatProperty(name="Lightning Zig-Zag", min=0.0, soft_max=25)
     alphamid: bpy.props.FloatProperty(
         name="Alpha Mid", default=1.0, soft_min=-100.0, soft_max=100.0
     )
-    percentstart: bpy.props.FloatProperty(
-        name="Percent Start", default=1.0, min=0.0, max=1.0
-    )
-    percentmid: bpy.props.FloatProperty(
-        name="Percent Mid", default=1.0, min=0.0, max=1.0
-    )
-    percentend: bpy.props.FloatProperty(
-        name="Percent End", default=1.0, min=0.0, max=1.0
-    )
-    sizemid: bpy.props.FloatProperty(
-        name="sizeMid", default=1.0, min=0.0, soft_max=255.0
-    )
+    percentstart: bpy.props.FloatProperty(name="Percent Start", default=1.0, min=0.0, max=1.0)
+    percentmid: bpy.props.FloatProperty(name="Percent Mid", default=1.0, min=0.0, max=1.0)
+    percentend: bpy.props.FloatProperty(name="Percent End", default=1.0, min=0.0, max=1.0)
+    sizemid: bpy.props.FloatProperty(name="sizeMid", default=1.0, min=0.0, soft_max=255.0)
     sizemid_y: bpy.props.FloatProperty(name="sizeMid_y", min=0.0, soft_max=50.0)
     randombirthrate: bpy.props.FloatProperty(
         name="Random Birthrate", default=10.0, soft_min=-40.0, soft_max=100.0
     )
-    targetsize: bpy.props.FloatProperty(
-        name="Target Size", default=1.0, min=0.0, soft_max=2.0
-    )
-    numcontrolpts: bpy.props.FloatProperty(
-        name="Number of Control Points", min=0.0, max=1.0
-    )
-    controlptradius: bpy.props.FloatProperty(
-        name="Control Point Radius", min=0.0, soft_max=2.0
-    )
-    controlptdelay: bpy.props.FloatProperty(
-        name="Control Point Delay", min=0.0, soft_max=22.0
-    )
+    targetsize: bpy.props.FloatProperty(name="Target Size", default=1.0, min=0.0, soft_max=2.0)
+    numcontrolpts: bpy.props.FloatProperty(name="Number of Control Points", min=0.0, max=1.0)
+    controlptradius: bpy.props.FloatProperty(name="Control Point Radius", min=0.0, soft_max=2.0)
+    controlptdelay: bpy.props.FloatProperty(name="Control Point Delay", min=0.0, soft_max=22.0)
     tangentspread: bpy.props.FloatProperty(
         name="Tangent Spread",
         description="Tangent spread (degrees)",
@@ -463,9 +414,7 @@ class ObjectPropertyGroup(bpy.types.PropertyGroup):
     loop: bpy.props.BoolProperty(name="Loop")
     renderorder: bpy.props.IntProperty(name="Render Order", min=0)
     frame_blending: bpy.props.BoolProperty(name="Frame Blending")
-    depth_texture_name: bpy.props.StringProperty(
-        name="Depth Texture Name", default=NULL, maxlen=32
-    )
+    depth_texture_name: bpy.props.StringProperty(name="Depth Texture Name", default=NULL, maxlen=32)
     p2p: bpy.props.BoolProperty(name="P2P")
     p2p_type: bpy.props.EnumProperty(
         name="Type",

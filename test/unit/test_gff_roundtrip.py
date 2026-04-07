@@ -13,12 +13,12 @@ import tempfile
 import pytest
 
 from io_scene_kotor.format.gff.reader import GffReader
-from io_scene_kotor.format.gff.writer import GffWriter
 from io_scene_kotor.format.gff.types import (
     FIELD_TYPE_DWORD,
     FIELD_TYPE_FLOAT,
     FIELD_TYPE_LIST,
 )
+from io_scene_kotor.format.gff.writer import GffWriter
 
 
 def _write_read(tree, file_type="TST"):
@@ -161,9 +161,7 @@ def test_pth_shaped_tree_roundtrip():
             "Y": 4.0,
         },
     ]
-    conections = [
-        {"_type": 3, "_fields": {"Destination": FIELD_TYPE_DWORD}, "Destination": 1}
-    ]
+    conections = [{"_type": 3, "_fields": {"Destination": FIELD_TYPE_DWORD}, "Destination": 1}]
     tree = {
         "_type": 0xFFFFFFFF,
         "_fields": {"Path_Points": FIELD_TYPE_LIST, "Path_Conections": FIELD_TYPE_LIST},
@@ -238,6 +236,4 @@ def test_large_list():
     result_items = result["Items"]
     assert len(result_items) == 50
     for i in range(50):
-        assert result_items[i]["Idx"] == i and _float_eq(
-            result_items[i]["Val"], i * 0.5
-        )
+        assert result_items[i]["Idx"] == i and _float_eq(result_items[i]["Val"], i * 0.5)

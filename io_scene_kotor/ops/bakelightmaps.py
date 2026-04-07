@@ -19,9 +19,9 @@
 import bpy
 
 from ..constants import MeshType
-from ..scene.modelnode.trimesh import UV_MAP_LIGHTMAP
 from ..scene.material import NodeName
-from ..utils import is_null, is_mesh_type
+from ..scene.modelnode.trimesh import UV_MAP_LIGHTMAP
+from ..utils import is_mesh_type, is_null
 
 
 class BakeLightmapsOperator(bpy.types.Operator):
@@ -30,11 +30,7 @@ class BakeLightmapsOperator(bpy.types.Operator):
 
     def execute(self, context):
         # Find bake targets
-        objects = (
-            context.selected_objects
-            if context.selected_objects
-            else context.scene.objects
-        )
+        objects = context.selected_objects if context.selected_objects else context.scene.objects
         targets = [obj for obj in objects if self.is_bake_target(obj)]
         if not targets:
             return {"CANCELLED"}
@@ -43,7 +39,7 @@ class BakeLightmapsOperator(bpy.types.Operator):
         if self.hide_non_lightmapped:
             target_names = set([obj.name for obj in targets])
             for obj in context.scene.objects:
-                obj.hide_render = obj.type != "LIGHT" and not obj.name in target_names
+                obj.hide_render = obj.type != "LIGHT" and obj.name not in target_names
 
         for obj in targets:
             self.preprocess_target(obj)
@@ -77,23 +73,23 @@ class BakeLightmapsOperator(bpy.types.Operator):
             return False
         if is_null(obj.kb.bitmap2):
             return False
-        if not UV_MAP_LIGHTMAP in obj.data.uv_layers:
+        if UV_MAP_LIGHTMAP not in obj.data.uv_layers:
             return False
         material = obj.active_material
         if not material or not material.use_nodes:
             return False
         nodes = obj.active_material.node_tree.nodes
-        if not NodeName.DIFFUSE_TEX in nodes:
+        if NodeName.DIFFUSE_TEX not in nodes:
             return False
-        if not NodeName.LIGHTMAP_TEX in nodes:
+        if NodeName.LIGHTMAP_TEX not in nodes:
             return False
-        if not NodeName.WHITE in nodes:
+        if NodeName.WHITE not in nodes:
             return False
-        if not NodeName.DIFFUSE_BSDF in nodes:
+        if NodeName.DIFFUSE_BSDF not in nodes:
             return False
-        if not NodeName.DIFF_LM_EMISSION in nodes:
+        if NodeName.DIFF_LM_EMISSION not in nodes:
             return False
-        if not NodeName.ADD_DIFFUSE_EMISSION in nodes:
+        if NodeName.ADD_DIFFUSE_EMISSION not in nodes:
             return False
         return True
 

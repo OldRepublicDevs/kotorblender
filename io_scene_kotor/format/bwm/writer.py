@@ -87,20 +87,14 @@ class BwmWriter:
 
     def peek_walkmesh(self):
         self.bwm_type = (
-            BWM_TYPE_WOK
-            if self.walkmesh.walkmesh_type == WalkmeshType.WOK
-            else BWM_TYPE_PWK_DWK
+            BWM_TYPE_WOK if self.walkmesh.walkmesh_type == WalkmeshType.WOK else BWM_TYPE_PWK_DWK
         )
-        self.geom_node = self.walkmesh.root_node.find_node(
-            lambda node: isinstance(node, AabbNode)
-        )
+        self.geom_node = self.walkmesh.root_node.find_node(lambda node: isinstance(node, AabbNode))
         self.use_node1 = self.walkmesh.root_node.find_node(
-            lambda node: isinstance(node, DummyNode)
-            and node.dummytype == DummyType.USE1
+            lambda node: isinstance(node, DummyNode) and node.dummytype == DummyType.USE1
         )
         self.use_node2 = self.walkmesh.root_node.find_node(
-            lambda node: isinstance(node, DummyNode)
-            and node.dummytype == DummyType.USE2
+            lambda node: isinstance(node, DummyNode) and node.dummytype == DummyType.USE2
         )
 
         self.peek_vertices()
@@ -301,7 +295,7 @@ class BwmWriter:
                     adj_edge_idx = self.adjacent_edges[next_face][next_edge]
                     if adj_edge_idx == -1:
                         edge_idx = 3 * next_face + next_edge
-                        if not edge_idx in visited_edges:
+                        if edge_idx not in visited_edges:
                             transition = (
                                 self.geom_node.roomlinks[edge_idx]
                                 if edge_idx in self.geom_node.roomlinks

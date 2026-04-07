@@ -22,8 +22,9 @@ import bpy
 
 from mathutils import Matrix
 
-from ..constants import DummyType, MeshType, NodeType, Classification, NULL
-from ..utils import is_mdl_root, is_pwk_root, is_dwk_root, logger
+from ..constants import NULL, Classification, DummyType, MeshType, NodeType
+from ..utils import is_dwk_root, is_mdl_root, is_pwk_root, logger
+from . import armature
 from .animation import Animation
 from .modelnode.aabb import AabbNode
 from .modelnode.danglymesh import DanglymeshNode
@@ -34,8 +35,6 @@ from .modelnode.lightsaber import LightsaberNode
 from .modelnode.reference import ReferenceNode
 from .modelnode.skinmesh import SkinmeshNode
 from .modelnode.trimesh import TrimeshNode
-
-from . import armature
 
 
 class Model:
@@ -79,9 +78,7 @@ class Model:
             for child in self.root_node.children:
                 self.import_nodes_to_collection(child, root_obj, collection, options)
 
-            animscale = (
-                1.0  # animation scale must only be applied to supermodel animations
-            )
+            animscale = 1.0  # animation scale must only be applied to supermodel animations
         else:
             root_obj = next(
                 iter(obj for obj in bpy.context.selected_objects if is_mdl_root(obj)),
@@ -89,11 +86,7 @@ class Model:
             )
             if not root_obj:
                 root_obj = next(
-                    iter(
-                        obj
-                        for obj in bpy.context.collection.objects
-                        if is_mdl_root(obj)
-                    ),
+                    iter(obj for obj in bpy.context.collection.objects if is_mdl_root(obj)),
                     None,
                 )
             if not root_obj:
@@ -149,8 +142,7 @@ class Model:
 
         if options.export_animations:
             model.animations = [
-                Animation.from_list_anim(anim, root_obj)
-                for anim in root_obj.kb.anim_list
+                Animation.from_list_anim(anim, root_obj) for anim in root_obj.kb.anim_list
             ]
 
         return model

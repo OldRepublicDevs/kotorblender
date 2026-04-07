@@ -222,7 +222,7 @@ def test_large_path_roundtrip():
         pts.append(_make_path_point(f"PathPoint{i:03d}", float(i), float(i * 2), parent=root))
     # Chain: 0→1→2→...→(n-1)
     for i in range(n - 1):
-        _add_connection(pts[i], f"PathPoint{i+1:03d}")
+        _add_connection(pts[i], f"PathPoint{i + 1:03d}")
 
     with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
         path = f.name
@@ -234,7 +234,7 @@ def test_large_path_roundtrip():
         total_conn = sum(len(o.kb.path_connection_list) for o in points)
         ok = len(points) == n and total_conn == n - 1
         if ok:
-            print(f"  PASS test_large_path_roundtrip ({n} points, {n-1} connections)")
+            print(f"  PASS test_large_path_roundtrip ({n} points, {n - 1} connections)")
         else:
             print(f"  FAIL test_large_path_roundtrip: points={len(points)}, conns={total_conn}")
         return ok

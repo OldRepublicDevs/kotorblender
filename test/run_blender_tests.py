@@ -78,10 +78,14 @@ def _sync_addon_to_blender(blender_exe: str) -> None:
             base = os.environ.get("APPDATA", "")
             if not base:
                 return
-            ext_base = os.path.join(base, "Blender Foundation", "Blender", major_minor, "extensions", "user_default")
+            ext_base = os.path.join(
+                base, "Blender Foundation", "Blender", major_minor, "extensions", "user_default"
+            )
         else:
             base = os.environ.get("HOME", os.path.expanduser("~"))
-            ext_base = os.path.join(base, ".config", "blender", major_minor, "extensions", "user_default")
+            ext_base = os.path.join(
+                base, ".config", "blender", major_minor, "extensions", "user_default"
+            )
         if not os.path.isdir(ext_base):
             return
         dest = os.path.join(ext_base, "io_scene_kotor")

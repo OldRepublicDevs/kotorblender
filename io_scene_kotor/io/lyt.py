@@ -81,10 +81,7 @@ def save_lyt(operator, filepath):
         parent = find_mdl_root_of(obj)
         orientation = obj.rotation_euler.to_quaternion()
         return "{} {} {:.7g} {:.7g} {:.7g} {:.7g} {:.7g} {:.7g} {:.7g}".format(
-            parent.name if parent else "NULL",
-            obj.name,
-            *obj.matrix_world.translation,
-            *orientation
+            parent.name if parent else "NULL", obj.name, *obj.matrix_world.translation, *orientation
         )
 
     operator.report({"INFO"}, "Saving area layout to '{}'".format(filepath))

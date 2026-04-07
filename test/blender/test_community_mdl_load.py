@@ -10,10 +10,12 @@ All listed MDLs must load. Fails if test_files/fixed or test_files/unfixed have 
 Run with:
     blender --background --python test/blender/test_community_mdl_load.py
 """
+
 from __future__ import annotations
 
 import os
 import sys
+
 from collections.abc import Generator
 
 import bpy
@@ -107,7 +109,9 @@ def test_load_all_fixed_mdls() -> bool:
     """Load each fixed community MDL; assert at least one MDLROOT, node count > 0, and root name."""
     paths = list(_fixed_mdl_paths())
     if not paths:
-        print("  FAIL test_load_all_fixed_mdls (no test_files/fixed MDL+MDX pairs; add fixed/converted assets)")
+        print(
+            "  FAIL test_load_all_fixed_mdls (no test_files/fixed MDL+MDX pairs; add fixed/converted assets)"
+        )
         return False
 
     all_ok = True
@@ -121,7 +125,11 @@ def test_load_all_fixed_mdls() -> bool:
             opts.build_materials = False
             opts.build_armature = False
             load_mdl(_op, mdl_path, opts)
-            roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+            roots = [
+                o
+                for o in bpy.data.objects
+                if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+            ]  # pyright: ignore[reportAttributeAccessIssue]
             objs = list(bpy.data.objects)
             if len(roots) < 1:
                 print(f"  FAIL test_load_all_fixed_mdls ({name}): no MDLROOT after load")
@@ -163,7 +171,9 @@ def test_fixed_mdls_have_mesh_or_dummy() -> bool:
             if total >= 1 and (len(mesh_objs) >= 1 or total >= 2):
                 print(f"  PASS test_fixed_mdls_have_mesh_or_dummy ({name})")
             else:
-                print(f"  FAIL test_fixed_mdls_have_mesh_or_dummy ({name}): no mesh and single object")
+                print(
+                    f"  FAIL test_fixed_mdls_have_mesh_or_dummy ({name}): no mesh and single object"
+                )
                 all_ok = False
         except Exception as e:
             print(f"  FAIL test_fixed_mdls_have_mesh_or_dummy ({name}): {e}")
@@ -194,7 +204,11 @@ def test_fixed_mdl_roundtrip_each() -> bool:
             opts.build_materials = False
             opts.build_armature = False
             load_mdl(_op, mdl_path, opts)
-            roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+            roots = [
+                o
+                for o in bpy.data.objects
+                if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+            ]  # pyright: ignore[reportAttributeAccessIssue]
             if not roots:
                 print(f"  FAIL test_fixed_mdl_roundtrip_each ({name}): no root after load")
                 all_ok = False
@@ -210,7 +224,11 @@ def test_fixed_mdl_roundtrip_each() -> bool:
                 save_mdl(_op, out_mdl, exp_opts)
                 _clear_scene()
                 load_mdl(_op, out_mdl, opts)
-                roots_after = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+                roots_after = [
+                    o
+                    for o in bpy.data.objects
+                    if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+                ]  # pyright: ignore[reportAttributeAccessIssue]
                 if roots_after and roots_after[0].name == name_before:
                     print(f"  PASS test_fixed_mdl_roundtrip_each ({name})")
                 else:
@@ -235,7 +253,9 @@ def test_load_all_unfixed_mdls() -> bool:
     expects K2 layout), test fails so we extend the reader; no silent skip."""
     paths = list(_unfixed_mdl_paths())
     if not paths:
-        print("  FAIL test_load_all_unfixed_mdls (no test_files/unfixed MDL+MDX pairs; add unfixed assets)")
+        print(
+            "  FAIL test_load_all_unfixed_mdls (no test_files/unfixed MDL+MDX pairs; add unfixed assets)"
+        )
         return False
 
     all_ok = True
@@ -249,7 +269,11 @@ def test_load_all_unfixed_mdls() -> bool:
             opts.build_materials = False
             opts.build_armature = False
             load_mdl(_op, mdl_path, opts)
-            roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+            roots = [
+                o
+                for o in bpy.data.objects
+                if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+            ]  # pyright: ignore[reportAttributeAccessIssue]
             objs = list(bpy.data.objects)
             if len(roots) < 1:
                 print(f"  FAIL test_load_all_unfixed_mdls ({name}): no MDLROOT after load")
@@ -279,7 +303,9 @@ def run_tests() -> bool:
     unfixed_paths = list(_unfixed_mdl_paths())
     if not fixed_paths and not unfixed_paths:
         print("  FAIL: No test_files/fixed or unfixed MDL+MDX pairs found.")
-        print("  Add test_files/fixed/converted/ and test_files/unfixed/ (see test/test_files/README.md).")
+        print(
+            "  Add test_files/fixed/converted/ and test_files/unfixed/ (see test/test_files/README.md)."
+        )
         print("[FAIL] 0/4 passed in test_community_mdl_load.py\n")
         return False
 

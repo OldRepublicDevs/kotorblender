@@ -23,7 +23,7 @@ import bpy
 
 from ..constants import MeshType
 from ..scene import material
-from ..utils import is_mdl_root, find_objects
+from ..utils import find_objects, is_mdl_root
 
 
 class KB_OT_rebuild_all_materials(bpy.types.Operator):
@@ -41,8 +41,7 @@ class KB_OT_rebuild_all_materials(bpy.types.Operator):
     def execute(self, context: bpy.types.Context) -> set[str]:
         objects = find_objects(
             context.object,
-            lambda obj: obj.type == "MESH"
-            and obj.kb.meshtype not in [MeshType.EMITTER],
+            lambda obj: obj.type == "MESH" and obj.kb.meshtype not in [MeshType.EMITTER],
         )
         for obj in objects:
             material.rebuild_object_materials(obj)

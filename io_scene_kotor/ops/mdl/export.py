@@ -50,9 +50,7 @@ class KB_OT_export_mdl(bpy.types.Operator, ExportHelper):
         default=True,
     )
 
-    compress_quaternions: bpy.props.BoolProperty(
-        name="Compress Quaternions", default=False
-    )
+    compress_quaternions: bpy.props.BoolProperty(name="Compress Quaternions", default=False)
 
     def execute(self, context):
         options = ExportOptions()

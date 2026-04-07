@@ -11,11 +11,13 @@ Example:
 If basename is omitted, lists available pairs. Reads from test_files/unfixed and
 test_files/fixed/converted (same basename .mdl in both).
 """
+
 from __future__ import annotations
 
-from collections.abc import Generator
 import os
 import sys
+
+from collections.abc import Generator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))

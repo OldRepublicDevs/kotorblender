@@ -20,7 +20,7 @@ import bpy
 
 from ..constants import Classification
 from ..scene import armature
-from ..utils import is_mdl_root, is_skin_mesh, find_objects
+from ..utils import find_objects, is_mdl_root, is_skin_mesh
 
 
 class KB_OT_armature_apply_keyframes(bpy.types.Operator):
@@ -38,10 +38,11 @@ class KB_OT_armature_apply_keyframes(bpy.types.Operator):
             return False
         if not find_objects(
             context.object,
-            lambda obj: is_skin_mesh(obj)
-            and any(mod.type == "ARMATURE" for mod in obj.modifiers),
+            lambda obj: is_skin_mesh(obj) and any(mod.type == "ARMATURE" for mod in obj.modifiers),
         ):
-            cls.poll_message_set(context, "Model must have a skinned mesh with an armature modifier")
+            cls.poll_message_set(
+                context, "Model must have a skinned mesh with an armature modifier"
+            )
             return False
         return True
 
@@ -50,9 +51,7 @@ class KB_OT_armature_apply_keyframes(bpy.types.Operator):
         while stack:
             obj = stack.pop()
             if is_skin_mesh(obj):
-                armature_mod = next(
-                    iter(mod for mod in obj.modifiers if mod.type == "ARMATURE")
-                )
+                armature_mod = next(iter(mod for mod in obj.modifiers if mod.type == "ARMATURE"))
                 armature_obj = armature_mod.object
                 if not armature_obj:
                     return {"CANCELLED"}

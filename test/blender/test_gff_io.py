@@ -29,12 +29,12 @@ if MODULE not in bpy.context.preferences.addons:
     bpy.ops.preferences.addon_enable(module=MODULE)
 
 from io_scene_kotor.format.gff.reader import GffReader
-from io_scene_kotor.format.gff.writer import GffWriter
 from io_scene_kotor.format.gff.types import (
     FIELD_TYPE_DWORD,
     FIELD_TYPE_FLOAT,
     FIELD_TYPE_LIST,
 )
+from io_scene_kotor.format.gff.writer import GffWriter
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -108,11 +108,7 @@ def test_multiple_fields_roundtrip():
         "Gamma": 0,
     }
     result = _write_read(tree)
-    ok = (
-        result["Alpha"] == 100
-        and _float_eq(result["Beta"], -1.5)
-        and result["Gamma"] == 0
-    )
+    ok = result["Alpha"] == 100 and _float_eq(result["Beta"], -1.5) and result["Gamma"] == 0
     if ok:
         print("  PASS test_multiple_fields_roundtrip")
     else:

@@ -20,8 +20,7 @@ import bpy
 
 from bpy_extras.io_utils import unpack_list
 
-from ...constants import MeshType, NodeType, NULL
-
+from ...constants import NULL, MeshType, NodeType
 from .base import BaseNode
 
 

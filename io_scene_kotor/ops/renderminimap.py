@@ -68,16 +68,13 @@ class RenderMinimapOperator(Operator):
         # Set walkmesh materials opacity
         for aabb in aabbs:
             for material in aabb.data.materials:
-                if not material.name in NAME_TO_WALKMESH_MATERIAL:
+                if material.name not in NAME_TO_WALKMESH_MATERIAL:
                     continue
                 _, _, walkable = NAME_TO_WALKMESH_MATERIAL[material.name]
                 if not material.use_nodes:
                     continue
                 nodes = material.node_tree.nodes
-                if (
-                    WalkmeshNodeName.COLOR not in nodes
-                    or WalkmeshNodeName.OPACITY not in nodes
-                ):
+                if WalkmeshNodeName.COLOR not in nodes or WalkmeshNodeName.OPACITY not in nodes:
                     continue
                 color_node = nodes[WalkmeshNodeName.COLOR]
                 color_node.outputs[0].default_value = [1.0] * 4
@@ -127,7 +124,7 @@ class RenderMinimapOperator(Operator):
         camera.data.type = "ORTHO"
         camera.data.ortho_scale = MINIMAP_SCALE * max(size_x, aspect * size_y)
 
-        if not camera.name in bpy.context.scene.objects:
+        if camera.name not in bpy.context.scene.objects:
             bpy.context.scene.collection.objects.link(camera)
         bpy.context.scene.camera = camera
 
@@ -157,16 +154,13 @@ class RenderMinimapOperator(Operator):
         for aabb in aabbs:
             aabb.delta_location.z -= WALKMESH_Z_OFFSET
             for material in aabb.data.materials:
-                if not material.name in NAME_TO_WALKMESH_MATERIAL:
+                if material.name not in NAME_TO_WALKMESH_MATERIAL:
                     continue
                 _, color, _ = NAME_TO_WALKMESH_MATERIAL[material.name]
                 if not material.use_nodes:
                     continue
                 nodes = material.node_tree.nodes
-                if (
-                    WalkmeshNodeName.COLOR not in nodes
-                    or WalkmeshNodeName.OPACITY not in nodes
-                ):
+                if WalkmeshNodeName.COLOR not in nodes or WalkmeshNodeName.OPACITY not in nodes:
                     continue
                 color_node = nodes[WalkmeshNodeName.COLOR]
                 color_node.outputs[0].default_value = [*color, 1.0]
@@ -179,7 +173,9 @@ class RenderMinimapOperator(Operator):
 class KB_OT_render_minimap_auto(RenderMinimapOperator):
     bl_idname = "kb.render_minimap_auto"
     bl_label = "Render Minimap (auto)"
-    bl_description = "Render scene to an image, hiding untextures meshes and resetting render properties"
+    bl_description = (
+        "Render scene to an image, hiding untextures meshes and resetting render properties"
+    )
 
     def __init__(self):
         self.reset_render = True

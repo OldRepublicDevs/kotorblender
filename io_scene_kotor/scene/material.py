@@ -81,9 +81,7 @@ def rebuild_object_materials0(obj, texture_search_paths=[], lightmap_search_path
     if is_not_null(obj.kb.bitmap):
         material = get_or_create_material(obj.name)
         mesh.materials.append(material)
-        rebuild_material_textured(
-            material, obj, texture_search_paths, lightmap_search_paths
-        )
+        rebuild_material_textured(material, obj, texture_search_paths, lightmap_search_paths)
     else:
         diffuse = color_to_hex(obj.kb.diffuse)
         alpha = int_to_hex(float_to_byte(obj.kb.alpha))
@@ -158,9 +156,7 @@ def rebuild_material_solid(material, obj):
     material.diffuse_color = [*obj.kb.diffuse, 1.0]
 
 
-def rebuild_material_textured(
-    material, obj, texture_search_paths, lightmap_search_paths
-):
+def rebuild_material_textured(material, obj, texture_search_paths, lightmap_search_paths):
     material.use_nodes = True
 
     links = material.node_tree.links
@@ -180,9 +176,7 @@ def rebuild_material_textured(
         diffuse_tex = nodes.new("ShaderNodeTexImage")
         diffuse_tex.name = NodeName.DIFFUSE_TEX
         diffuse_tex.location = (x, 0)
-        diffuse_tex.image = get_or_create_texture(
-            obj.kb.bitmap, texture_search_paths
-        ).image
+        diffuse_tex.image = get_or_create_texture(obj.kb.bitmap, texture_search_paths).image
         envmapped = diffuse_tex.image.kb.envmap
         if diffuse_tex.image.kb.bumpmap:
             bumpmapped = True
@@ -208,9 +202,7 @@ def rebuild_material_textured(
         lightmap_tex = nodes.new("ShaderNodeTexImage")
         lightmap_tex.name = NodeName.LIGHTMAP_TEX
         lightmap_tex.location = (x, -300)
-        lightmap_tex.image = get_or_create_texture(
-            obj.kb.bitmap2, lightmap_search_paths
-        ).image
+        lightmap_tex.image = get_or_create_texture(obj.kb.bitmap2, lightmap_search_paths).image
         links.new(lightmap_tex.inputs[0], lightmap_uv.outputs[0])
 
     x += 300

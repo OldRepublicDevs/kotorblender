@@ -15,6 +15,7 @@ and the code did not coerce to str.
 Run with:
     blender --background --python test/blender/test_mdl_import_op.py
 """
+
 from __future__ import annotations
 
 import os
@@ -36,7 +37,7 @@ MODULE = "bl_ext.user_default.io_scene_kotor"
 if MODULE not in bpy.context.preferences.addons:
     bpy.ops.preferences.addon_enable(module=MODULE)
 
-from io_scene_kotor.constants import PACKAGE_NAME, DummyType, Classification, ExportOptions
+from io_scene_kotor.constants import PACKAGE_NAME, Classification, DummyType, ExportOptions
 from io_scene_kotor.io.mdl import save_mdl
 from io_scene_kotor.utils import semicolon_separated_to_absolute_paths
 
@@ -137,9 +138,7 @@ def test_mdlimport_operator_full_pipeline():
         ok = result == {"FINISHED"}
         if ok:
             roots = [
-                o
-                for o in bpy.data.objects
-                if getattr(o.kb, "dummytype", None) == DummyType.MDLROOT
+                o for o in bpy.data.objects if getattr(o.kb, "dummytype", None) == DummyType.MDLROOT
             ]
             ok = len(roots) >= 1
         if ok:

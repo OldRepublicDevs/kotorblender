@@ -202,17 +202,13 @@ class TpcReader:
                     elif alpha_code == 1:
                         alpha = alphas[1]
                     elif alphas[0] > alphas[1]:
-                        alpha = (
-                            (8 - alpha_code) * alphas[0] + (alpha_code - 1) * alphas[1]
-                        ) // 7
+                        alpha = ((8 - alpha_code) * alphas[0] + (alpha_code - 1) * alphas[1]) // 7
                     elif alpha_code == 6:
                         alpha = 0
                     elif alpha_code == 7:
                         alpha = 255
                     else:
-                        alpha = (
-                            (6 - alpha_code) * alphas[0] + (alpha_code - 1) * alphas[1]
-                        ) // 5
+                        alpha = ((6 - alpha_code) * alphas[0] + (alpha_code - 1) * alphas[1]) // 5
                 else:
                     alpha = 255
                 color_code_idx = 2 * (4 * block_pixel_y + block_pixel_x)

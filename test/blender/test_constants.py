@@ -30,11 +30,11 @@ from io_scene_kotor.constants import (
     ANIM_FPS,
     ANIM_PADDING,
     ANIM_REST_POSE_OFFSET,
-    UV_MAP_MAIN,
-    UV_MAP_LIGHTMAP,
-    WALKMESH_MATERIALS,
     NAME_TO_WALKMESH_MATERIAL,
     NON_WALKABLE,
+    UV_MAP_LIGHTMAP,
+    UV_MAP_MAIN,
+    WALKMESH_MATERIALS,
     Classification,
     DummyType,
     ExportOptions,
@@ -59,7 +59,9 @@ def test_animation_constants():
     if ok:
         print(f"  PASS test_animation_constants (FPS={ANIM_FPS}, padding={ANIM_PADDING})")
     else:
-        print(f"  FAIL test_animation_constants: FPS={ANIM_FPS}, rest={ANIM_REST_POSE_OFFSET}, pad={ANIM_PADDING}")
+        print(
+            f"  FAIL test_animation_constants: FPS={ANIM_FPS}, rest={ANIM_REST_POSE_OFFSET}, pad={ANIM_PADDING}"
+        )
     return ok
 
 
@@ -102,9 +104,7 @@ def test_walkmesh_materials_structure():
 
 def test_walkmesh_name_lookup():
     """NAME_TO_WALKMESH_MATERIAL maps every material name back to its entry."""
-    ok = all(
-        NAME_TO_WALKMESH_MATERIAL[m[0]] is m for m in WALKMESH_MATERIALS
-    )
+    ok = all(NAME_TO_WALKMESH_MATERIAL[m[0]] is m for m in WALKMESH_MATERIALS)
     if ok:
         print("  PASS test_walkmesh_name_lookup")
     else:
@@ -125,25 +125,49 @@ def test_non_walkable_list():
 
 def test_classification_values():
     """Classification enum has the expected string constants."""
-    expected = {"OTHER", "TILE", "CHARACTER", "DOOR", "EFFECT", "GUI", "LIGHTSABER", "PLACEABLE", "FLYER"}
+    expected = {
+        "OTHER",
+        "TILE",
+        "CHARACTER",
+        "DOOR",
+        "EFFECT",
+        "GUI",
+        "LIGHTSABER",
+        "PLACEABLE",
+        "FLYER",
+    }
     actual = {getattr(Classification, k) for k in dir(Classification) if not k.startswith("_")}
     ok = expected == actual
     if ok:
         print(f"  PASS test_classification_values ({len(actual)} values)")
     else:
-        print(f"  FAIL test_classification_values: missing={expected-actual}, extra={actual-expected}")
+        print(
+            f"  FAIL test_classification_values: missing={expected - actual}, extra={actual - expected}"
+        )
     return ok
 
 
 def test_dummy_type_values():
     """DummyType enum has all expected string constants."""
-    expected = {"NONE", "MDLROOT", "PWKROOT", "DWKROOT", "PTHROOT", "REFERENCE", "PATHPOINT", "USE1", "USE2"}
+    expected = {
+        "NONE",
+        "MDLROOT",
+        "PWKROOT",
+        "DWKROOT",
+        "PTHROOT",
+        "REFERENCE",
+        "PATHPOINT",
+        "USE1",
+        "USE2",
+    }
     actual = {getattr(DummyType, k) for k in dir(DummyType) if not k.startswith("_")}
     ok = expected == actual
     if ok:
         print(f"  PASS test_dummy_type_values ({len(actual)} values)")
     else:
-        print(f"  FAIL test_dummy_type_values: missing={expected-actual}, extra={actual-expected}")
+        print(
+            f"  FAIL test_dummy_type_values: missing={expected - actual}, extra={actual - expected}"
+        )
     return ok
 
 
@@ -155,19 +179,33 @@ def test_mesh_type_values():
     if ok:
         print(f"  PASS test_mesh_type_values ({len(actual)} values)")
     else:
-        print(f"  FAIL test_mesh_type_values: missing={expected-actual}, extra={actual-expected}")
+        print(
+            f"  FAIL test_mesh_type_values: missing={expected - actual}, extra={actual - expected}"
+        )
     return ok
 
 
 def test_node_type_values():
     """NodeType enum has all expected string constants."""
-    expected = {"DUMMY", "REFERENCE", "TRIMESH", "DANGLYMESH", "SKIN", "EMITTER", "LIGHT", "AABB", "LIGHTSABER"}
+    expected = {
+        "DUMMY",
+        "REFERENCE",
+        "TRIMESH",
+        "DANGLYMESH",
+        "SKIN",
+        "EMITTER",
+        "LIGHT",
+        "AABB",
+        "LIGHTSABER",
+    }
     actual = {getattr(NodeType, k) for k in dir(NodeType) if not k.startswith("_")}
     ok = expected == actual
     if ok:
         print(f"  PASS test_node_type_values ({len(actual)} values)")
     else:
-        print(f"  FAIL test_node_type_values: missing={expected-actual}, extra={actual-expected}")
+        print(
+            f"  FAIL test_node_type_values: missing={expected - actual}, extra={actual - expected}"
+        )
     return ok
 
 
@@ -226,7 +264,9 @@ def test_utility_is_mdl_root():
     if ok:
         print("  PASS test_utility_is_mdl_root")
     else:
-        print(f"  FAIL test_utility_is_mdl_root: root={is_mdl_root(root)}, other={is_mdl_root(other)}")
+        print(
+            f"  FAIL test_utility_is_mdl_root: root={is_mdl_root(root)}, other={is_mdl_root(other)}"
+        )
     return ok
 
 
@@ -246,7 +286,9 @@ def test_utility_is_path_point():
     if ok:
         print("  PASS test_utility_is_path_point")
     else:
-        print(f"  FAIL test_utility_is_path_point: pt={is_path_point(pt)}, root={is_path_point(root)}")
+        print(
+            f"  FAIL test_utility_is_path_point: pt={is_path_point(pt)}, root={is_path_point(root)}"
+        )
     return ok
 
 

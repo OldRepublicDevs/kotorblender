@@ -166,18 +166,16 @@ def int_to_hex(val):
     return "{:02X}".format(val)
 
 
-def semicolon_separated_to_absolute_paths(paths_str: "str | _PropertyDeferred", working_dir: str) -> list[str]:
+def semicolon_separated_to_absolute_paths(
+    paths_str: "str | _PropertyDeferred", working_dir: str
+) -> list[str]:
     """Convert semicolon-separated path string to list of absolute paths. paths_str is coerced to str for Blender addon preference values."""
     if not isinstance(paths_str, str):
         paths_str = str(paths_str)
     abs_paths: list[str] = []
     rel_paths: list[str] = paths_str.split(";")
     for rel_path in rel_paths:
-        abs_path = (
-            rel_path
-            if os.path.isabs(rel_path)
-            else os.path.join(working_dir, rel_path)
-        )
+        abs_path = rel_path if os.path.isabs(rel_path) else os.path.join(working_dir, rel_path)
         abs_paths.append(abs_path)
     if working_dir not in abs_paths:
         abs_paths.insert(0, working_dir)

@@ -12,9 +12,10 @@ Also emits discovery output in the format expected by the Python Test Adapter
 import importlib.util
 import json
 import os
-import pytest  # pyright: ignore[reportMissingImports]
 import sys
 import types
+
+import pytest  # pyright: ignore[reportMissingImports]
 
 _this_dir = os.path.dirname(os.path.abspath(__file__))
 _workspace_root = os.path.dirname(os.path.dirname(_this_dir))
@@ -52,11 +53,31 @@ _ensure_package("io_scene_kotor.format", os.path.join(_addon_root, "format"))
 _ensure_package("io_scene_kotor.format.gff", os.path.join(_addon_root, "format", "gff"))
 
 # Load format modules in dependency order (no bpy).
-_load_module("io_scene_kotor.format.binreader", os.path.join(_addon_root, "format", "binreader.py"), "io_scene_kotor.format")
-_load_module("io_scene_kotor.format.binwriter", os.path.join(_addon_root, "format", "binwriter.py"), "io_scene_kotor.format")
-_load_module("io_scene_kotor.format.gff.types", os.path.join(_addon_root, "format", "gff", "types.py"), "io_scene_kotor.format.gff")
-_load_module("io_scene_kotor.format.gff.reader", os.path.join(_addon_root, "format", "gff", "reader.py"), "io_scene_kotor.format.gff")
-_load_module("io_scene_kotor.format.gff.writer", os.path.join(_addon_root, "format", "gff", "writer.py"), "io_scene_kotor.format.gff")
+_load_module(
+    "io_scene_kotor.format.binreader",
+    os.path.join(_addon_root, "format", "binreader.py"),
+    "io_scene_kotor.format",
+)
+_load_module(
+    "io_scene_kotor.format.binwriter",
+    os.path.join(_addon_root, "format", "binwriter.py"),
+    "io_scene_kotor.format",
+)
+_load_module(
+    "io_scene_kotor.format.gff.types",
+    os.path.join(_addon_root, "format", "gff", "types.py"),
+    "io_scene_kotor.format.gff",
+)
+_load_module(
+    "io_scene_kotor.format.gff.reader",
+    os.path.join(_addon_root, "format", "gff", "reader.py"),
+    "io_scene_kotor.format.gff",
+)
+_load_module(
+    "io_scene_kotor.format.gff.writer",
+    os.path.join(_addon_root, "format", "gff", "writer.py"),
+    "io_scene_kotor.format.gff",
+)
 
 # Wire up format package so "from io_scene_kotor.format.gff.reader import GffReader" works.
 sys.modules["io_scene_kotor"].format = sys.modules["io_scene_kotor.format"]  # pyright: ignore[reportAttributeAccessIssue]
@@ -68,7 +89,9 @@ sys.modules["io_scene_kotor.format.gff"].reader = sys.modules["io_scene_kotor.fo
 sys.modules["io_scene_kotor.format.gff"].writer = sys.modules["io_scene_kotor.format.gff.writer"]  # pyright: ignore[reportAttributeAccessIssue]
 
 # Load constants (standalone, no bpy).
-_load_module("io_scene_kotor.constants", os.path.join(_addon_root, "constants.py"), "io_scene_kotor")
+_load_module(
+    "io_scene_kotor.constants", os.path.join(_addon_root, "constants.py"), "io_scene_kotor"
+)
 sys.modules["io_scene_kotor"].constants = sys.modules["io_scene_kotor.constants"]  # pyright: ignore[reportAttributeAccessIssue]
 
 

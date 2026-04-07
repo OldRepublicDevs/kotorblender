@@ -29,7 +29,9 @@ from ..scene import material
 class KB_OT_rebuild_material(bpy.types.Operator):
     bl_idname: ClassVar[str] = "kb.rebuild_material"
     bl_label: ClassVar[str] = "Rebuild Material"
-    bl_description: ClassVar[str] = "Rebuild the material for the selected mesh (textures, lightmap, shader graph)"
+    bl_description: ClassVar[str] = (
+        "Rebuild the material for the selected mesh (textures, lightmap, shader graph)"
+    )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:

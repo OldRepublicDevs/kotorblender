@@ -30,7 +30,9 @@ from ...utils import logger, semicolon_separated_to_absolute_paths
 class KB_OT_import_mdl(bpy.types.Operator, ImportHelper):
     bl_idname = "kb.mdlimport"
     bl_label = "Import KotOR MDL"
-    bl_description = "Import a KotOR binary model (.mdl/.mdx) with optional animations and walkmeshes"
+    bl_description = (
+        "Import a KotOR binary model (.mdl/.mdx) with optional animations and walkmeshes"
+    )
     bl_options = {"UNDO"}
 
     filename_ext = ".mdl"

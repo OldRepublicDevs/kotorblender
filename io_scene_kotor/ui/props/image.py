@@ -16,8 +16,8 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+from bpy.props import BoolProperty, StringProperty
 from bpy.types import PropertyGroup
-from bpy.props import StringProperty, BoolProperty
 
 
 class ImagePropertyGroup(PropertyGroup):

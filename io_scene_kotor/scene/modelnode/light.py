@@ -19,7 +19,6 @@
 import bpy
 
 from ...constants import NodeType
-
 from .base import BaseNode
 
 

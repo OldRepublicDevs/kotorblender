@@ -19,16 +19,15 @@
 import sys
 
 import bpy
+
 from bpy_extras import anim_utils
 
-from ..constants import NodeType, ANIM_REST_POSE_OFFSET
-from ..utils import time_to_frame, frame_to_time, is_close
+from ..constants import ANIM_REST_POSE_OFFSET, NodeType
+from ..utils import frame_to_time, is_close, time_to_frame
 
 
 class Property:
-    def __init__(
-        self, label, data_path, bl_dim, mdl_to_bl_cvt=None, bl_to_mdl_cvt=None
-    ):
+    def __init__(self, label, data_path, bl_dim, mdl_to_bl_cvt=None, bl_to_mdl_cvt=None):
         self.label = label
         self.data_path = data_path
         self.bl_dim = bl_dim
@@ -171,7 +170,7 @@ class AnimationNode:
 
     def add_keyframes_to_object(self, anim, obj, root_name, animscale):
         for label, data in self.keyframes.items():
-            if not data or not label in LABEL_TO_PROPERTY:
+            if not data or label not in LABEL_TO_PROPERTY:
                 continue
             prop = LABEL_TO_PROPERTY[label]
 
@@ -187,12 +186,8 @@ class AnimationNode:
             if not anim_data.action:
                 anim_data.action = action
             if bpy.app.version >= (4, 4):
-                id_type = (
-                    "LIGHT" if obj.type == "LIGHT" and label == "color" else "OBJECT"
-                )
-                action_slot = AnimationNode.get_or_create_action_slot(
-                    action, id_type, obj.name
-                )
+                id_type = "LIGHT" if obj.type == "LIGHT" and label == "color" else "OBJECT"
+                action_slot = AnimationNode.get_or_create_action_slot(action, id_type, obj.name)
                 if not anim_data.action_slot:
                     anim_data.action_slot = action_slot
             else:
@@ -220,18 +215,14 @@ class AnimationNode:
             right_rest_frame = anim.frame_end + ANIM_REST_POSE_OFFSET
             for frame in [left_rest_frame, right_rest_frame]:
                 for i in range(rest_dim):
-                    keyframe = keyframe_points[i].insert(
-                        frame, rest_values[i], options={"FAST"}
-                    )
+                    keyframe = keyframe_points[i].insert(frame, rest_values[i], options={"FAST"})
                     keyframe.interpolation = "LINEAR"
 
             # Add animation keyframes
 
             frames = [anim.frame_start + time_to_frame(d[0]) for d in data]
             if prop.mdl_to_bl_cvt:
-                values = [
-                    prop.mdl_to_bl_cvt(d[1:], obj.location, animscale) for d in data
-                ]
+                values = [prop.mdl_to_bl_cvt(d[1:], obj.location, animscale) for d in data]
             else:
                 values = []
                 for row in data:
@@ -252,9 +243,7 @@ class AnimationNode:
             for frame, val in zip(frames, values):
                 bezier = len(val) == 3 * prop.bl_dim
                 for i in range(prop.bl_dim):
-                    keyframe = keyframe_points[i].insert(
-                        frame, val[i], options={"FAST"}
-                    )
+                    keyframe = keyframe_points[i].insert(frame, val[i], options={"FAST"})
                     if bezier:
                         keyframe.interpolation = "BEZIER"
                         keyframe.handle_left_type = "FREE"
@@ -293,9 +282,7 @@ class AnimationNode:
     @classmethod
     def get_or_create_fcurve(cls, action, data_path, index, action_slot=None):
         if bpy.app.version >= (5, 0) and action_slot:
-            channelbag = anim_utils.action_ensure_channelbag_for_slot(
-                action, action_slot
-            )
+            channelbag = anim_utils.action_ensure_channelbag_for_slot(action, action_slot)
             fcurve = channelbag.fcurves.find(data_path, index=index)
             if not fcurve:
                 fcurve = channelbag.fcurves.new(data_path=data_path, index=index)
@@ -325,7 +312,7 @@ class AnimationNode:
         nested_keyframes = self.nest_keyframes(keyframes)
 
         for data_path, dp_keyframes in nested_keyframes.items():
-            if not data_path in DATA_PATH_TO_PROPERTY:
+            if data_path not in DATA_PATH_TO_PROPERTY:
                 continue
             prop = DATA_PATH_TO_PROPERTY[data_path]
             label = prop.label
@@ -336,9 +323,7 @@ class AnimationNode:
                 values = keyframe[1]
                 if prop.bl_to_mdl_cvt:
                     restloc = (
-                        anim_subject.location
-                        if hasattr(anim_subject, "location")
-                        else [0.0] * 3
+                        anim_subject.location if hasattr(anim_subject, "location") else [0.0] * 3
                     )
                     values = prop.bl_to_mdl_cvt(values, restloc)
                 else:
@@ -360,9 +345,7 @@ class AnimationNode:
     ):
         keyframes = dict()
         if bpy.app.version >= (5, 0) and action_slot:
-            channelbag = anim_utils.action_ensure_channelbag_for_slot(
-                action, action_slot
-            )
+            channelbag = anim_utils.action_ensure_channelbag_for_slot(action, action_slot)
             fcurves = channelbag.fcurves
         else:
             fcurves = action.fcurves
@@ -373,20 +356,18 @@ class AnimationNode:
                 prefix_len = len(dp_prefix)
                 data_path = data_path[prefix_len:]
             array_index = fcurve.array_index
-            if not data_path in DATA_PATH_TO_PROPERTY:
+            if data_path not in DATA_PATH_TO_PROPERTY:
                 continue
             prop = DATA_PATH_TO_PROPERTY[data_path]
             if not (0 <= array_index < prop.bl_dim):
                 raise ValueError(
-                    "Array index must be between 0 and {}, was {}".format(
-                        prop.bl_dim, array_index
-                    )
+                    "Array index must be between 0 and {}, was {}".format(prop.bl_dim, array_index)
                 )
             for kp in fcurve.keyframe_points:
                 frame = round(kp.co[0])
                 if frame < frame_start or frame > frame_end:
                     continue
-                if not data_path in keyframes:
+                if data_path not in keyframes:
                     keyframes[data_path] = [[] for _ in range(prop.bl_dim)]
                 if kp.interpolation == "BEZIER":
                     values = (frame, kp.co[1], kp.handle_left[1], kp.handle_right[1])
@@ -400,9 +381,7 @@ class AnimationNode:
         nested = dict()
         for data_path, dp_keyframes in keyframes.items():
             if data_path not in DATA_PATH_TO_PROPERTY:
-                raise ValueError(
-                    "Unknown animation data path: '{}'".format(data_path)
-                )
+                raise ValueError("Unknown animation data path: '{}'".format(data_path))
             prop = DATA_PATH_TO_PROPERTY[data_path]
             if not (prop.bl_dim > 0 and len(dp_keyframes) == prop.bl_dim):
                 raise ValueError(
@@ -418,8 +397,7 @@ class AnimationNode:
             bezier = False
             for i in range(num_frames):
                 bezier = bezier or any(
-                    not is_close(dpk[i][2], dpk[i][1])
-                    or not is_close(dpk[i][3], dpk[i][1])
+                    not is_close(dpk[i][2], dpk[i][1]) or not is_close(dpk[i][3], dpk[i][1])
                     for dpk in dp_keyframes
                 )
             for i in range(num_frames):
@@ -436,7 +414,7 @@ class AnimationNode:
                     if bezier:
                         values[prop.bl_dim + j] = dp_keyframes[j][i][2]
                         values[2 * prop.bl_dim + j] = dp_keyframes[j][i][3]
-                if not data_path in nested:
+                if data_path not in nested:
                     nested[data_path] = []
                 nested[data_path].append((frame, values))
         return nested

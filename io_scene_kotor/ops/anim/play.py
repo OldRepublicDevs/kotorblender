@@ -17,6 +17,7 @@
 # ##### END GPL LICENSE BLOCK #####
 
 from typing import ClassVar
+
 import bpy
 
 from ...utils import is_mdl_root
@@ -25,7 +26,9 @@ from ...utils import is_mdl_root
 class KB_OT_play_animation(bpy.types.Operator):
     bl_idname: ClassVar[str] = "kb.play_animation"
     bl_label: ClassVar[str] = "Set start and end frame of the scene to this animation"
-    bl_description: ClassVar[str] = "Set the scene's frame range to match the selected animation for playback"
+    bl_description: ClassVar[str] = (
+        "Set the scene's frame range to match the selected animation for playback"
+    )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:

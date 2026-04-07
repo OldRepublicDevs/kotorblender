@@ -16,8 +16,8 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
-from bpy.types import AddonPreferences
 from bpy.props import StringProperty
+from bpy.types import AddonPreferences
 
 from .constants import PACKAGE_NAME
 
@@ -43,6 +43,8 @@ class KotorBlenderAddonPreferences(AddonPreferences):
 
     def draw(self, context):
         layout = self.layout
-        layout.label(text="Paths used when resolving textures and lightmaps for imported models (semicolon-separated).")
+        layout.label(
+            text="Paths used when resolving textures and lightmaps for imported models (semicolon-separated)."
+        )
         layout.prop(self, "texture_search_paths")
         layout.prop(self, "lightmap_search_paths")

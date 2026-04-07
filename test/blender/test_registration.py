@@ -10,6 +10,7 @@ Run with:
 
 import os
 import sys
+
 from typing import Callable
 
 import bpy

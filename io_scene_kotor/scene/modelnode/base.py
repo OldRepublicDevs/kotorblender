@@ -21,6 +21,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import bpy
+
 from mathutils import Matrix, Quaternion
 
 from ...constants import ImportOptions, RootType
@@ -42,7 +43,9 @@ class BaseNode:
         self.children: list[BaseNode] = []
         self.from_root: Matrix = Matrix()
 
-    def add_to_collection(self, collection: bpy.types.Collection, options: ImportOptions) -> bpy.types.Object:
+    def add_to_collection(
+        self, collection: bpy.types.Collection, options: ImportOptions
+    ) -> bpy.types.Object:
         obj = bpy.data.objects.new(self.name, None)
         self.set_object_data(obj, options)
         collection.objects.link(obj)
@@ -56,7 +59,9 @@ class BaseNode:
         obj.rotation_quaternion = Quaternion(self.orientation)
         obj.scale = (self.scale, self.scale, self.scale)
 
-    def load_object_data(self, obj: bpy.types.Object, eval_obj: bpy.types.Object, options: ImportOptions) -> None:
+    def load_object_data(
+        self, obj: bpy.types.Object, eval_obj: bpy.types.Object, options: ImportOptions
+    ) -> None:
         if obj.kb.node_number == -1:
             raise RuntimeError(f"Object '{obj.name}' node number is undefined")
         self.node_number = obj.kb.node_number

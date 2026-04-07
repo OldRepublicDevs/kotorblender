@@ -85,10 +85,7 @@ class KB_PT_mesh_uv_anim(bpy.types.Panel):
     def poll(cls, context):
         obj = context.object
         return (
-            obj
-            and obj.type == "MESH"
-            and obj.kb.meshtype != MeshType.EMITTER
-            and obj.kb.animateuv
+            obj and obj.type == "MESH" and obj.kb.meshtype != MeshType.EMITTER and obj.kb.animateuv
         )
 
     def draw(self, context):

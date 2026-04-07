@@ -25,11 +25,11 @@ from ..format.bwm.reader import BwmReader
 from ..format.bwm.writer import BwmWriter
 from ..format.mdl.reader import MdlReader
 from ..format.mdl.writer import MdlWriter
-from .mdl_validate import validate_mdl_export
-from ..scene.modelnode.aabb import AabbNode
 from ..scene.model import Model
+from ..scene.modelnode.aabb import AabbNode
 from ..scene.walkmesh import Walkmesh
-from ..utils import is_mdl_root, is_pwk_root, is_dwk_root, find_objects
+from ..utils import find_objects, is_dwk_root, is_mdl_root, is_pwk_root
+from .mdl_validate import validate_mdl_export
 
 
 def load_mdl(operator, filepath, options, position=(0.0, 0.0, 0.0)):
@@ -62,11 +62,7 @@ def load_mdl(operator, filepath, options, position=(0.0, 0.0, 0.0)):
         dwk0_path = filepath[:-4] + "0.dwk"
         dwk1_path = filepath[:-4] + "1.dwk"
         dwk2_path = filepath[:-4] + "2.dwk"
-        if (
-            os.path.exists(dwk0_path)
-            and os.path.exists(dwk1_path)
-            and os.path.exists(dwk2_path)
-        ):
+        if os.path.exists(dwk0_path) and os.path.exists(dwk1_path) and os.path.exists(dwk2_path):
             operator.report({"INFO"}, "Loading walkmesh from '{}'".format(dwk0_path))
             dwk1 = BwmReader(dwk0_path, model.name)
             operator.report({"INFO"}, "Loading walkmesh from '{}'".format(dwk1_path))
@@ -141,9 +137,7 @@ def save_mdl(operator, filepath, options):
             bwm.save()
 
         # Export PWK or DWK
-        xwk_roots = find_objects(
-            mdl_root, lambda obj: is_pwk_root(obj) or is_dwk_root(obj)
-        )
+        xwk_roots = find_objects(mdl_root, lambda obj: is_pwk_root(obj) or is_dwk_root(obj))
         for xwk_root in xwk_roots:
             base_path, _ = os.path.splitext(filepath)
             if is_pwk_root(xwk_root):

@@ -21,9 +21,7 @@ from ...scene.modelnode.aabb import AabbNode
 from ...scene.modelnode.dummy import DummyNode
 from ...scene.modelnode.trimesh import FaceList
 from ...scene.walkmesh import Walkmesh
-
 from ..binreader import BinaryReader
-
 from .types import *  # noqa: F403
 
 
@@ -56,9 +54,7 @@ class BwmReader:
         file_type: str = self.bwm.read_string(4)
         if file_type != "BWM ":
             raise RuntimeError(
-                "BWM file type is invalid: expected='BWM ', actual='{}'".format(
-                    file_type
-                )
+                "BWM file type is invalid: expected='BWM ', actual='{}'".format(file_type)
             )
 
         _version = self.bwm.read_string(4)
@@ -169,9 +165,7 @@ class BwmReader:
         geom_node.verts = self.verts
         geom_node.facelist = self.facelist
         geom_node.roomlinks = {
-            edge_idx: transition
-            for edge_idx, transition in self.outer_edges
-            if transition != -1
+            edge_idx: transition for edge_idx, transition in self.outer_edges if transition != -1
         }
 
         root_node.children.append(geom_node)
@@ -182,11 +176,7 @@ class BwmReader:
         return walkmesh
 
     def new_placeable_walkmesh(self) -> Walkmesh:
-        walkmesh_type = (
-            WalkmeshType.DWK
-            if self.path.endswith("dwk")
-            else WalkmeshType.PWK
-        )
+        walkmesh_type = WalkmeshType.DWK if self.path.endswith("dwk") else WalkmeshType.PWK
         if walkmesh_type == WalkmeshType.DWK:
             if self.path.endswith("1.dwk"):
                 dwk_state = "open1"
@@ -206,9 +196,7 @@ class BwmReader:
 
         root_node = DummyNode(root_name)
         root_node.dummytype = (
-            DummyType.DWKROOT
-            if walkmesh_type == WalkmeshType.DWK
-            else DummyType.PWKROOT
+            DummyType.DWKROOT if walkmesh_type == WalkmeshType.DWK else DummyType.PWKROOT
         )
 
         geom_node = AabbNode(geom_name)

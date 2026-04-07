@@ -24,8 +24,7 @@ class KB_OT_move_lens_flare(bpy.types.Operator):
     bl_label = "Move lens flare within the list"
     bl_description = "Reorder the selected lens flare up or down in the list"
 
-    direction: bpy.props.EnumProperty(items=(("UP", "Up", ""),
-                                             ("DOWN", "Down", "")))
+    direction: bpy.props.EnumProperty(items=(("UP", "Up", ""), ("DOWN", "Down", "")))
 
     @classmethod
     def poll(cls, context):
@@ -79,6 +78,6 @@ class KB_OT_move_lens_flare(bpy.types.Operator):
             flare_list.move(neighbour, flare_list_idx)
             self.move_index(context)
         else:
-            return{'CANCELLED'}
+            return {"CANCELLED"}
 
-        return{'FINISHED'}
+        return {"FINISHED"}

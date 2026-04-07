@@ -19,7 +19,6 @@
 from struct import pack, unpack
 
 from ..binwriter import BinaryWriter
-
 from .types import *
 
 
@@ -117,9 +116,7 @@ class GffWriter:
                         self.list_indices.append(num_structs)
                         queue.append(item)
                 else:
-                    raise NotImplementedError(
-                        "Field type {} is not supported".format(field_type)
-                    )
+                    raise NotImplementedError("Field type {} is not supported".format(field_type))
 
                 field = GffField(field_type, label_idx, data_or_data_offset)
                 self.fields.append(field)

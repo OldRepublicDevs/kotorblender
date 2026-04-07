@@ -27,16 +27,16 @@ def _make_minimal_tpc(path: str, width: int = 2, height: int = 2) -> None:
     # Reader uses: uint32(4) + skip(4) + uint16(2) + uint16(2) + uint8(1) + uint8(1) = 14, then seek(128)
     with open(path, "wb") as f:
         f.write(struct.pack("<I", 0))  # compressed_size = 0
-        f.write(struct.pack("<I", 0))   # reserved
+        f.write(struct.pack("<I", 0))  # reserved
         f.write(struct.pack("<HH", width, height))
         f.write(struct.pack("<BB", 1, 1))  # TpcEncoding.GRAYSCALE=1, num_mips=1
-        f.write(b"\x00" * (128 - 14))   # pad so pixel data starts at offset 128
+        f.write(b"\x00" * (128 - 14))  # pad so pixel data starts at offset 128
         f.write(b"\x00" * (width * height))  # pixel data
 
 
 def test_tpc_reader_minimal_uncompressed_grayscale():
     """TpcReader loads a minimal uncompressed grayscale TPC and returns correct dimensions."""
-    from io_scene_kotor.format.tpc.reader import TpcReader, TpcEncoding
+    from io_scene_kotor.format.tpc.reader import TpcEncoding, TpcReader
 
     fd, path = tempfile.mkstemp(suffix=".tpc")
     try:
@@ -53,7 +53,9 @@ def test_tpc_reader_minimal_uncompressed_grayscale():
         if ok:
             print("  PASS test_tpc_reader_minimal_uncompressed_grayscale")
         else:
-            print(f"  FAIL test_tpc_reader_minimal_uncompressed_grayscale: w={image.w} h={image.h} encoding={reader.encoding}")
+            print(
+                f"  FAIL test_tpc_reader_minimal_uncompressed_grayscale: w={image.w} h={image.h} encoding={reader.encoding}"
+            )
         return ok
     except Exception as e:
         print(f"  FAIL test_tpc_reader_minimal_uncompressed_grayscale: {e.__class__.__name__}: {e}")
@@ -68,7 +70,7 @@ def test_tpc_reader_minimal_uncompressed_grayscale():
 
 def test_tpc_reader_dimensions_1x1():
     """TpcReader reports correct dimensions and pixel count for 1x1 grayscale."""
-    from io_scene_kotor.format.tpc.reader import TpcReader, TpcEncoding
+    from io_scene_kotor.format.tpc.reader import TpcEncoding, TpcReader
 
     fd, path = tempfile.mkstemp(suffix=".tpc")
     try:
@@ -85,7 +87,9 @@ def test_tpc_reader_dimensions_1x1():
         if ok:
             print("  PASS test_tpc_reader_dimensions_1x1")
         else:
-            print(f"  FAIL test_tpc_reader_dimensions_1x1: w={image.w} h={image.h} pixels={len(image.pixels)}")
+            print(
+                f"  FAIL test_tpc_reader_dimensions_1x1: w={image.w} h={image.h} pixels={len(image.pixels)}"
+            )
         return ok
     except Exception as e:
         print(f"  FAIL test_tpc_reader_dimensions_1x1: {e.__class__.__name__}: {e}")
@@ -100,7 +104,7 @@ def test_tpc_reader_dimensions_1x1():
 
 def test_tpc_reader_dimensions_8x8():
     """TpcReader reports correct dimensions and pixel count for 8x8 grayscale."""
-    from io_scene_kotor.format.tpc.reader import TpcReader, TpcEncoding
+    from io_scene_kotor.format.tpc.reader import TpcEncoding, TpcReader
 
     fd, path = tempfile.mkstemp(suffix=".tpc")
     try:
@@ -117,7 +121,9 @@ def test_tpc_reader_dimensions_8x8():
         if ok:
             print("  PASS test_tpc_reader_dimensions_8x8")
         else:
-            print(f"  FAIL test_tpc_reader_dimensions_8x8: w={image.w} h={image.h} pixels={len(image.pixels)}")
+            print(
+                f"  FAIL test_tpc_reader_dimensions_8x8: w={image.w} h={image.h} pixels={len(image.pixels)}"
+            )
         return ok
     except Exception as e:
         print(f"  FAIL test_tpc_reader_dimensions_8x8: {e.__class__.__name__}: {e}")

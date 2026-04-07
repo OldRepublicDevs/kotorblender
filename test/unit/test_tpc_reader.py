@@ -25,7 +25,7 @@ def _make_minimal_tpc(path: str, width: int = 2, height: int = 2) -> None:
 
 def test_tpc_reader_minimal_uncompressed_grayscale():
     """TpcReader loads a minimal uncompressed grayscale TPC and returns correct dimensions."""
-    from io_scene_kotor.format.tpc.reader import TpcReader, TpcEncoding
+    from io_scene_kotor.format.tpc.reader import TpcEncoding, TpcReader
 
     fd, path = tempfile.mkstemp(suffix=".tpc")
     try:
@@ -44,7 +44,7 @@ def test_tpc_reader_minimal_uncompressed_grayscale():
 
 def test_tpc_reader_dimensions_1x1():
     """TpcReader reports correct dimensions and pixel count for 1x1 grayscale."""
-    from io_scene_kotor.format.tpc.reader import TpcReader, TpcEncoding
+    from io_scene_kotor.format.tpc.reader import TpcEncoding, TpcReader
 
     fd, path = tempfile.mkstemp(suffix=".tpc")
     try:
@@ -63,7 +63,7 @@ def test_tpc_reader_dimensions_1x1():
 
 def test_tpc_reader_dimensions_8x8():
     """TpcReader reports correct dimensions and pixel count for 8x8 grayscale."""
-    from io_scene_kotor.format.tpc.reader import TpcReader, TpcEncoding
+    from io_scene_kotor.format.tpc.reader import TpcEncoding, TpcReader
 
     fd, path = tempfile.mkstemp(suffix=".tpc")
     try:

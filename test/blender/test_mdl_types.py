@@ -9,15 +9,13 @@ Run with:
     blender --background --python test/blender/test_mdl_types.py
 """
 
-import sys
-
-import bpy
-
 # ---------------------------------------------------------------------------
 # Path setup
 # ---------------------------------------------------------------------------
-
 import os
+import sys
+
+import bpy
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
@@ -73,7 +71,9 @@ def test_class_by_value_maps_to_classification():
     if ok:
         print("  PASS test_class_by_value_maps_to_classification")
     else:
-        print(f"  FAIL test_class_by_value_maps_to_classification: expected={expected}, actual={actual}")
+        print(
+            f"  FAIL test_class_by_value_maps_to_classification: expected={expected}, actual={actual}"
+        )
     return ok
 
 
@@ -100,7 +100,11 @@ def test_emitter_controller_keys_structure():
             ok = False
             break
         ctrl_type, name, num_columns = entry
-        if not isinstance(ctrl_type, int) or not isinstance(name, str) or not isinstance(num_columns, int):
+        if (
+            not isinstance(ctrl_type, int)
+            or not isinstance(name, str)
+            or not isinstance(num_columns, int)
+        ):
             ok = False
             break
         ctrl_types.append(ctrl_type)

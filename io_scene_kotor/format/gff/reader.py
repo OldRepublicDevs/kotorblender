@@ -19,7 +19,6 @@
 from struct import pack, unpack
 
 from ..binreader import BinaryReader
-
 from .types import *
 
 
@@ -90,9 +89,7 @@ class GffReader:
 
     def load_labels(self):
         self.reader.seek(self.off_labels)
-        self.labels = [
-            self.reader.read_string(16).rstrip("\0") for _ in range(self.num_labels)
-        ]
+        self.labels = [self.reader.read_string(16).rstrip("\0") for _ in range(self.num_labels)]
 
     def load_field_data(self):
         self.reader.seek(self.off_field_data)
@@ -100,15 +97,11 @@ class GffReader:
 
     def load_field_indices(self):
         self.reader.seek(self.off_field_indices)
-        self.field_indices = [
-            self.reader.read_uint32() for _ in range(self.num_field_indices // 4)
-        ]
+        self.field_indices = [self.reader.read_uint32() for _ in range(self.num_field_indices // 4)]
 
     def load_list_indices(self):
         self.reader.seek(self.off_list_indices)
-        self.list_indices = [
-            self.reader.read_uint32() for _ in range(self.num_list_indices // 4)
-        ]
+        self.list_indices = [self.reader.read_uint32() for _ in range(self.num_list_indices // 4)]
 
     def new_tree_struct(self, structIdx):
         tree = dict()
@@ -155,9 +148,7 @@ class GffReader:
             indices = self.list_indices[start:stop]
             data = [self.new_tree_struct(idx) for idx in indices]
         else:
-            raise NotImplementedError(
-                "Field type {} is not supported".format(field.type)
-            )
+            raise NotImplementedError("Field type {} is not supported".format(field.type))
 
         return KeyValue(label, data)
 

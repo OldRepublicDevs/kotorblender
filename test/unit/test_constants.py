@@ -10,17 +10,15 @@ Run with: pytest test/unit/test_constants.py -v
 
 from __future__ import annotations
 
-import pytest
-
 from io_scene_kotor.constants import (
     ANIM_FPS,
     ANIM_PADDING,
     ANIM_REST_POSE_OFFSET,
-    UV_MAP_MAIN,
-    UV_MAP_LIGHTMAP,
-    WALKMESH_MATERIALS,
     NAME_TO_WALKMESH_MATERIAL,
     NON_WALKABLE,
+    UV_MAP_LIGHTMAP,
+    UV_MAP_MAIN,
+    WALKMESH_MATERIALS,
     Classification,
     DummyType,
     ExportOptions,

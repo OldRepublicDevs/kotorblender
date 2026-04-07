@@ -25,11 +25,11 @@ from mathutils import Vector
 
 from ...constants import (
     NULL,
-    UV_MAP_MAIN,
     UV_MAP_LIGHTMAP,
+    UV_MAP_MAIN,
+    MeshType,
     NodeType,
     RootType,
-    MeshType,
 )
 from ...utils import is_not_null
 from .. import material
@@ -99,8 +99,7 @@ class SimilarEdgeLoopMeshVertex:
         self.uv1 = uv1
         self.uv2 = uv2
         self.value = tuple(
-            _quantize(val)
-            for val in (*self.coords, *self.normal, *self.uv1, *self.uv2)
+            _quantize(val) for val in (*self.coords, *self.normal, *self.uv1, *self.uv2)
         )
 
     def __hash__(self):
@@ -335,17 +334,13 @@ class TrimeshNode(BaseNode):
                 mesh.loop_normals.append(face.split_normals[i])
                 loop_idx = face.loops[i]
                 if UV_MAP_MAIN in bl_mesh.uv_layers:
-                    mesh.loop_uv1.append(
-                        bl_mesh.uv_layers[UV_MAP_MAIN].data[loop_idx].uv[:2]
-                    )
+                    mesh.loop_uv1.append(bl_mesh.uv_layers[UV_MAP_MAIN].data[loop_idx].uv[:2])
                 if self.lightmapped:
                     if UV_MAP_LIGHTMAP not in bl_mesh.uv_layers:
                         raise RuntimeError(
                             f"Lightmapped object [{obj.name}] is missing UV map [${UV_MAP_LIGHTMAP}]"
                         )
-                    mesh.loop_uv2.append(
-                        bl_mesh.uv_layers[UV_MAP_LIGHTMAP].data[loop_idx].uv[:2]
-                    )
+                    mesh.loop_uv2.append(bl_mesh.uv_layers[UV_MAP_LIGHTMAP].data[loop_idx].uv[:2])
                 if self.tangentspace:
                     loop = bl_mesh.loops[loop_idx]
                     mesh.loop_tangents.append(loop.tangent)

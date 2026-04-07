@@ -22,14 +22,14 @@ import bpy
 class KB_PT_light(bpy.types.Panel):
     bl_label = "Light"
     bl_parent_id = "KB_PT_modelnode"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
     bl_context = "object"
 
     @classmethod
     def poll(cls, context):
         obj = context.object
-        return obj and obj.type == 'LIGHT'
+        return obj and obj.type == "LIGHT"
 
     def draw(self, context):
         obj = context.object
@@ -57,14 +57,14 @@ class KB_PT_light(bpy.types.Panel):
 class KB_PT_light_lens_flares(bpy.types.Panel):
     bl_label = "Lens Flares"
     bl_parent_id = "KB_PT_light"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
     bl_context = "object"
 
     @classmethod
     def poll(cls, context):
         obj = context.object
-        return obj and obj.type == 'LIGHT' and obj.kb.lensflares
+        return obj and obj.type == "LIGHT" and obj.kb.lensflares
 
     def draw(self, context):
         obj = context.object
@@ -74,13 +74,15 @@ class KB_PT_light_lens_flares(bpy.types.Panel):
         row = layout.row()
         row.prop(obj.kb, "flareradius", text="Radius")
         row = layout.row()
-        row.template_list("KB_UL_lens_flares", "lens_flares", obj.kb, "flare_list", obj.kb, "flare_list_idx")
+        row.template_list(
+            "KB_UL_lens_flares", "lens_flares", obj.kb, "flare_list", obj.kb, "flare_list_idx"
+        )
         col = row.column(align=True)
-        col.operator("kb.add_lens_flare", icon='ADD', text="")
-        col.operator("kb.delete_lens_flare", icon='REMOVE', text="")
+        col.operator("kb.add_lens_flare", icon="ADD", text="")
+        col.operator("kb.delete_lens_flare", icon="REMOVE", text="")
         col.separator()
-        col.operator("kb.move_lens_flare", icon='TRIA_UP', text="").direction = "UP"
-        col.operator("kb.move_lens_flare", icon='TRIA_DOWN', text="").direction = "DOWN"
+        col.operator("kb.move_lens_flare", icon="TRIA_UP", text="").direction = "UP"
+        col.operator("kb.move_lens_flare", icon="TRIA_DOWN", text="").direction = "DOWN"
 
         if obj.kb.flare_list_idx >= 0 and obj.kb.flare_list_idx < len(obj.kb.flare_list):
             flare = obj.kb.flare_list[obj.kb.flare_list_idx]

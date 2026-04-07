@@ -54,13 +54,7 @@ from io_scene_kotor.utils import (
 
 def test_is_null():
     """is_null: empty, NULL, null, non-null, None."""
-    ok = (
-        is_null("")
-        and is_null("NULL")
-        and is_null("null")
-        and not is_null("x")
-        and is_null(None)
-    )
+    ok = is_null("") and is_null("NULL") and is_null("null") and not is_null("x") and is_null(None)
     if ok:
         print("  PASS test_is_null")
     else:

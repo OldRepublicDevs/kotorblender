@@ -28,7 +28,9 @@ from ...utils import is_mdl_root
 class KB_OT_delete_animation(bpy.types.Operator):
     bl_idname: ClassVar[str] = "kb.delete_animation"
     bl_label: ClassVar[str] = "Delete animation from the list"
-    bl_description: ClassVar[str] = "Remove the selected animation from the KotOR model's animation list"
+    bl_description: ClassVar[str] = (
+        "Remove the selected animation from the KotOR model's animation list"
+    )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:

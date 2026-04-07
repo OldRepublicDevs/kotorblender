@@ -7,6 +7,7 @@ sanity checks.
 Run with:
     blender --background --python test/blender/test_mdl_validation.py
 """
+
 from __future__ import annotations
 
 import os
@@ -24,7 +25,12 @@ MODULE = "bl_ext.user_default.io_scene_kotor"
 if MODULE not in bpy.context.preferences.addons:  # pyright: ignore[reportOptionalMemberAccess]
     bpy.ops.preferences.addon_enable(module=MODULE)
 
-from io_scene_kotor.constants import Classification, DummyType, ExportOptions, MeshType  # noqa: E402
+from io_scene_kotor.constants import (  # noqa: E402
+    Classification,
+    DummyType,
+    ExportOptions,
+    MeshType,
+)
 from io_scene_kotor.io.mdl import save_mdl  # noqa: E402
 
 
@@ -58,7 +64,13 @@ def _make_mdl_root(name: str = "testmodel") -> bpy.types.Object:
     return root
 
 
-def _make_mesh(name: str, root: bpy.types.Object, verts: list[tuple[float, float, float]] | None = None, faces: list[tuple[int, int, int]] | None = None, node_number: int = 2) -> bpy.types.Object:
+def _make_mesh(
+    name: str,
+    root: bpy.types.Object,
+    verts: list[tuple[float, float, float]] | None = None,
+    faces: list[tuple[int, int, int]] | None = None,
+    node_number: int = 2,
+) -> bpy.types.Object:
     verts = verts if verts is not None else [(0, 0, 0), (1, 0, 0), (0, 1, 0)]
     faces = faces if faces is not None else [(0, 1, 2)]
     mesh = bpy.data.meshes.new(name)

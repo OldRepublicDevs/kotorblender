@@ -32,8 +32,14 @@ MODULE = "bl_ext.user_default.io_scene_kotor"
 if MODULE not in bpy.context.preferences.addons:
     bpy.ops.preferences.addon_enable(module=MODULE)
 
-from io_scene_kotor.constants import DummyType, MeshType, Classification, ExportOptions, ImportOptions
-from io_scene_kotor.io.mdl import save_mdl, load_mdl
+from io_scene_kotor.constants import (
+    Classification,
+    DummyType,
+    ExportOptions,
+    ImportOptions,
+    MeshType,
+)
+from io_scene_kotor.io.mdl import load_mdl, save_mdl
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -189,9 +195,7 @@ def test_export_then_reimport():
         opts_imp.build_armature = False
         load_mdl(_op, path, opts_imp)
 
-        mdl_roots = [
-            o for o in bpy.data.objects if o.kb.dummytype == DummyType.MDLROOT
-        ]
+        mdl_roots = [o for o in bpy.data.objects if o.kb.dummytype == DummyType.MDLROOT]
         ok = len(mdl_roots) >= 1
         if ok:
             print(f"  PASS test_export_then_reimport (found root: '{mdl_roots[0].name}')")

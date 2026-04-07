@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
+
 from collections.abc import Generator
 
 import bpy
@@ -93,7 +94,11 @@ def _first_loadable_path() -> tuple[str, str] | None:
         _clear_scene()
         try:
             load_mdl(_op, mdl_path, _import_opts())
-            roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]
+            roots = [
+                o
+                for o in bpy.data.objects
+                if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+            ]
             if len(roots) >= 1:
                 return (mdl_path, name)
         except Exception:
@@ -115,7 +120,11 @@ def test_read_mdl_basic():
     mdl_path, name = p
     _clear_scene()
     load_mdl(_op, mdl_path, _import_opts())
-    roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]
+    roots = [
+        o
+        for o in bpy.data.objects
+        if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+    ]
     ok = len(roots) >= 1 and roots[0].name
     if ok:
         print(f"  PASS test_read_mdl_basic ({name})")
@@ -135,7 +144,11 @@ def test_read_all_test_files():
         _clear_scene()
         try:
             load_mdl(_op, mdl_path, _import_opts())
-            roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]
+            roots = [
+                o
+                for o in bpy.data.objects
+                if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+            ]
             if len(roots) >= 1:
                 print(f"  PASS test_read_all_test_files ({name})")
             else:
@@ -201,7 +214,11 @@ def test_mdl_roundtrip():
     out_mdx = os.path.splitext(out_mdl)[0] + ".mdx"
     try:
         load_mdl(_op, mdl_path, _import_opts())
-        roots_before = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+        roots_before = [
+            o
+            for o in bpy.data.objects
+            if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+        ]  # pyright: ignore[reportAttributeAccessIssue]
         if not roots_before:
             print("  FAIL test_mdl_roundtrip: no root after first load")
             return False
@@ -212,7 +229,11 @@ def test_mdl_roundtrip():
         save_mdl(_op, out_mdl, opts_exp)
         _clear_scene()
         load_mdl(_op, out_mdl, _import_opts())
-        roots_after = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+        roots_after = [
+            o
+            for o in bpy.data.objects
+            if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+        ]  # pyright: ignore[reportAttributeAccessIssue]
         ok = len(roots_after) >= 1 and roots_after[0].name == name_before
         if ok:
             print(f"  PASS test_mdl_roundtrip ({name})")
@@ -237,7 +258,11 @@ def test_mdl_get_node_by_name():
     mdl_path, name = p
     _clear_scene()
     load_mdl(_op, mdl_path, _import_opts())
-    roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+    roots = [
+        o
+        for o in bpy.data.objects
+        if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+    ]  # pyright: ignore[reportAttributeAccessIssue]
     if not roots:
         print("  FAIL test_mdl_get_node_by_name: no root")
         return False
@@ -353,7 +378,11 @@ def test_mdl_roundtrip_node_count():
     _clear_scene()
     load_mdl(_op, mdl_path, _import_opts())
     count_before = len(bpy.data.objects)
-    roots_before = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+    roots_before = [
+        o
+        for o in bpy.data.objects
+        if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+    ]  # pyright: ignore[reportAttributeAccessIssue]
     if not roots_before:
         print("  FAIL test_mdl_roundtrip_node_count: no root after load")
         return False
@@ -372,7 +401,9 @@ def test_mdl_roundtrip_node_count():
         if ok:
             print(f"  PASS test_mdl_roundtrip_node_count ({name})")
         else:
-            print(f"  FAIL test_mdl_roundtrip_node_count: node count {count_before} -> {count_after}")
+            print(
+                f"  FAIL test_mdl_roundtrip_node_count: node count {count_before} -> {count_after}"
+            )
         return ok
     finally:
         for path in (out_mdl, out_mdx):
@@ -398,7 +429,11 @@ def test_mdl_roundtrip_each_loadable():
             print(f"  FAIL test_mdl_roundtrip_each_loadable ({name}): load failed: {e}")
             all_ok = False
             continue
-        roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+        roots = [
+            o
+            for o in bpy.data.objects
+            if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+        ]  # pyright: ignore[reportAttributeAccessIssue]
         if not roots:
             print(f"  FAIL test_mdl_roundtrip_each_loadable ({name}): no MDLROOT")
             all_ok = False
@@ -414,12 +449,18 @@ def test_mdl_roundtrip_each_loadable():
             save_mdl(_op, out_mdl, opts_exp)
             _clear_scene()
             load_mdl(_op, out_mdl, _import_opts())
-            roots_after = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+            roots_after = [
+                o
+                for o in bpy.data.objects
+                if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+            ]  # pyright: ignore[reportAttributeAccessIssue]
             objs_after = len(bpy.data.objects)
             if roots_after and roots_after[0].name == name_before and objs_after >= 1:
                 print(f"  PASS test_mdl_roundtrip_each_loadable ({name})")
             else:
-                print(f"  FAIL test_mdl_roundtrip_each_loadable ({name}): root name or object count")
+                print(
+                    f"  FAIL test_mdl_roundtrip_each_loadable ({name}): root name or object count"
+                )
                 all_ok = False
         except Exception as e:
             print(f"  FAIL test_mdl_roundtrip_each_loadable ({name}): {e}")
@@ -479,7 +520,11 @@ def test_empty_mdl():
         save_mdl(_op, out_mdl, opts_exp)
         _clear_scene()
         load_mdl(_op, out_mdl, _import_opts())
-        roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+        roots = [
+            o
+            for o in bpy.data.objects
+            if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+        ]  # pyright: ignore[reportAttributeAccessIssue]
         objs = list(bpy.data.objects)
         ok = len(roots) == 1 and len(objs) >= 1
         if ok:
@@ -505,7 +550,11 @@ def test_mdl_find_parent():
     mdl_path, name = p
     _clear_scene()
     load_mdl(_op, mdl_path, _import_opts())
-    roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+    roots = [
+        o
+        for o in bpy.data.objects
+        if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+    ]  # pyright: ignore[reportAttributeAccessIssue]
     if not roots:
         print("  FAIL test_mdl_find_parent: no root")
         return False
@@ -534,7 +583,11 @@ def _roundtrip_by_type(basename: str) -> bool:
     except Exception as e:
         print(f"  FAIL test_roundtrip_{basename}: load failed: {e}")
         return False
-    roots = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+    roots = [
+        o
+        for o in bpy.data.objects
+        if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+    ]  # pyright: ignore[reportAttributeAccessIssue]
     if not roots:
         print(f"  FAIL test_roundtrip_{basename}: no root after load")
         return False
@@ -549,7 +602,11 @@ def _roundtrip_by_type(basename: str) -> bool:
         save_mdl(_op, out_mdl, opts_exp)
         _clear_scene()
         load_mdl(_op, out_mdl, _import_opts())
-        roots_after = [o for o in bpy.data.objects if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT]  # pyright: ignore[reportAttributeAccessIssue]
+        roots_after = [
+            o
+            for o in bpy.data.objects
+            if getattr(o, "kb", None) and o.kb.dummytype == DummyType.MDLROOT
+        ]  # pyright: ignore[reportAttributeAccessIssue]
         ok = roots_after and roots_after[0].name == name_before
         if ok:
             print(f"  PASS test_roundtrip_{basename}")
@@ -599,7 +656,9 @@ def run_tests():
     print("\n=== test_pykotor_mdl.py ===")
     paths = list(_pykotor_mdl_paths() or [])
     if not paths:
-        print("  FAIL: No test_files/pykotor_mdl MDL+MDX pairs (see test/test_files/pykotor_mdl/README.md).")
+        print(
+            "  FAIL: No test_files/pykotor_mdl MDL+MDX pairs (see test/test_files/pykotor_mdl/README.md)."
+        )
         print("[FAIL] 0 passed in test_pykotor_mdl.py\n")
         return False
 

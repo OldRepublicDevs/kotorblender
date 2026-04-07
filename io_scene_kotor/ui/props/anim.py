@@ -23,10 +23,16 @@ from .animevent import AnimEventPropertyGroup
 
 class AnimPropertyGroup(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name")
-    transtime: bpy.props.FloatProperty(name="Transition Time",
-                                       description="Blending time between animations in seconds",
-                                       default=0.25, min=0.0, max=2.0)
-    root: bpy.props.StringProperty(name="Root", description="This animation should only affect children of selected object")
+    transtime: bpy.props.FloatProperty(
+        name="Transition Time",
+        description="Blending time between animations in seconds",
+        default=0.25,
+        min=0.0,
+        max=2.0,
+    )
+    root: bpy.props.StringProperty(
+        name="Root", description="This animation should only affect children of selected object"
+    )
     frame_start: bpy.props.IntProperty(name="Start Frame", min=0)
     frame_end: bpy.props.IntProperty(name="End Frame", min=0)
     event_list: bpy.props.CollectionProperty(type=AnimEventPropertyGroup)

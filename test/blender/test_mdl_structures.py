@@ -25,8 +25,8 @@ if MODULE not in bpy.context.preferences.addons:
     bpy.ops.preferences.addon_enable(module=MODULE)
 
 from io_scene_kotor.constants import Classification, DummyType, ExportOptions, MeshType
-from io_scene_kotor.io.mdl import save_mdl
 from io_scene_kotor.format.mdl.reader import MdlReader
+from io_scene_kotor.io.mdl import save_mdl
 from io_scene_kotor.scene.modelnode.emitter import EmitterNode
 from io_scene_kotor.scene.modelnode.light import LightNode
 
@@ -182,9 +182,7 @@ def test_model_header_computes_bounds_from_positive_mesh():
         ok = (
             tuple(round(v, 5) for v in model.bounding_box_min) == (1.0, 2.0, 3.0)
             and tuple(round(v, 5) for v in model.bounding_box_max) == (4.0, 5.0, 6.0)
-            and math.isclose(
-                model.model_radius, expected_radius, rel_tol=0.0, abs_tol=1e-5
-            )
+            and math.isclose(model.model_radius, expected_radius, rel_tol=0.0, abs_tol=1e-5)
         )
         if ok:
             print("  PASS test_model_header_computes_bounds_from_positive_mesh")
@@ -221,17 +219,12 @@ def test_light_roundtrip_preserves_extended_properties():
             and math.isclose(light_node.radius, 14.0, rel_tol=0.0, abs_tol=1e-5)
             and math.isclose(light_node.multiplier, 2.0, rel_tol=0.0, abs_tol=1e-5)
             and math.isclose(light_node.shadowradius, 3.5, rel_tol=0.0, abs_tol=1e-5)
-            and math.isclose(
-                light_node.verticaldisplacement, -1.25, rel_tol=0.0, abs_tol=1e-5
-            )
+            and math.isclose(light_node.verticaldisplacement, -1.25, rel_tol=0.0, abs_tol=1e-5)
         )
         if ok:
             print("  PASS test_light_roundtrip_preserves_extended_properties")
         else:
-            print(
-                "  FAIL test_light_roundtrip_preserves_extended_properties: "
-                f"node={light_node}"
-            )
+            print(f"  FAIL test_light_roundtrip_preserves_extended_properties: node={light_node}")
         return ok
     except Exception as exc:
         print(f"  FAIL test_light_roundtrip_preserves_extended_properties: {exc}")
