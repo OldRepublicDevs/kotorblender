@@ -58,7 +58,7 @@ Ensure every `.mdl` used in tests has a sibling `.mdx` in the same directory; `[
 
 `[io_scene_kotor/format/mdl/reader.py](io_scene_kotor/format/mdl/reader.py)`:
 
-1. **Sibling MDX**: same basename as `.mdl` — missing `.mdx` → `MDX file '...' not found`.
+1. **Sibling MDX**: same basename as `.mdl` — missing `.mdx` -> `MDX file '...' not found`.
 2. **File header**: first little-endian `uint32` must be **0** in `load_file_header`; otherwise `Invalid MDL signature`.
 
 The exporter writes that leading zero in `[save_file_header](io_scene_kotor/format/mdl/writer.py)`. Unfixed BINS likely use a different header or variant; comparing unfixed vs fixed binaries (and fixed vs what the reader expects) is how we diagnose structural issues.
@@ -136,8 +136,8 @@ Do **not** copy PyKotor code 1:1 (different APIs: `read_mdl`/`MDL` vs `load_mdl`
 - **Binary I/O:** For each PyKotor test file in `test_files/pykotor_mdl/`: load via `load_mdl(_op, mdl_path, ImportOptions(...))`; assert model loaded (e.g. at least one `kb.dummytype == DummyType.MDLROOT`), root present, node count > 0, and (where applicable) at least one mesh node / texture names / lightmaps (if exposed in Blender).
 - **Node hierarchy:** After load, assert root in `all_objects` or equivalent, and that node names / child counts are consistent (e.g. traverse and count).
 - **Mesh data:** Assert at least one object with mesh data; optionally vertex/face counts or texture slot if available.
-- **Round-trip:** Load MDL → `save_mdl` to temp file → `load_mdl` again; assert root (and optionally node count / name) preserved (mirror PyKotor’s roundtrip intent; KotorBlender has no ASCII MDL, so binary round-trip only).
-- **Edge cases:** Missing file → expect exception or operator report; empty/minimal scene behaviour if applicable.
+- **Round-trip:** Load MDL -> `save_mdl` to temp file -> `load_mdl` again; assert root (and optionally node count / name) preserved (mirror PyKotor’s roundtrip intent; KotorBlender has no ASCII MDL, so binary round-trip only).
+- **Edge cases:** Missing file -> expect exception or operator report; empty/minimal scene behaviour if applicable.
 - **Performance:** Optional “fast load” test only if KotorBlender adds a fast path; otherwise skip or document.
 
 Run these as **Blender background** scripts (`test/blender/test_pykotor_mdl.py` or similar), same pattern as `test_mdl_minimal.py`: `_Op` mock, addon enable, `run_tests()`, exit 0/1. Skip gracefully if `test_files/pykotor_mdl/` is missing so CI without assets still passes.

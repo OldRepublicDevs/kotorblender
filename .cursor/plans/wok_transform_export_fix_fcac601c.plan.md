@@ -124,7 +124,7 @@ flowchart LR
 4. **PWK/DWK**
   - Same writer path; DWK header also uses `position` and use vectors—after changing vertex bake, re-check `[save_header](io_scene_kotor/format/bwm/writer.py)` (lines 308–318) so `abs_use_vec`* / `position` remain consistent with how the engine expects door/placeable walkmeshes (may need the same `(0,0,0)` header + baked verts, or engine-specific tweaks).
 5. **Tests**
-  - Add a Blender-headless test (pattern like `[test/blender/test_mdl_structures.py](test/blender/test_mdl_structures.py)`): build MDL root → dummy (rotated/translated) → AABB walkmesh with known local verts; export MDL+WOK; assert every `from_root @ v` equals the vertex written to `.wok` (read back with position 0). Optionally compare MDL `from_root @ v` to WOK stored vert for the same object.
+  - Add a Blender-headless test (pattern like `[test/blender/test_mdl_structures.py](test/blender/test_mdl_structures.py)`): build MDL root -> dummy (rotated/translated) -> AABB walkmesh with known local verts; export MDL+WOK; assert every `from_root @ v` equals the vertex written to `.wok` (read back with position 0). Optionally compare MDL `from_root @ v` to WOK stored vert for the same object.
 
 ### Research insights (implementation)
 

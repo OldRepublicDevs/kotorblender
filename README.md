@@ -51,44 +51,44 @@ If you plan to edit textures, batch-convert TPC to TGA / TXI files using **reone
 
 ### Model Import and Export
 
-1. Import via File → Import → KotOR Model (.mdl)
+1. Import via File -> Import -> KotOR Model (.mdl)
 1. Select top-level MDL root object to be exported
-1. Export via File → Export → KotOR Model (.mdl)
+1. Export via File -> Export -> KotOR Model (.mdl)
 
 ### Editing Animations
 
-To edit list of model animations and corresponding events, select MDL root object and navigate to Object → KotOR Animations. KotorBlender supports both object and armature-based edits. To create an armature from objects, navigate to KotOR Animations → Armature and press Rebuild Armature and Apply Object Keyframes. Before exporting a model, make sure to copy armature keyframes back to objects by pressing Unapply Object Keyframes.
+To edit list of model animations and corresponding events, select MDL root object and navigate to Object -> KotOR Animations. KotorBlender supports both object and armature-based edits. To create an armature from objects, navigate to KotOR Animations -> Armature and press Rebuild Armature and Apply Object Keyframes. Before exporting a model, make sure to copy armature keyframes back to objects by pressing Unapply Object Keyframes.
 
 ### Lightmapping
 
 1. Select objects for which you want lightmaps to be recreated, or unselect all objects to recreate all lightmaps
-1. Press KotOR → Lightmaps → Bake (auto)
+1. Press KotOR -> Lightmaps -> Bake (auto)
 1. Open and save each individual lightmap image from UV Editing tab
 
 UV mapping:
 
 1. Select objects having the same lightmap texture and enter Edit mode
 1. For every object, ensure that `UVMap_lm` UV layer is active
-1. Select all faces and unwrap UVs via UV → Lightmap Pack, increase Margin to avoid face overlapping
+1. Select all faces and unwrap UVs via UV -> Lightmap Pack, increase Margin to avoid face overlapping
 
 Fine-tuning:
 
-1. Increase lightmap image size via UV Editing → Image → Resize
-1. Tweak ambient color via Scene → World → Surface → Color
-1. Manually toggle rendering of objects in Outliner and press KotOR → Lightmaps → Bake (manual)
-1. In Scene → Render, set Device to GPU Compute to improve performance, set Render Engine to Cycles if not already
-1. In Scene → Render → Sampling → Render increase Max Samples to improve quality
+1. Increase lightmap image size via UV Editing -> Image -> Resize
+1. Tweak ambient color via Scene -> World -> Surface -> Color
+1. Manually toggle rendering of objects in Outliner and press KotOR -> Lightmaps -> Bake (manual)
+1. In Scene -> Render, set Device to GPU Compute to improve performance, set Render Engine to Cycles if not already
+1. In Scene -> Render -> Sampling -> Render increase Max Samples to improve quality
 
 ### Minimap Rendering
 
-1. Press KotOR → Minimap → Render (auto)
+1. Press KotOR -> Minimap -> Render (auto)
 1. Open "Render Result" image in UV Editing tab and save it as "lbl_map{modulename}.tga"
 1. Open "MinimapCoords" text in Scripting tab and copy-paste generated properties into module .ARE file using any GFF editor
 
 Fine-tuning:
 
-1. Tweak background color via Scene → World → Surface → Color
-1. Manually toggle rendering of objects in Outliner and press KotOR → Minimap → Render (manual)
+1. Tweak background color via Scene -> World -> Surface -> Color
+1. Manually toggle rendering of objects in Outliner and press KotOR -> Minimap -> Render (manual)
 
 ### Connecting Rooms
 
@@ -102,9 +102,9 @@ Fine-tuning:
 ### Editing Paths
 
 1. Extract PTH file from the module's RIM file, e.g. "modules/danm13_s.rim" (Kotor Tool, reone toolkit, etc.)
-1. Import PTH into Blender via File → Import → KotOR Path (.pth)
+1. Import PTH into Blender via File -> Import -> KotOR Path (.pth)
 1. Create/move path points, or modify path connections via Object Properties
-1. Export PTH via File → Export → KotOR Path (.pth)
+1. Export PTH via File -> Export -> KotOR Path (.pth)
 
 ## Contributing and testing
 

@@ -64,7 +64,7 @@ jobs:
 
           ### Installation
           1. Download the \`.zip\` file below.
-          2. In Blender, go to **Edit → Preferences → Extensions**.
+          2. In Blender, go to **Edit -> Preferences -> Extensions**.
           3. Click **Install from Disk** and select the downloaded \`.zip\`.
 
           ### Changes

@@ -8,7 +8,7 @@ These tests would fail if addon prefs were _PropertyDeferred (e.g. Blender 5.x)
 and the code did not coerce to str.
 
   - test_import_prefs_paths_resolve: same code path as execute() up to load_mdl
-    (addon prefs → semicolon_separated_to_absolute_paths). No MDL file.
+    (addon prefs -> semicolon_separated_to_absolute_paths). No MDL file.
   - test_mdlimport_operator_full_pipeline: bpy.ops.kb.mdlimport(filepath=...)
     with a minimal exported MDL. Full operator execute() with real addon prefs.
 

@@ -62,7 +62,7 @@ def _float_eq(a, b, tol=1e-5):
 
 
 def test_dword_roundtrip():
-    """A single DWORD field survives write→read unchanged."""
+    """A single DWORD field survives write->read unchanged."""
     tree = {
         "_type": 0xFFFFFFFF,
         "_fields": {"MyDword": FIELD_TYPE_DWORD},
@@ -78,7 +78,7 @@ def test_dword_roundtrip():
 
 
 def test_float_roundtrip():
-    """A FLOAT field survives write→read within single-precision tolerance."""
+    """A FLOAT field survives write->read within single-precision tolerance."""
     value = 3.14159
     tree = {
         "_type": 0xFFFFFFFF,
@@ -282,7 +282,7 @@ def test_zero_and_max_dword():
 
 
 def test_negative_float():
-    """Negative floats survive write→read."""
+    """Negative floats survive write->read."""
     value = -999.75
     tree = {
         "_type": 0xFFFFFFFF,

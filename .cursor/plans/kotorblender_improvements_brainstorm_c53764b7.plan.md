@@ -3,7 +3,7 @@ name: KotorBlender improvements brainstorm
 overview: Brainstorm and roadmap for KotorBlender improvements (implementation, intuitivity, accessibility, maintainability, functionality) with concrete file/line refs, operator tables, P0/P1/P2 actions, operator UX and CONTRIBUTING acceptance criteria, and resolve-or-defer open questions.
 todos:
   - id: impl-typo
-    content: "Implementation P0: Fix typo Mininmap → Minimap in io_scene_kotor/ui/menu/kotor.py line 32"
+    content: "Implementation P0: Fix typo Mininmap -> Minimap in io_scene_kotor/ui/menu/kotor.py line 32"
     status: completed
   - id: impl-poll
     content: "Implementation P0: Add poll_message_set() to 17 operators with poll() (armature, rebuild, anim, anim/event, lensflare, pth add/remove)"
@@ -24,7 +24,7 @@ todos:
     content: "Maintainability P0: Create .github/PULL_REQUEST_TEMPLATE.md (problem, solution, alternatives, limitations, checklist)"
     status: completed
   - id: maint-arch
-    content: "Maintainability P1: Add ARCHITECTURE.md or Architecture section in AGENTS.md (format → io → scene → ops/ui)"
+    content: "Maintainability P1: Add ARCHITECTURE.md or Architecture section in AGENTS.md (format -> io -> scene -> ops/ui)"
     status: completed
   - id: doc-readme
     content: "Doc updates: Add Contributing and Testing links to README.md (CONTRIBUTING.md, TESTING.md or AGENTS.md)"
@@ -65,7 +65,7 @@ No new features are in scope unless they are small, high-impact fixes (e.g. oper
 - **Operator feedback:** All operators that use `poll()` show a clear, user-facing reason when disabled (via `poll_message_set()`).
 - **Discoverability:** Every operator has a one-sentence `bl_description` (tooltip and screen readers).
 - **Contributor experience:** CONTRIBUTING.md and PR template in place; README and TESTING point to them and to test commands.
-- **Documentation:** Architecture (format → io → scene → ops/ui) documented in ARCHITECTURE.md or AGENTS.md; TPC/TXI read-only and E2E (DATA_DIR) documented.
+- **Documentation:** Architecture (format -> io -> scene -> ops/ui) documented in ARCHITECTURE.md or AGENTS.md; TPC/TXI read-only and E2E (DATA_DIR) documented.
 - **Quality:** CI unchanged or improved; no new lint failures; optional .zip artifact per PR.
 
 ---
@@ -74,9 +74,9 @@ No new features are in scope unless they are small, high-impact fixes (e.g. oper
 
 **Repo (repo-research-analyst):**
 
-- Structure: `format/` → `io/` → `scene/` → `ops/` + `ui/`; 52 classes in [io_scene_kotor/**init**.py](io_scene_kotor/__init__.py). No CLAUDE.md, CONTRIBUTING, or ARCHITECTURE.
+- Structure: `format/` -> `io/` -> `scene/` -> `ops/` + `ui/`; 52 classes in [io_scene_kotor/**init**.py](io_scene_kotor/__init__.py). No CLAUDE.md, CONTRIBUTING, or ARCHITECTURE.
 - Hotspots: MDL/MDX and [scene/material.py](io_scene_kotor/scene/material.py); WOK/AABB and [modelnode/base.py](io_scene_kotor/scene/modelnode/base.py). Ops report via `self.report({"ERROR"}, str(ex))`; no shared reporting helper.
-- UI: Menus in [ui/menu/kotor.py](io_scene_kotor/ui/menu/kotor.py) (typo **"Mininmap"** at **line 32** → "Minimap"). No keymaps. Many operators lack `bl_description`; **no `poll_message`** anywhere—disabled ops give no reason.
+- UI: Menus in [ui/menu/kotor.py](io_scene_kotor/ui/menu/kotor.py) (typo **"Mininmap"** at **line 32** -> "Minimap"). No keymaps. Many operators lack `bl_description`; **no `poll_message`** anywhere—disabled ops give no reason.
 - Maintainability: [test/blender/](test/blender/) + Makefile + [test/run_blender_tests.py](test/run_blender_tests.py); CI lint (E9,F821,F823) and test-and-build; 400+ F401/F403 accepted.
 - Gaps: TPC/TXI read-only; E2E needs `DATA_DIR` (not in CI).
 
@@ -110,7 +110,7 @@ No new features are in scope unless they are small, high-impact fixes (e.g. oper
 
 | Change                 | File                                                               | Line |
 | ---------------------- | ------------------------------------------------------------------ | ---- |
-| "Mininmap" → "Minimap" | [io_scene_kotor/ui/menu/kotor.py](io_scene_kotor/ui/menu/kotor.py) | 32   |
+| "Mininmap" -> "Minimap" | [io_scene_kotor/ui/menu/kotor.py](io_scene_kotor/ui/menu/kotor.py) | 32   |
 
 
 **Operators with `poll()` but no `poll_message` (add `poll_message_set(context, "…")` with user-facing reason)**
@@ -181,7 +181,7 @@ No new features are in scope unless they are small, high-impact fixes (e.g. oper
 ### Approach A — Quick wins + backlog (minimal)
 
 - **What**: Fix the known low-hanging fruit and document the rest.
-- **Actions**: Fix "Mininmap" → "Minimap" in [ui/menu/kotor.py](io_scene_kotor/ui/menu/kotor.py) (line 32); add CONTRIBUTING.md and a minimal PR template; add `poll_message_set()` on 3–5 high-traffic operators (e.g. rebuild materials, armature, anim). Add a short "Improvement backlog" section to AGENTS.md or BACKLOG.md for a11y, keymaps, TPC write, E2E.
+- **Actions**: Fix "Mininmap" -> "Minimap" in [ui/menu/kotor.py](io_scene_kotor/ui/menu/kotor.py) (line 32); add CONTRIBUTING.md and a minimal PR template; add `poll_message_set()` on 3–5 high-traffic operators (e.g. rebuild materials, armature, anim). Add a short "Improvement backlog" section to AGENTS.md or BACKLOG.md for a11y, keymaps, TPC write, E2E.
 - **Pros**: Fast, low risk, immediate value for users and contributors.
 - **Cons**: No structured roadmap; backlog can stay vague.
 
@@ -196,7 +196,7 @@ No new features are in scope unless they are small, high-impact fixes (e.g. oper
   - **Implementation (P0)**: Fix typo at [ui/menu/kotor.py:32](io_scene_kotor/ui/menu/kotor.py); add `poll_message_set()` where `poll()` fails (see operator table); optional shared report helper; (P2) reduce duplication in [ops/showhideobjects.py](io_scene_kotor/ops/showhideobjects.py) (base class or shared helper; 18 classes, ~lines 33–311).
   - **Intuitivity (P0)**: Every operator has `bl_description` (see operators lacking list); (P1) tooltips/descriptions for texture/lightmap path prefs in [addonprefs.py](io_scene_kotor/addonprefs.py) (props ~31–41, draw ~43–46).
   - **Accessibility (P1)**: All actions keyboard-reachable via menus (no custom keymaps unless needed); audit labels/operator names; keep custom UI minimal and theme-aware.
-  - **Maintainability (P0)**: Add [CONTRIBUTING.md](CONTRIBUTING.md) and [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) per Blender guidelines; (P1) ARCHITECTURE.md or "Architecture" section in AGENTS.md (format → io → scene → ops/ui); CI as-is; optional .zip artifact per PR.
+  - **Maintainability (P0)**: Add [CONTRIBUTING.md](CONTRIBUTING.md) and [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) per Blender guidelines; (P1) ARCHITECTURE.md or "Architecture" section in AGENTS.md (format -> io -> scene -> ops/ui); CI as-is; optional .zip artifact per PR.
   - **Functionality (P1)**: Document TPC/TXI read-only and E2E (DATA_DIR) in README/TESTING; (P2) optional golden MDL/MDX in repo for roundtrip tests.
 - **Pros**: Clear priorities, one doc to drive planning and execution, covers all five dimensions.
 - **Cons**: More upfront thinking; some items (e.g. shared show/hide base) need design.

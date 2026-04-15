@@ -220,7 +220,7 @@ def test_large_path_roundtrip():
     pts = []
     for i in range(n):
         pts.append(_make_path_point(f"PathPoint{i:03d}", float(i), float(i * 2), parent=root))
-    # Chain: 0→1→2→...→(n-1)
+    # Chain: 0->1->2->...->(n-1)
     for i in range(n - 1):
         _add_connection(pts[i], f"PathPoint{i + 1:03d}")
 
